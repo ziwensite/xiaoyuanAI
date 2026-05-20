@@ -42,10 +42,7 @@ var DEFAULT_SETTINGS = {
   temperature: 0.7,
   chatViewType: "right",
   buildMode: "build",
-  level: "low",
-  customApiList: [],
-  defaultApiIndex: 0,
-  opencodeModel: ""
+  level: "low"
 };
 var VIEW_TYPE_XIAOYUAN_AI_CHAT = "xiaoyuan-chat-view";
 var serverProcess = null;
@@ -173,22 +170,6 @@ async function httpRequest(url, options) {
     if (body) req.write(body);
     req.end();
   });
-}
-async function listOpenCodeModels(port, password) {
-  const baseUrl = `http://localhost:${port}`;
-  const auth = Buffer.from(`opencode:${password}`).toString("base64");
-  const headers = {
-    Authorization: `Basic ${auth}`
-  };
-  try {
-    const resp = await httpRequest(`${baseUrl}/models`, { method: "GET", headers });
-    if (resp.status === 200) {
-      const data = await resp.json();
-      return data.models || [];
-    }
-  } catch (e) {
-  }
-  return [];
 }
 async function callOpenCodeAPI(prompt, port, password, attachments, agent, level) {
   const baseUrl = `http://localhost:${port}`;
@@ -350,7 +331,22 @@ var XiaoyuanAIChatView = class extends import_obsidian.ItemView {
       true
     );
     toolbarEl.appendChild(buildModeText);
-    const modelText = this.createModelSelector();
+    const models = [
+      { value: "gpt-4o", label: "gpt-4o" },
+      { value: "gpt-4", label: "gpt-4" },
+      { value: "gpt-3.5-turbo", label: "gpt-3.5" }
+    ];
+    const modelText = this.createSelector(
+      "xiaoyuan-model-select",
+      models,
+      this.plugin.settings.model,
+      "\u70B9\u51FB\u5207\u6362\u6A21\u578B",
+      (value) => {
+        this.plugin.settings.model = value;
+        this.plugin.saveSettings();
+      },
+      true
+    );
     toolbarEl.appendChild(modelText);
     const levels = [
       { value: "low", label: "low" },
@@ -371,7 +367,6 @@ var XiaoyuanAIChatView = class extends import_obsidian.ItemView {
     );
     toolbarEl.appendChild(levelText);
     this.sendBtn = this.createSendButton();
-    this.sendBtn.classList.add("xiaoyuan-send-btn-right");
     this.sendBtn.addEventListener("click", () => this.sendMessage());
     toolbarEl.appendChild(this.sendBtn);
     this.inputEl.addEventListener("keydown", (e) => {
@@ -381,98 +376,6 @@ var XiaoyuanAIChatView = class extends import_obsidian.ItemView {
       }
     });
     this.addWelcomeMessage();
-  }
-  createModelSelector() {
-    var _a, _b;
-    const s = this.plugin.settings;
-    let models = [];
-    let currentModel = "";
-    if (s.execMode === "hybrid") {
-      if (s.customApiList.length > 0) {
-        models = s.customApiList.map((api) => ({ value: api.model, label: api.model }));
-        currentModel = ((_a = s.customApiList[s.defaultApiIndex]) == null ? void 0 : _a.model) || "";
-      } else {
-        models = [{ value: s.model, label: s.model }];
-        currentModel = s.model;
-      }
-    } else if (s.execMode === "api") {
-      if (s.customApiList.length > 0) {
-        models = s.customApiList.map((api) => ({ value: api.model, label: api.model }));
-        currentModel = ((_b = s.customApiList[s.defaultApiIndex]) == null ? void 0 : _b.model) || "";
-      } else {
-        models = [{ value: s.model, label: s.model }];
-        currentModel = s.model;
-      }
-    } else {
-      models = s.opencodeModel ? [{ value: s.opencodeModel, label: s.opencodeModel }] : [{ value: "", label: "\u52A0\u8F7D\u4E2D..." }];
-      currentModel = s.opencodeModel;
-    }
-    const selector = this.createSelector(
-      "xiaoyuan-model-select",
-      models,
-      currentModel,
-      "\u70B9\u51FB\u5207\u6362\u6A21\u578B",
-      (value) => {
-        if (s.execMode === "cli") {
-          s.opencodeModel = value;
-        } else {
-          const idx = s.customApiList.findIndex((api) => api.model === value);
-          if (idx >= 0) {
-            s.defaultApiIndex = idx;
-          } else {
-            s.model = value;
-          }
-        }
-        this.plugin.saveSettings();
-      },
-      true
-    );
-    if (s.execMode === "cli") {
-      const originalListener = selector.onclick;
-      selector.onclick = async (e) => {
-        e.stopPropagation();
-        document.querySelectorAll(".xiaoyuan-mode-dropdown").forEach((el) => el.remove());
-        try {
-          const alive = await probeServer(s.serverPort);
-          if (alive) {
-            const openCodeModels = await listOpenCodeModels(s.serverPort, s.serverPassword);
-            const newModels = openCodeModels.map((m) => ({ value: m, label: m }));
-            if (JSON.stringify(newModels) !== JSON.stringify(models)) {
-              models = newModels;
-              if (!s.opencodeModel || !openCodeModels.includes(s.opencodeModel)) {
-                s.opencodeModel = openCodeModels[0] || "";
-                await this.plugin.saveSettings();
-              }
-              currentModel = s.opencodeModel;
-              const parent = selector.parentElement;
-              if (parent) {
-                const newSelector = this.createSelector(
-                  "xiaoyuan-model-select",
-                  models,
-                  currentModel,
-                  "\u70B9\u51FB\u5207\u6362\u6A21\u578B",
-                  (value) => {
-                    s.opencodeModel = value;
-                    this.plugin.saveSettings();
-                  },
-                  true
-                );
-                newSelector.onclick = selector.onclick;
-                parent.replaceChild(newSelector, selector);
-                newSelector.click();
-                return;
-              }
-            }
-          }
-        } catch (e2) {
-        }
-        if (originalListener) {
-          const event = new MouseEvent("click", { bubbles: true, cancelable: true });
-          selector.dispatchEvent(event);
-        }
-      };
-    }
-    return selector;
   }
   createSelector(className, options, currentValue, title, onChange, dropdownUp = false) {
     var _a;
@@ -511,10 +414,11 @@ var XiaoyuanAIChatView = class extends import_obsidian.ItemView {
     return text;
   }
   createSendButton() {
-    const btn = document.createElement("button");
+    const btn = document.createElement("span");
     btn.title = "\u53D1\u9001";
-    btn.classList.add("xiaoyuan-send-btn");
-    btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" fill="currentColor"/></svg>`;
+    btn.classList.add("xiaoyuan-attach-btn");
+    btn.style.marginLeft = "auto";
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>`;
     return btn;
   }
   addWelcomeMessage() {
@@ -598,13 +502,9 @@ var XiaoyuanAIChatView = class extends import_obsidian.ItemView {
       const prompt = allMessages.map((m) => `${m.role === "system" ? "[\u7CFB\u7EDF]" : m.role === "user" ? "[\u7528\u6237]" : "[\u52A9\u624B]"}: ${m.content}`).join("\n\n");
       return callOpenCodeCLI(prompt, s, vaultDir);
     }
-    const apiConfig = s.customApiList.length > 0 ? s.customApiList[s.defaultApiIndex] : null;
-    const endpoint = (apiConfig == null ? void 0 : apiConfig.endpoint) || s.apiEndpoint;
-    const apiKey = (apiConfig == null ? void 0 : apiConfig.apiKey) || s.apiKey;
-    const model = (apiConfig == null ? void 0 : apiConfig.model) || s.model;
-    if (!apiKey) throw new Error("API Key \u672A\u914D\u7F6E\u3002\u8BF7\u5728\u8BBE\u7F6E\u4E2D\u586B\u5199\u3002");
+    if (!s.apiKey) throw new Error("API Key \u672A\u914D\u7F6E\u3002\u8BF7\u5728\u8BBE\u7F6E\u4E2D\u586B\u5199\u3002");
     const body = {
-      model,
+      model: s.model,
       messages: [
         { role: "system", content: s.systemPrompt },
         ...this.messages.map((m) => ({ role: m.role, content: m.content })),
@@ -614,9 +514,9 @@ var XiaoyuanAIChatView = class extends import_obsidian.ItemView {
       temperature: s.temperature,
       stream: false
     };
-    const resp = await fetch(endpoint, {
+    const resp = await fetch(s.apiEndpoint, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${s.apiKey}` },
       body: JSON.stringify(body)
     });
     if (!resp.ok) {
@@ -628,7 +528,6 @@ var XiaoyuanAIChatView = class extends import_obsidian.ItemView {
   }
   disableInput(disabled) {
     this.inputEl.disabled = disabled;
-    this.sendBtn.disabled = disabled;
     if (disabled) {
       this.sendBtn.classList.add("disabled");
     } else {
@@ -876,63 +775,6 @@ var XiaoyuanAISettingTab = class extends import_obsidian.PluginSettingTab {
           await this.plugin.saveSettings();
         });
       });
-      new import_obsidian.Setting(containerEl).setName("\u9ED8\u8BA4\u6A21\u578B").setDesc("\u8BBE\u7F6E CLI \u6A21\u5F0F\u4E0B\u4F7F\u7528\u7684\u6A21\u578B\uFF08\u4ECE OpenCode \u8BFB\u53D6\uFF09").addDropdown((dd) => {
-        dd.addOption("", "\u52A0\u8F7D\u4E2D...");
-        dd.onChange(async (val) => {
-          s.opencodeModel = val;
-          await this.plugin.saveSettings();
-        });
-        (async () => {
-          try {
-            const alive = await probeServer(s.serverPort);
-            if (alive) {
-              const models = await listOpenCodeModels(s.serverPort, s.serverPassword);
-              const selectEl = dd.selectEl;
-              if (selectEl) {
-                selectEl.innerHTML = "";
-                if (models.length > 0) {
-                  models.forEach((m) => {
-                    const opt = document.createElement("option");
-                    opt.value = m;
-                    opt.textContent = m;
-                    selectEl.appendChild(opt);
-                  });
-                  if (s.opencodeModel && models.includes(s.opencodeModel)) {
-                    selectEl.value = s.opencodeModel;
-                  } else {
-                    selectEl.value = models[0];
-                    s.opencodeModel = models[0];
-                    await this.plugin.saveSettings();
-                  }
-                } else {
-                  const opt = document.createElement("option");
-                  opt.value = "";
-                  opt.textContent = "\u65E0\u53EF\u7528\u6A21\u578B";
-                  selectEl.appendChild(opt);
-                }
-              }
-            } else {
-              const selectEl = dd.selectEl;
-              if (selectEl) {
-                selectEl.innerHTML = "";
-                const opt = document.createElement("option");
-                opt.value = "";
-                opt.textContent = "\u8BF7\u5148\u542F\u52A8\u670D\u52A1\u5668";
-                selectEl.appendChild(opt);
-              }
-            }
-          } catch (e) {
-            const selectEl = dd.selectEl;
-            if (selectEl) {
-              selectEl.innerHTML = "";
-              const opt = document.createElement("option");
-              opt.value = "";
-              opt.textContent = "\u8BFB\u53D6\u5931\u8D25";
-              selectEl.appendChild(opt);
-            }
-          }
-        })();
-      });
       new import_obsidian.Setting(containerEl).setName("\u6D4B\u8BD5 CLI \u8FDE\u63A5").setDesc("\u542F\u52A8/\u6D4B\u8BD5 opencode serve \u662F\u5426\u6B63\u5E38").addButton((btn) => {
         btn.setButtonText("\u6D4B\u8BD5\u8FDE\u63A5");
         btn.onClick(async () => {
@@ -966,69 +808,26 @@ var XiaoyuanAISettingTab = class extends import_obsidian.PluginSettingTab {
     }
     if (s.execMode === "api" || s.execMode === "hybrid") {
       containerEl.createEl("h3", { text: "API \u914D\u7F6E" });
-      new import_obsidian.Setting(containerEl).setName("\u81EA\u5B9A\u4E49 API \u914D\u7F6E").setDesc("\u7BA1\u7406\u591A\u4E2A API \u914D\u7F6E").addButton((btn) => {
-        btn.setButtonText("\u6DFB\u52A0\u914D\u7F6E");
-        btn.onClick(() => {
-          s.customApiList.push({ name: `API ${s.customApiList.length + 1}`, endpoint: "", apiKey: "", model: "gpt-4o" });
-          this.plugin.saveSettings();
-          this.display();
+      new import_obsidian.Setting(containerEl).setName("API \u7AEF\u70B9").setDesc("OpenAI \u517C\u5BB9\u7684 API \u5730\u5740").addText(
+        (text) => text.setPlaceholder("https://api.openai.com/v1/chat/completions").setValue(s.apiEndpoint).onChange(async (val) => {
+          s.apiEndpoint = val;
+          await this.plugin.saveSettings();
+        })
+      );
+      new import_obsidian.Setting(containerEl).setName("API Key").setDesc("\u4F60\u7684 API \u5BC6\u94A5").addText((text) => {
+        text.setPlaceholder("sk-...").setValue(s.apiKey);
+        text.inputEl.type = "password";
+        text.onChange(async (val) => {
+          s.apiKey = val;
+          await this.plugin.saveSettings();
         });
       });
-      s.customApiList.forEach((api, index) => {
-        const apiSetting = new import_obsidian.Setting(containerEl).setName(`\u914D\u7F6E ${index + 1}: ${api.name}`).setDesc(api.endpoint || "\u672A\u8BBE\u7F6E\u7AEF\u70B9");
-        apiSetting.controlEl.style.marginBottom = "0";
-        new import_obsidian.Setting(containerEl).setName(`API ${index + 1} \u540D\u79F0`).addText(
-          (text) => text.setPlaceholder("API \u540D\u79F0").setValue(api.name).onChange(async (val) => {
-            s.customApiList[index].name = val;
-            await this.plugin.saveSettings();
-            this.display();
-          })
-        );
-        new import_obsidian.Setting(containerEl).setName(`API ${index + 1} \u7AEF\u70B9`).addText(
-          (text) => text.setPlaceholder("https://api.openai.com/v1/chat/completions").setValue(api.endpoint).onChange(async (val) => {
-            s.customApiList[index].endpoint = val;
-            await this.plugin.saveSettings();
-          })
-        );
-        new import_obsidian.Setting(containerEl).setName(`API ${index + 1} Key`).addText((text) => {
-          text.setPlaceholder("sk-...").setValue(api.apiKey);
-          text.inputEl.type = "password";
-          text.onChange(async (val) => {
-            s.customApiList[index].apiKey = val;
-            await this.plugin.saveSettings();
-          });
-        });
-        new import_obsidian.Setting(containerEl).setName(`API ${index + 1} \u6A21\u578B`).addText(
-          (text) => text.setPlaceholder("gpt-4o").setValue(api.model).onChange(async (val) => {
-            s.customApiList[index].model = val;
-            await this.plugin.saveSettings();
-          })
-        );
-        new import_obsidian.Setting(containerEl).setName("").addButton((btn) => {
-          btn.setButtonText("\u5220\u9664");
-          btn.onClick(async () => {
-            s.customApiList.splice(index, 1);
-            if (s.defaultApiIndex >= s.customApiList.length) {
-              s.defaultApiIndex = Math.max(0, s.customApiList.length - 1);
-            }
-            await this.plugin.saveSettings();
-            this.display();
-          });
-        });
-        containerEl.createEl("hr", { cls: "xiaoyuan-setting-hr" });
-      });
-      if (s.customApiList.length > 0) {
-        new import_obsidian.Setting(containerEl).setName("\u9ED8\u8BA4 API \u914D\u7F6E").setDesc("\u9009\u62E9\u9ED8\u8BA4\u4F7F\u7528\u7684 API \u914D\u7F6E").addDropdown((dd) => {
-          s.customApiList.forEach((api, i) => {
-            dd.addOption(String(i), api.name);
-          });
-          dd.setValue(String(s.defaultApiIndex));
-          dd.onChange(async (val) => {
-            s.defaultApiIndex = parseInt(val);
-            await this.plugin.saveSettings();
-          });
-        });
-      }
+      new import_obsidian.Setting(containerEl).setName("\u6A21\u578B").addText(
+        (text) => text.setPlaceholder("gpt-4o").setValue(s.model).onChange(async (val) => {
+          s.model = val;
+          await this.plugin.saveSettings();
+        })
+      );
       new import_obsidian.Setting(containerEl).setName("\u7CFB\u7EDF\u63D0\u793A\u8BCD").addTextArea((text) => {
         text.setValue(s.systemPrompt);
         text.inputEl.rows = 4;

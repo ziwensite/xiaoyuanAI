@@ -12,8 +12,8 @@
 }
 
 .xiaoyuan-input-container {
-  border: none;
-  border-radius: 12px;
+  border: none !important;
+  border-radius: 8px;
   background-color: var(--background-primary);
   display: flex;
   flex-direction: column;
@@ -21,19 +21,39 @@
   box-shadow: 0 1px 4px rgba(0,0,0,0.08);
 }
 
+.xiaoyuan-input-container:focus-within,
+.xiaoyuan-input-container:focus {
+  outline: none !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08) !important;
+  border: none !important;
+}
+
+.xiaoyuan-input-container *:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
 .xiaoyuan-chat-input {
   width: 100%;
   background: transparent;
   color: var(--text-normal);
-  border: none;
+  border: none !important;
   resize: none;
   min-height: calc(1.4em * 3 + 8px);
   line-height: 1.4;
   padding: 12px 14px 8px;
   font-size: 0.95em;
   font-family: inherit;
-  outline: none;
+  outline: none !important;
   box-sizing: border-box;
+}
+
+.xiaoyuan-chat-input:focus,
+.xiaoyuan-chat-input:focus-visible,
+.xiaoyuan-chat-input:focus-within {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
 }
 
 .xiaoyuan-toolbar {
@@ -43,9 +63,6 @@
   gap: 6px;
 }
 
-.xiaoyuan-send-btn-right {
-  margin-left: auto;
-}
 
 .xiaoyuan-attach-btn {
   color: var(--text-muted);
@@ -118,29 +135,10 @@
   background-color: var(--background-modifier-hover);
 }
 
-.xiaoyuan-send-btn {
-  background: var(--interactive-accent);
-  color: var(--text-on-accent);
-  border: none;
-  border-radius: 50%;
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  padding: 0;
-  flex-shrink: 0;
-  outline: none;
-  box-shadow: none;
-}
-
-.xiaoyuan-send-btn:hover {
-  opacity: 0.85;
-}
-
-.xiaoyuan-send-btn.disabled {
-  opacity: 0.5;
+.xiaoyuan-attach-btn.disabled {
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
 }
 
 .xiaoyuan-chat-messages {
@@ -155,7 +153,7 @@
 .xiaoyuan-msg {
   display: flex;
   flex-direction: column;
-  max-width: 85%;
+  max-width: 92%;
   position: relative;
 }
 
@@ -169,7 +167,7 @@
 
 .xiaoyuan-msg-bubble {
   padding: 10px 14px;
-  border-radius: 14px;
+  border-radius: 8px;
   line-height: 1.5;
   overflow-wrap: break-word;
   user-select: text;
@@ -178,13 +176,13 @@
 .xiaoyuan-msg-user .xiaoyuan-msg-bubble {
   background-color: var(--interactive-accent);
   color: var(--text-on-accent);
-  border-bottom-right-radius: 4px;
+  border-bottom-right-radius: 3px;
 }
 
 .xiaoyuan-msg-assistant .xiaoyuan-msg-bubble {
   background-color: var(--background-secondary);
   color: var(--text-normal);
-  border-bottom-left-radius: 4px;
+  border-bottom-left-radius: 3px;
   border: 1px solid var(--background-modifier-border);
 }
 

@@ -317,7 +317,7 @@ class XiaoyuanAIChatView extends ItemView {
   private messagesEl!: HTMLDivElement;
   private inputContainer!: HTMLDivElement;
   private inputEl!: HTMLTextAreaElement;
-  private sendBtn!: HTMLButtonElement;
+  private sendBtn!: HTMLSpanElement;
   private modeLabel!: HTMLSpanElement;
 
   constructor(leaf: WorkspaceLeaf, plugin: XiaoyuanAIPlugin) {
@@ -446,7 +446,6 @@ class XiaoyuanAIChatView extends ItemView {
     toolbarEl.appendChild(levelText);
 
     this.sendBtn = this.createSendButton();
-    this.sendBtn.classList.add("xiaoyuan-send-btn-right");
     this.sendBtn.addEventListener("click", () => this.sendMessage());
     toolbarEl.appendChild(this.sendBtn);
 
@@ -500,11 +499,12 @@ class XiaoyuanAIChatView extends ItemView {
     return text;
   }
 
-  private createSendButton(): HTMLButtonElement {
-    const btn = document.createElement("button");
+  private createSendButton(): HTMLSpanElement {
+    const btn = document.createElement("span");
     btn.title = "发送";
-    btn.classList.add("xiaoyuan-send-btn");
-    btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" fill="currentColor"/></svg>`;
+    btn.classList.add("xiaoyuan-attach-btn");
+    btn.style.marginLeft = "auto";
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>`;
     return btn;
   }
 
@@ -642,7 +642,6 @@ class XiaoyuanAIChatView extends ItemView {
 
   private disableInput(disabled: boolean) {
     this.inputEl.disabled = disabled;
-    this.sendBtn.disabled = disabled;
     if (disabled) {
       this.sendBtn.classList.add("disabled");
     } else {

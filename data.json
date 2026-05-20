@@ -1,5 +1,5 @@
 {
-  "execMode": "hybrid",
+  "execMode": "cli",
   "opencodePath": "opencode",
   "serverPort": 16226,
   "serverPassword": "xiaoyuan-plugin-fa8icw66",
