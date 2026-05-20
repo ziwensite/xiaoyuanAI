@@ -1,0 +1,536 @@
+.xiaoyuan-chat-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.xiaoyuan-chat {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.xiaoyuan-input-container {
+  border: none;
+  border-radius: 12px;
+  background-color: var(--background-primary);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+
+.xiaoyuan-chat-input {
+  width: 100%;
+  background: transparent;
+  color: var(--text-normal);
+  border: none;
+  resize: none;
+  min-height: calc(1.4em * 3 + 8px);
+  line-height: 1.4;
+  padding: 12px 14px 8px;
+  font-size: 0.95em;
+  font-family: inherit;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.xiaoyuan-toolbar {
+  display: flex;
+  align-items: center;
+  padding: 5px 10px 5px 12px;
+  gap: 6px;
+}
+
+.xiaoyuan-send-btn-right {
+  margin-left: auto;
+}
+
+.xiaoyuan-attach-btn {
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  padding: 2px 6px;
+  background: transparent;
+  border: none;
+}
+
+.xiaoyuan-attach-btn:hover {
+  color: var(--text-normal);
+  background-color: var(--background-modifier-hover);
+}
+
+.xiaoyuan-build-mode-select,
+.xiaoyuan-model-select,
+.xiaoyuan-level-select {
+  color: var(--text-muted);
+  font-size: 0.8em;
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 2px 6px 2px 18px;
+  position: relative;
+}
+
+.xiaoyuan-build-mode-select::before,
+.xiaoyuan-model-select::before,
+.xiaoyuan-level-select::before {
+  content: "▲";
+  position: absolute;
+  left: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.6em;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.xiaoyuan-build-mode-select:hover,
+.xiaoyuan-model-select:hover,
+.xiaoyuan-level-select:hover {
+  color: var(--text-normal);
+  background-color: var(--background-modifier-hover);
+}
+
+.xiaoyuan-toolbar select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.85em;
+  padding: 3px 4px;
+  cursor: pointer;
+  outline: none;
+  border-radius: 4px;
+}
+
+.xiaoyuan-toolbar select:hover {
+  background-color: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.xiaoyuan-toolbar select:focus {
+  background-color: var(--background-modifier-hover);
+}
+
+.xiaoyuan-send-btn {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  outline: none;
+  box-shadow: none;
+}
+
+.xiaoyuan-send-btn:hover {
+  opacity: 0.85;
+}
+
+.xiaoyuan-send-btn.disabled {
+  opacity: 0.5;
+}
+
+.xiaoyuan-chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.xiaoyuan-msg {
+  display: flex;
+  flex-direction: column;
+  max-width: 85%;
+  position: relative;
+}
+
+.xiaoyuan-msg-user {
+  align-self: flex-end;
+}
+
+.xiaoyuan-msg-assistant {
+  align-self: flex-start;
+}
+
+.xiaoyuan-msg-bubble {
+  padding: 10px 14px;
+  border-radius: 14px;
+  line-height: 1.5;
+  overflow-wrap: break-word;
+  user-select: text;
+}
+
+.xiaoyuan-msg-user .xiaoyuan-msg-bubble {
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-bottom-right-radius: 4px;
+}
+
+.xiaoyuan-msg-assistant .xiaoyuan-msg-bubble {
+  background-color: var(--background-secondary);
+  color: var(--text-normal);
+  border-bottom-left-radius: 4px;
+  border: 1px solid var(--background-modifier-border);
+}
+
+.xiaoyuan-msg-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 3px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.xiaoyuan-msg-assistant:hover .xiaoyuan-msg-actions {
+  opacity: 1;
+}
+
+.xiaoyuan-msg-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75em;
+  padding: 2px 5px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-muted);
+  user-select: none;
+}
+
+.xiaoyuan-msg-action:hover {
+  background-color: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.xiaoyuan-undo-btn {
+  align-self: flex-start;
+  margin-top: 2px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.xiaoyuan-msg-user:hover .xiaoyuan-undo-btn {
+  opacity: 1;
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.xiaoyuan-attach-preview {
+  display: none;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 10px 0;
+}
+
+.xiaoyuan-attach-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background-color: var(--background-modifier-border);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.xiaoyuan-welcome {
+  background-color: var(--background-secondary);
+  color: var(--text-normal);
+  max-width: 100%;
+  align-self: flex-start;
+}
+
+.xiaoyuan-welcome .xiaoyuan-msg-bubble {
+  background-color: var(--background-secondary);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+}
+
+.xiaoyuan-result {
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.xiaoyuan-result pre {
+  background-color: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  padding: 12px;
+  overflow-x: auto;
+}
+
+.xiaoyuan-result code {
+  background-color: var(--background-primary);
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
+.xiaoyuan-chat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0px 8px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.xiaoyuan-chat-header-left {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.xiaoyuan-mode-arrow {
+  color: var(--text-muted);
+  font-size: 0.6em;
+  margin-right: 4px;
+  pointer-events: none;
+}
+
+.xiaoyuan-mode-selector {
+  color: var(--text-muted);
+  font-size: 0.8em;
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
+.xiaoyuan-mode-selector:hover {
+  color: var(--text-normal);
+  background-color: var(--background-modifier-hover);
+}
+
+.xiaoyuan-settings-icon {
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
+.xiaoyuan-settings-icon:hover {
+  color: var(--text-normal);
+  background-color: var(--background-modifier-hover);
+}
+
+.xiaoyuan-mode-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background-color: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+  min-width: 80px;
+}
+
+.xiaoyuan-mode-dropdown-up {
+  bottom: 100%;
+  top: auto;
+  margin-bottom: 4px;
+}
+
+.xiaoyuan-mode-dropdown-item {
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 0.8em;
+  color: var(--text-normal);
+}
+
+.xiaoyuan-mode-dropdown-item:hover {
+  background-color: var(--background-hover);
+}
+
+.xiaoyuan-mode-dropdown-item.active {
+  color: var(--text-accent);
+}
+
+.xiaoyuan-chat-view-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.xiaoyuan-chat-inner {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.xiaoyuan-chat-input-custom {
+  width: 100%;
+  background: transparent;
+  color: var(--text-normal);
+  border: none;
+  resize: none;
+  min-height: calc(1.4em * 3 + 8px);
+  line-height: 1.4;
+  padding: 10px;
+  font-size: 0.95em;
+  font-family: inherit;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.xiaoyuan-send-btn-custom {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border: none;
+  box-shadow: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  outline: none;
+}
+
+.xiaoyuan-send-btn-custom:hover {
+  opacity: 0.85;
+}
+
+.xiaoyuan-send-btn-custom:active {
+  opacity: 1;
+}
+
+.xiaoyuan-send-btn-custom:disabled {
+  opacity: 0.5;
+}
+
+.xiaoyuan-msg-bubble-custom {
+  white-space: pre-wrap;
+  line-height: 1.5;
+  overflow-wrap: break-word;
+  user-select: text;
+}
+
+.xiaoyuan-welcome-bubble {
+  white-space: pre-wrap;
+  user-select: text;
+}
+
+.xiaoyuan-modal-container {
+  width: 80vw;
+  max-width: 800px;
+}
+
+.xiaoyuan-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.xiaoyuan-modal-mode-label {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  background-color: var(--tag-background);
+  color: var(--tag-color);
+}
+
+.xiaoyuan-modal-loading {
+  margin: 20px 0;
+  color: var(--text-muted);
+}
+
+.xiaoyuan-modal-result {
+  display: none;
+  white-space: pre-wrap;
+  line-height: 1.6;
+  padding: 16px;
+  border-radius: 8px;
+  background-color: var(--background-secondary);
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.xiaoyuan-modal-result.show {
+  display: block;
+}
+
+.xiaoyuan-modal-btn-row {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+}
+
+.xiaoyuan-wiki-modal-container {
+  width: 70vw;
+  max-width: 700px;
+}
+
+.xiaoyuan-wiki-input {
+  width: 100%;
+  min-height: 120px;
+  margin-bottom: 12px;
+  padding: 8px;
+}
+
+.xiaoyuan-wiki-btn-row {
+  display: flex;
+  gap: 8px;
+}
+
+.xiaoyuan-wiki-result {
+  margin-top: 16px;
+  padding: 12px;
+  border-radius: 6px;
+  background-color: var(--background-secondary);
+  display: none;
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
+.xiaoyuan-wiki-result.show {
+  display: block;
+}
+
+.xiaoyuan-help-text {
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.xiaoyuan-hidden {
+  display: none;
+}
+
+.xiaoyuan-btn-primary {
+  padding: 6px 16px;
+  border-radius: 6px;
+  border: none;
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+  cursor: pointer;
+}
+
+.xiaoyuan-btn-secondary {
+  padding: 6px 16px;
+  border-radius: 6px;
+  border: 1px solid var(--background-modifier-border);
+  background-color: var(--background-primary);
+  cursor: pointer;
+}

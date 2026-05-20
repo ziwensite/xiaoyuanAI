@@ -1,0 +1,12 @@
+{
+  "id": "xiaoyuanAI",
+  "name": "小元",
+  "version": "0.1.0",
+  "minAppVersion": "1.5.0",
+  "description": "AI 聊天、文本润色、维基管理 — 将 AI 能力集成到 Obsidian",
+  "author": "小元",
+  "authorUrl": "",
+  "fundingUrl": "",
+  "isDesktopOnly": false,
+  "main": "dist/main.js"
+}

@@ -1,0 +1,25 @@
+{
+  "execMode": "hybrid",
+  "opencodePath": "opencode",
+  "serverPort": 16226,
+  "serverPassword": "xiaoyuan-plugin-fa8icw66",
+  "apiEndpoint": "https://api.openai.com/v1/chat/completions",
+  "apiKey": "",
+  "model": "gpt-4",
+  "systemPrompt": "你是一个 AI 助手，集成在 Obsidian 笔记软件中。用户正在做笔记或写作。请用中文回答，保持简洁专业。",
+  "maxTokens": 4096,
+  "temperature": 0.7,
+  "chatViewType": "right",
+  "buildMode": "build",
+  "level": "low",
+  "customApiList": [
+    {
+      "name": "API 1",
+      "endpoint": "",
+      "apiKey": "",
+      "model": "gpt-4o"
+    }
+  ],
+  "defaultApiIndex": 0,
+  "opencodeModel": ""
+}
