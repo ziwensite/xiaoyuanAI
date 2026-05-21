@@ -165,6 +165,20 @@
   align-self: flex-start;
 }
 
+.xiaoyuan-msg-system {
+  align-self: center;
+  max-width: 100%;
+}
+
+.xiaoyuan-msg-system .xiaoyuan-msg-bubble {
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.8em;
+  padding: 4px 12px;
+  text-align: center;
+  border: none;
+}
+
 .xiaoyuan-msg-bubble {
   padding: 10px 14px;
   border-radius: 8px;
@@ -282,14 +296,67 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0px 8px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--background-modifier-border);
+  flex-shrink: 0;
 }
 
 .xiaoyuan-chat-header-left {
   display: flex;
   align-items: center;
+  gap: 8px;
+}
+
+.xiaoyuan-new-chat-icon {
+  color: var(--text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  padding: 4px;
+}
+
+.xiaoyuan-new-chat-icon:hover {
+  color: var(--text-normal);
+  background-color: var(--background-modifier-hover);
+}
+
+.xiaoyuan-session-selector {
+  color: var(--text-normal);
+  font-size: 0.9em;
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 4px 24px 4px 10px;
+  background-color: var(--background-secondary);
   position: relative;
+  min-width: 120px;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.xiaoyuan-session-selector::after {
+  content: "▼";
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.6em;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.xiaoyuan-session-selector:hover {
+  background-color: var(--background-modifier-hover);
+}
+
+.xiaoyuan-chat-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .xiaoyuan-mode-arrow {
@@ -359,6 +426,69 @@
 
 .xiaoyuan-mode-dropdown-item.active {
   color: var(--text-accent);
+}
+
+.xiaoyuan-session-dropdown {
+  background-color: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  min-width: 200px;
+  max-width: 300px;
+}
+
+.xiaoyuan-session-dropdown-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 0.85em;
+  color: var(--text-normal);
+  border-bottom: 1px solid transparent;
+}
+
+.xiaoyuan-session-dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.xiaoyuan-session-dropdown-item:hover {
+  background-color: var(--background-modifier-hover);
+}
+
+.xiaoyuan-session-dropdown-item.active {
+  background-color: var(--background-modifier-hover);
+}
+
+.xiaoyuan-session-dropdown-item.active .xiaoyuan-session-dropdown-title {
+  color: var(--text-accent);
+}
+
+.xiaoyuan-session-dropdown-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-right: 8px;
+}
+
+.xiaoyuan-session-dropdown-delete {
+  color: var(--text-muted);
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.xiaoyuan-session-dropdown-item:hover .xiaoyuan-session-dropdown-delete {
+  opacity: 1;
+}
+
+.xiaoyuan-session-dropdown-delete:hover {
+  color: var(--text-error);
 }
 
 .xiaoyuan-chat-view-container {

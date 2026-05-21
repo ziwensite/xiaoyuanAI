@@ -12,6 +12,7 @@
   "chatViewType": "right",
   "buildMode": "build",
   "level": "low",
+  "chatHistoryPath": ".chatHistory",
   "customApiList": [
     {
       "name": "API 1",
@@ -21,5 +22,7 @@
     }
   ],
   "defaultApiIndex": 0,
-  "opencodeModel": ""
+  "opencodeModel": "",
+  "xiaoyuan-chat-sessions": "[{\"id\":\"session-1779335072230\",\"title\":\"测试\",\"createdAt\":1779335072230,\"updatedAt\":1779360063203},{\"id\":\"session-1779327052779\",\"title\":\"今天天气怎么样？\",\"createdAt\":1779327052779,\"updatedAt\":1779335068488},{\"id\":\"session-1779325178957\",\"title\":\"介绍一下自己\",\"createdAt\":1779325178957,\"updatedAt\":1779326826793}]",
+  "xiaoyuan-current-session": "session-1779335072230"
 }

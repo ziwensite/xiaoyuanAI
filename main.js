@@ -24,11 +24,12 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 // src/main.ts
 var main_exports = {};
 __export(main_exports, {
-  VIEW_TYPE_XIAOYUAN_AI_CHAT: () => VIEW_TYPE_XIAOYUAN_AI_CHAT,
   default: () => XiaoyuanAIPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian = require("obsidian");
+var import_obsidian6 = require("obsidian");
+
+// src/types.ts
 var DEFAULT_SETTINGS = {
   execMode: "hybrid",
   opencodePath: "opencode",
@@ -42,28 +43,67 @@ var DEFAULT_SETTINGS = {
   temperature: 0.7,
   chatViewType: "right",
   buildMode: "build",
-  level: "low"
+  level: "low",
+  chatHistoryPath: ".chatHistory"
 };
+var CHAT_SESSIONS_KEY = "xiaoyuan-chat-sessions";
+var CURRENT_SESSION_KEY = "xiaoyuan-current-session";
 var VIEW_TYPE_XIAOYUAN_AI_CHAT = "xiaoyuan-chat-view";
+var OPERATION_PROMPTS = {
+  polish: "\u4F60\u662F\u4E00\u4E2A\u6587\u5B57\u6DA6\u8272\u52A9\u624B\u3002\u8BF7\u6DA6\u8272\u4EE5\u4E0B\u6587\u672C\uFF0C\u6539\u8FDB\u8868\u8FBE\u3001\u8BED\u6CD5\u548C\u6D41\u7545\u5EA6\uFF0C\u4FDD\u6301\u539F\u610F\u4E0D\u53D8\u3002\u53EA\u8F93\u51FA\u6DA6\u8272\u540E\u7684\u7ED3\u679C\uFF0C\u4E0D\u8981\u6DFB\u52A0\u4EFB\u4F55\u89E3\u91CA\uFF1A\n\n",
+  summarize: "\u4F60\u662F\u4E00\u4E2A\u603B\u7ED3\u52A9\u624B\u3002\u8BF7\u5BF9\u4EE5\u4E0B\u6587\u672C\u8FDB\u884C\u7B80\u6D01\u7684\u603B\u7ED3\uFF0C\u63D0\u53D6\u5173\u952E\u8981\u70B9\u3002\u7528\u4E2D\u6587\u603B\u7ED3\uFF0C\u53EA\u8F93\u51FA\u603B\u7ED3\u5185\u5BB9\uFF1A\n\n",
+  complete: "\u4F60\u662F\u4E00\u4E2A\u5199\u4F5C\u52A9\u624B\u3002\u8BF7\u6839\u636E\u4E0A\u4E0B\u6587\uFF0C\u81EA\u7136\u5730\u8865\u5168\u4EE5\u4E0B\u5185\u5BB9\uFF0C\u4FDD\u6301\u98CE\u683C\u4E00\u81F4\uFF1A\n\n",
+  expand: "\u4F60\u662F\u4E00\u4E2A\u5199\u4F5C\u52A9\u624B\u3002\u8BF7\u6269\u5199\u4EE5\u4E0B\u5185\u5BB9\uFF0C\u589E\u52A0\u7EC6\u8282\u3001\u4F8B\u5B50\u548C\u6DF1\u5EA6\uFF0C\u4FDD\u7559\u539F\u6587\u7684\u6838\u5FC3\u89C2\u70B9\uFF1A\n\n",
+  translate: "\u4F60\u662F\u4E00\u4E2A\u7FFB\u8BD1\u52A9\u624B\u3002\u8BF7\u5C06\u4EE5\u4E0B\u6587\u672C\u7FFB\u8BD1\u6210\u4E2D\u6587\uFF0C\u4FDD\u6301\u4E13\u4E1A\u6027\u548C\u6D41\u7545\u5EA6\uFF1A\n\n",
+  continue: "\u4F60\u662F\u4E00\u4E2A\u5199\u4F5C\u52A9\u624B\u3002\u8BF7\u6839\u636E\u4EE5\u4E0B\u5185\u5BB9\u81EA\u7136\u5730\u7EED\u5199\uFF0C\u4FDD\u6301\u98CE\u683C\u4E00\u81F4\uFF1A\n\n"
+};
+var OPERATION_LABELS = {
+  polish: "\u6DA6\u8272",
+  summarize: "\u603B\u7ED3",
+  complete: "\u8865\u5168",
+  expand: "\u6269\u5199",
+  translate: "\u7FFB\u8BD1\u4E3A\u4E2D\u6587",
+  continue: "\u7EED\u5199"
+};
+var WIKI_SYSTEM_PROMPTS = {
+  query: "\u4F60\u662F\u4E00\u4E2A\u7EF4\u57FA\u77E5\u8BC6\u5E93\u7684\u68C0\u7D22\u52A9\u624B\u3002\u6839\u636E\u7528\u6237\u7684\u95EE\u9898\uFF0C\u4ECE\u77E5\u8BC6\u5E93\u89D2\u5EA6\u7ED9\u51FA\u7EFC\u5408\u6027\u7684\u56DE\u7B54\u3002\u5982\u679C\u4E0D\u77E5\u9053\uFF0C\u5C31\u8BDA\u5B9E\u8BF4\u4E0D\u77E5\u9053\u3002",
+  capture: "\u4F60\u6B63\u5728\u5C06\u7528\u6237\u63D0\u4F9B\u7684\u5185\u5BB9\u6574\u7406\u4E3A\u7EF4\u57FA\u7B14\u8BB0\u3002\u8BF7\u63D0\u53D6\u5173\u952E\u4FE1\u606F\uFF0C\u5206\u7C7B\uFF08concept/skill/reference/decision\uFF09\uFF0C\u8F93\u51FA\u5E26 YAML frontmatter \u7684 Obsidian Markdown \u683C\u5F0F\u3002",
+  ingest: "\u4F60\u6B63\u5728\u6444\u5165\u6587\u6863\u3002\u8BF7\u5206\u6790\u5185\u5BB9\uFF0C\u84B8\u998F\u51FA\u6838\u5FC3\u6982\u5FF5\u3001\u5B9E\u4F53\u3001\u6280\u80FD\uFF0C\u7528\u4E2D\u6587\u8F93\u51FA\u591A\u4E2A\u7EF4\u57FA\u9875\u9762\uFF08\u5E26 frontmatter \u548C [[\u7EF4\u57FA\u94FE\u63A5]]\uFF09\u3002"
+};
+
+// src/view.ts
+var import_obsidian3 = require("obsidian");
+
+// src/markdown.ts
+function renderMarkdown(text) {
+  const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  let h = esc(text);
+  h = h.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code class="language-$1">$2</code></pre>').replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>").replace(/\*([^*]+)\*/g, "<em>$1</em>").replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>').replace(/^- (.+)$/gm, "\u2022 $1").replace(/\n/g, "<br>");
+  return h;
+}
+
+// src/ai.ts
+var import_obsidian2 = require("obsidian");
+
+// src/server.ts
+var import_obsidian = require("obsidian");
 var serverProcess = null;
 var serverStartPromise = null;
 var EXTERNAL_SERVER = {};
+function getVaultBasePath(vault) {
+  return vault.adapter.getBasePath();
+}
 async function probeServer(port) {
-  return new Promise((resolve) => {
-    const http = require("http");
-    const req = http.get(`http://localhost:${port}/config/providers`, (res) => {
-      res.on("data", () => {
-      });
-      res.on("end", () => {
-        resolve(res.statusCode >= 200 && res.statusCode < 500);
-      });
+  try {
+    const resp = await (0, import_obsidian.requestUrl)({
+      url: `http://localhost:${port}/config/providers`,
+      method: "GET",
+      throw: false
     });
-    req.on("error", () => resolve(false));
-    req.setTimeout(2e3, () => {
-      req.destroy();
-      resolve(false);
-    });
-  });
+    return resp.status >= 200 && resp.status < 500;
+  } catch (e) {
+    return false;
+  }
 }
 function startOpenCodeServer(opencodePath, port, password, vaultDir) {
   return new Promise(async (resolve, reject) => {
@@ -139,91 +179,6 @@ function stopOpenCodeServer() {
     setTimeout(done, 3e3);
   });
 }
-async function httpRequest(url, options) {
-  const { method = "GET", headers = {}, body } = options;
-  const parsedUrl = new URL(url);
-  const http = require("http");
-  return new Promise((resolve, reject) => {
-    const req = http.request(
-      {
-        hostname: parsedUrl.hostname,
-        port: parsedUrl.port,
-        path: parsedUrl.pathname + parsedUrl.search,
-        method,
-        headers
-      },
-      (res) => {
-        const chunks = [];
-        res.on("data", (chunk) => chunks.push(chunk));
-        res.on("end", () => {
-          var _a;
-          const text = Buffer.concat(chunks).toString("utf-8");
-          resolve({
-            status: (_a = res.statusCode) != null ? _a : 0,
-            body: async () => text,
-            json: async () => JSON.parse(text)
-          });
-        });
-      }
-    );
-    req.on("error", reject);
-    if (body) req.write(body);
-    req.end();
-  });
-}
-async function callOpenCodeAPI(prompt, port, password, attachments, agent, level) {
-  const baseUrl = `http://localhost:${port}`;
-  const auth = Buffer.from(`opencode:${password}`).toString("base64");
-  const headers = {
-    Authorization: `Basic ${auth}`,
-    "Content-Type": "application/json"
-  };
-  const parts = [{ type: "text", text: prompt }];
-  if (attachments) {
-    for (const att of attachments) {
-      if (att.type.startsWith("image/")) {
-        parts.push({ type: "image", image: att.data });
-      } else {
-        parts.push({ type: "file", file: att.data, name: att.name });
-      }
-    }
-  }
-  const body = { parts };
-  if (agent) body.agent = agent;
-  if (level) body.level = level;
-  const sessionResp = await httpRequest(`${baseUrl}/session`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({ title: "xiaoyuan-plugin" })
-  });
-  if (sessionResp.status < 200 || sessionResp.status >= 300) {
-    const txt = await sessionResp.body().catch(() => "");
-    throw new Error(`\u521B\u5EFA\u4F1A\u8BDD\u5931\u8D25\uFF08${sessionResp.status}\uFF09\uFF1A${txt.slice(0, 200)}`);
-  }
-  const sessionData = await sessionResp.json();
-  const sessionId = sessionData.id;
-  try {
-    const msgResp = await httpRequest(`${baseUrl}/session/${sessionId}/message`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(body)
-    });
-    if (msgResp.status < 200 || msgResp.status >= 300) {
-      const txt = await msgResp.body().catch(() => "");
-      throw new Error(`\u53D1\u9001\u6D88\u606F\u5931\u8D25\uFF08${msgResp.status}\uFF09\uFF1A${txt.slice(0, 200)}`);
-    }
-    const msgData = await msgResp.json();
-    const textParts = msgData.parts.filter((p) => p.type === "text" && p.text).map((p) => p.text).join("\n");
-    if (textParts) return textParts;
-    const anyText = msgData.parts.filter((p) => p.text).map((p) => p.text).join("\n");
-    return anyText || "(\u65E0\u54CD\u5E94\u5185\u5BB9)";
-  } finally {
-    try {
-      await httpRequest(`${baseUrl}/session/${sessionId}`, { method: "DELETE", headers });
-    } catch (e) {
-    }
-  }
-}
 async function ensureServer(s, vaultDir) {
   if (serverProcess) return;
   if (serverStartPromise) {
@@ -247,14 +202,312 @@ async function ensureServer(s, vaultDir) {
   });
   await serverStartPromise;
 }
-async function callOpenCodeCLI(prompt, settings, vaultDir, attachments) {
-  await ensureServer(settings, vaultDir);
-  return callOpenCodeAPI(prompt, settings.serverPort, settings.serverPassword, attachments, settings.buildMode, settings.level);
+async function stopServer() {
+  await stopOpenCodeServer();
 }
-var XiaoyuanAIChatView = class extends import_obsidian.ItemView {
+
+// src/ai.ts
+async function callOpenCodeAPI(prompt2, port, password, attachments, agent, level) {
+  var _a, _b;
+  const baseUrl = `http://localhost:${port}`;
+  const auth = btoa(`opencode:${password}`);
+  const headers = {
+    Authorization: `Basic ${auth}`,
+    "Content-Type": "application/json"
+  };
+  const parts = [{ type: "text", text: prompt2 }];
+  if (attachments) {
+    for (const att of attachments) {
+      if (att.type.startsWith("image/")) {
+        parts.push({ type: "image", image: att.data });
+      } else {
+        parts.push({ type: "file", file: att.data, name: att.name });
+      }
+    }
+  }
+  const body = { parts };
+  if (agent) body.agent = agent;
+  if (level) body.level = level;
+  const sessionResp = await (0, import_obsidian2.requestUrl)({
+    url: `${baseUrl}/session`,
+    method: "POST",
+    headers,
+    body: JSON.stringify({ title: "xiaoyuan-plugin" }),
+    throw: false
+  });
+  if (sessionResp.status < 200 || sessionResp.status >= 300) {
+    const txt = ((_a = sessionResp.text) == null ? void 0 : _a.slice(0, 200)) || "";
+    throw new Error(`\u521B\u5EFA\u4F1A\u8BDD\u5931\u8D25\uFF08${sessionResp.status}\uFF09\uFF1A${txt}`);
+  }
+  const sessionData = sessionResp.json;
+  const sessionId = sessionData.id;
+  try {
+    const msgResp = await (0, import_obsidian2.requestUrl)({
+      url: `${baseUrl}/session/${sessionId}/message`,
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+      throw: false
+    });
+    if (msgResp.status < 200 || msgResp.status >= 300) {
+      const txt = ((_b = msgResp.text) == null ? void 0 : _b.slice(0, 200)) || "";
+      throw new Error(`\u53D1\u9001\u6D88\u606F\u5931\u8D25\uFF08${msgResp.status}\uFF09\uFF1A${txt}`);
+    }
+    const msgData = msgResp.json;
+    const textParts = msgData.parts.filter((p) => p.type === "text" && p.text).map((p) => p.text).join("\n");
+    if (textParts) return textParts;
+    const anyText = msgData.parts.filter((p) => p.text).map((p) => p.text).join("\n");
+    return anyText || "(\u65E0\u54CD\u5E94\u5185\u5BB9)";
+  } finally {
+    try {
+      await (0, import_obsidian2.requestUrl)({
+        url: `${baseUrl}/session/${sessionId}`,
+        method: "DELETE",
+        headers,
+        throw: false
+      });
+    } catch (e) {
+    }
+  }
+}
+async function callAIWithCLI(prompt2, settings, vaultDir, attachments) {
+  await ensureServer(settings, vaultDir);
+  return callOpenCodeAPI(
+    prompt2,
+    settings.serverPort,
+    settings.serverPassword,
+    attachments,
+    settings.buildMode,
+    settings.level
+  );
+}
+async function callAIWithAPI(apiEndpoint, apiKey, model, messages, maxTokens, temperature, stream = false) {
+  const resp = await fetch(apiEndpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model,
+      messages,
+      max_tokens: maxTokens,
+      temperature,
+      stream
+    })
+  });
+  if (!resp.ok) {
+    const errText = await resp.text().catch(() => "");
+    throw new Error(`API ${resp.status}: ${errText.slice(0, 200)}`);
+  }
+  return resp;
+}
+async function callAIWithAPIJson(apiEndpoint, apiKey, model, messages, maxTokens, temperature) {
+  var _a, _b, _c;
+  const resp = await callAIWithAPI(apiEndpoint, apiKey, model, messages, maxTokens, temperature, false);
+  const data = await resp.json();
+  return ((_c = (_b = (_a = data.choices) == null ? void 0 : _a[0]) == null ? void 0 : _b.message) == null ? void 0 : _c.content) || "\uFF08\u65E0\u54CD\u5E94\uFF09";
+}
+
+// src/session.ts
+function getChatHistoryPath(chatHistoryPath) {
+  return chatHistoryPath || ".chatHistory";
+}
+function getSessionFilePath(chatHistoryPath, sessionId) {
+  return `${getChatHistoryPath(chatHistoryPath)}/${sessionId}.md`;
+}
+async function ensureChatHistoryFolder(vault, path) {
+  const folder = vault.getFolderByPath(path);
+  if (folder) return;
+  try {
+    await vault.createFolder(path);
+  } catch (e) {
+    if (e instanceof Error && e.message.includes("already exists")) {
+      return;
+    }
+    throw e;
+  }
+}
+function parseMarkdownToMessages(content) {
+  const messages = [];
+  const parts = content.split("---");
+  let idCounter = 0;
+  for (let i = 1; i < parts.length; i++) {
+    const part = parts[i].trim();
+    if (!part) continue;
+    const lines = part.split("\n");
+    let role = null;
+    let msgContent = "";
+    for (const line of lines) {
+      if (line.startsWith("**\u4F60**:")) {
+        role = "user";
+      } else if (line.startsWith("**\u5C0F\u5143**:")) {
+        role = "assistant";
+      } else if (role) {
+        msgContent += line + "\n";
+      }
+    }
+    if (role && msgContent.trim()) {
+      messages.push({
+        id: "msg-" + ++idCounter,
+        role,
+        content: msgContent.trim()
+      });
+    }
+  }
+  return messages;
+}
+function sessionToMarkdown(session, messages) {
+  let content = `---
+title: ${(session == null ? void 0 : session.title) || "\u65B0\u5BF9\u8BDD"}
+created: ${(session == null ? void 0 : session.createdAt) || Date.now()}
+updated: ${Date.now()}
+---
+
+`;
+  messages.forEach((msg) => {
+    content += `**${msg.role === "user" ? "\u4F60" : "\u5C0F\u5143"}**:
+
+${msg.content}
+
+---
+
+`;
+  });
+  return content;
+}
+async function collectSessionFiles(vault, folderPath) {
+  const prefix = folderPath + "/";
+  try {
+    const listed = await vault.adapter.list(folderPath);
+    const files = listed.files.filter((f) => f.endsWith(".md"));
+    if (files.length > 0) return files;
+  } catch (e) {
+  }
+  try {
+    const files = vault.getFiles().filter((f) => f.path.startsWith(prefix) && f.extension === "md").map((f) => f.path);
+    if (files.length > 0) return files;
+  } catch (e) {
+  }
+  return [];
+}
+async function scanChatHistoryFolder(vault, chatHistoryPath) {
+  var _a, _b;
+  try {
+    const folderPath = getChatHistoryPath(chatHistoryPath);
+    const filePaths = await collectSessionFiles(vault, folderPath);
+    const loaded = [];
+    for (const filePath of filePaths) {
+      const sessionId = filePath.split("/").pop().replace(".md", "");
+      try {
+        const content = await vault.adapter.read(filePath);
+        const messages = parseMarkdownToMessages(content);
+        const match = content.match(/title:\s*(.+)/);
+        const title = match ? match[1].trim() : ((_b = (_a = messages[0]) == null ? void 0 : _a.content) == null ? void 0 : _b.slice(0, 30)) || "\u5386\u53F2\u5BF9\u8BDD";
+        const matchCreated = content.match(/created:\s*(\d+)/);
+        const createdAt = matchCreated ? parseInt(matchCreated[1]) : Date.now();
+        const matchUpdated = content.match(/updated:\s*(\d+)/);
+        const updatedAt = matchUpdated ? parseInt(matchUpdated[1]) : Date.now();
+        loaded.push({
+          id: sessionId,
+          title,
+          messages: [],
+          createdAt,
+          updatedAt
+        });
+      } catch (e) {
+        console.warn(`\u8BFB\u53D6\u4F1A\u8BDD\u6587\u4EF6 ${filePath} \u5931\u8D25:`, e);
+      }
+    }
+    loaded.sort((a, b) => b.updatedAt - a.updatedAt);
+    return loaded;
+  } catch (e) {
+    console.warn("\u626B\u63CF\u5386\u53F2\u4F1A\u8BDD\u6587\u4EF6\u5939\u5931\u8D25:", e);
+    return [];
+  }
+}
+async function readVaultFile(vault, filePath) {
+  try {
+    if (await vault.adapter.exists(filePath)) {
+      return vault.adapter.read(filePath);
+    }
+  } catch (e) {
+  }
+  try {
+    const file = vault.getFiles().find((f) => f.path === filePath);
+    if (file) return vault.read(file);
+  } catch (e) {
+  }
+  return null;
+}
+async function loadSessionFromFile(vault, chatHistoryPath, sessionId) {
+  const filePath = getSessionFilePath(chatHistoryPath, sessionId);
+  const content = await readVaultFile(vault, filePath);
+  if (!content) return [];
+  return parseMarkdownToMessages(content);
+}
+async function saveSessionToFile(vault, chatHistoryPath, sessionId, session, messages) {
+  const filePath = getSessionFilePath(chatHistoryPath, sessionId);
+  const content = sessionToMarkdown(session, messages);
+  try {
+    if (await vault.adapter.exists(filePath)) {
+      await vault.adapter.write(filePath, content);
+    } else {
+      await vault.create(filePath, content);
+    }
+  } catch (e) {
+    console.warn(`\u4FDD\u5B58\u4F1A\u8BDD\u6587\u4EF6 ${filePath} \u5931\u8D25:`, e);
+  }
+}
+async function deleteSessionFile(vault, chatHistoryPath, sessionId) {
+  const filePath = getSessionFilePath(chatHistoryPath, sessionId);
+  try {
+    if (await vault.adapter.exists(filePath)) {
+      await vault.adapter.remove(filePath);
+    }
+  } catch (e) {
+    console.warn(`\u5220\u9664\u4F1A\u8BDD\u6587\u4EF6 ${filePath} \u5931\u8D25:`, e);
+  }
+}
+async function loadSessionsMeta(plugin) {
+  const data = await plugin.loadData();
+  let sessions = [];
+  let currentSessionId = "";
+  if (data == null ? void 0 : data[CHAT_SESSIONS_KEY]) {
+    try {
+      sessions = JSON.parse(data[CHAT_SESSIONS_KEY]);
+    } catch (e) {
+    }
+  }
+  if (data == null ? void 0 : data[CURRENT_SESSION_KEY]) {
+    currentSessionId = data[CURRENT_SESSION_KEY];
+  }
+  return { sessions, currentSessionId };
+}
+async function saveSessionsMeta(plugin, sessions, currentSessionId) {
+  const data = await plugin.loadData() || {};
+  data[CHAT_SESSIONS_KEY] = JSON.stringify(sessions.map(({ messages, ...rest }) => rest));
+  data[CURRENT_SESSION_KEY] = currentSessionId;
+  await plugin.saveData(data);
+}
+function migrateOldData(data) {
+  if (data == null ? void 0 : data["xiaoyuan-chat-history"]) {
+    try {
+      return JSON.parse(data["xiaoyuan-chat-history"]);
+    } catch (e) {
+      return null;
+    }
+  }
+  return null;
+}
+
+// src/view.ts
+var XiaoyuanAIChatView = class extends import_obsidian3.ItemView {
   constructor(leaf, plugin) {
     super(leaf);
     this.messages = [];
+    this.sessions = [];
+    this.currentSessionId = "";
     this.msgIdCounter = 0;
     this.plugin = plugin;
   }
@@ -272,21 +525,55 @@ var XiaoyuanAIChatView = class extends import_obsidian.ItemView {
     contentEl.empty();
     contentEl.addClass("xiaoyuan-chat-container");
     this.viewContainer = contentEl.createDiv({ cls: "xiaoyuan-chat" });
+    this.buildHeader();
+    this.messagesEl = this.viewContainer.createDiv({ cls: "xiaoyuan-chat-messages" });
+    this.buildInputArea();
+    await this.loadSessions();
+  }
+  async onClose() {
+    await this.saveCurrentSession();
+    this.viewContainer.empty();
+  }
+  refresh() {
+    this.messages = [];
+    this.messagesEl.empty();
+    this.addWelcomeMessage();
+  }
+  async newChat() {
+    await this.saveCurrentSession();
+    await this.createNewSession();
+  }
+  addMessage(role, content) {
+    const id = "msg-" + ++this.msgIdCounter;
+    this.messages.push({ id, role, content });
+    this.messagesEl.appendChild(this.renderMessageEl(id, role, content, false));
+    this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
+  }
+  getActiveEditor() {
+    var _a;
+    return ((_a = this.app.workspace.activeEditor) == null ? void 0 : _a.editor) || null;
+  }
+  // ─── Header ──────────────────────────────────────────────────────
+  buildHeader() {
     const headerEl = this.viewContainer.createDiv({ cls: "xiaoyuan-chat-header" });
-    const leftContainer = document.createElement("span");
-    leftContainer.classList.add("xiaoyuan-chat-header-left");
-    const arrowLeft = document.createElement("span");
-    arrowLeft.classList.add("xiaoyuan-mode-arrow");
-    arrowLeft.textContent = "\u25BC";
-    leftContainer.appendChild(arrowLeft);
-    const modes = [
-      { value: "api", label: "API" },
-      { value: "hybrid", label: "\u6DF7\u5408" },
-      { value: "cli", label: "CLI" }
-    ];
+    const left = headerEl.createSpan({ cls: "xiaoyuan-chat-header-left" });
+    const right = headerEl.createSpan({ cls: "xiaoyuan-chat-header-right" });
+    const newChatBtn = left.createSpan({ cls: "xiaoyuan-new-chat-icon", title: "\u65B0\u5EFA\u5BF9\u8BDD" });
+    (0, import_obsidian3.setIcon)(newChatBtn, "message-square-plus");
+    newChatBtn.addEventListener("click", () => this.newChat());
+    this.sessionSelector = left.createSpan({ cls: "xiaoyuan-session-selector", title: "\u70B9\u51FB\u9009\u62E9\u4F1A\u8BDD" });
+    this.sessionSelector.textContent = "\u65B0\u5BF9\u8BDD";
+    this.sessionSelector.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      await this.showSessionDropdown(e);
+    });
     const modeText = this.createSelector(
       "xiaoyuan-mode-selector",
-      modes,
+      [
+        { value: "api", label: "API" },
+        { value: "hybrid", label: "\u6DF7\u5408" },
+        { value: "cli", label: "CLI" }
+      ],
       this.plugin.settings.execMode,
       "\u70B9\u51FB\u5207\u6362\u6267\u884C\u6A21\u5F0F",
       (value) => {
@@ -295,33 +582,26 @@ var XiaoyuanAIChatView = class extends import_obsidian.ItemView {
         this.refresh();
       }
     );
-    leftContainer.appendChild(modeText);
-    headerEl.appendChild(leftContainer);
-    const settingsIcon = document.createElement("span");
-    settingsIcon.classList.add("xiaoyuan-settings-icon");
-    settingsIcon.title = "\u8BBE\u7F6E";
-    settingsIcon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>';
+    right.appendChild(modeText);
+    const settingsIcon = right.createSpan({ cls: "xiaoyuan-settings-icon", title: "\u8BBE\u7F6E" });
+    (0, import_obsidian3.setIcon)(settingsIcon, "settings");
     settingsIcon.addEventListener("click", () => {
       this.app.setting.open();
       this.app.setting.openTabById("xiaoyuanAI");
     });
-    headerEl.appendChild(settingsIcon);
-    this.messagesEl = this.viewContainer.createDiv({ cls: "xiaoyuan-chat-messages" });
-    this.inputContainer = this.viewContainer.createDiv({ cls: "xiaoyuan-input-container" });
-    this.inputEl = this.inputContainer.createEl("textarea", {
+  }
+  // ─── Input ───────────────────────────────────────────────────────
+  buildInputArea() {
+    this.inputEl = this.viewContainer.createDiv({ cls: "xiaoyuan-input-container" }).createEl("textarea", {
       cls: "xiaoyuan-chat-input",
       attr: { placeholder: "\u8F93\u5165\u4F60\u7684\u95EE\u9898..." }
     });
-    const toolbarEl = this.inputContainer.createDiv({ cls: "xiaoyuan-toolbar" });
-    const attachBtn = document.createElement("span");
-    attachBtn.title = "\u6DFB\u52A0\u9644\u4EF6";
-    attachBtn.classList.add("xiaoyuan-attach-btn");
-    attachBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>`;
-    toolbarEl.appendChild(attachBtn);
-    const buildModes = [{ value: "plan", label: "plan" }, { value: "build", label: "build" }];
+    const toolbarEl = this.inputEl.parentElement.createDiv({ cls: "xiaoyuan-toolbar" });
+    const attachBtn = toolbarEl.createSpan({ cls: "xiaoyuan-attach-btn", title: "\u6DFB\u52A0\u9644\u4EF6" });
+    (0, import_obsidian3.setIcon)(attachBtn, "paperclip");
     const buildModeText = this.createSelector(
       "xiaoyuan-build-mode-select",
-      buildModes,
+      [{ value: "plan", label: "plan" }, { value: "build", label: "build" }],
       this.plugin.settings.buildMode,
       "\u70B9\u51FB\u5207\u6362\u6784\u5EFA\u6A21\u5F0F",
       (value) => {
@@ -332,9 +612,16 @@ var XiaoyuanAIChatView = class extends import_obsidian.ItemView {
     );
     toolbarEl.appendChild(buildModeText);
     const models = [
-      { value: "gpt-4o", label: "gpt-4o" },
-      { value: "gpt-4", label: "gpt-4" },
-      { value: "gpt-3.5-turbo", label: "gpt-3.5" }
+      { value: "gpt-4o", label: "GPT-4o" },
+      { value: "gpt-4o-mini", label: "GPT-4o Mini" },
+      { value: "gpt-4-turbo", label: "GPT-4 Turbo" },
+      { value: "gpt-4", label: "GPT-4" },
+      { value: "gpt-3.5-turbo", label: "GPT-3.5 Turbo" },
+      { value: "claude-3-5-sonnet", label: "Claude 3.5 Sonnet" },
+      { value: "claude-3-opus", label: "Claude 3 Opus" },
+      { value: "claude-3-sonnet", label: "Claude 3 Sonnet" },
+      { value: "claude-3-haiku", label: "Claude 3 Haiku" },
+      { value: "custom", label: "\u81EA\u5B9A\u4E49\u6A21\u578B..." }
     ];
     const modelText = this.createSelector(
       "xiaoyuan-model-select",
@@ -342,8 +629,17 @@ var XiaoyuanAIChatView = class extends import_obsidian.ItemView {
       this.plugin.settings.model,
       "\u70B9\u51FB\u5207\u6362\u6A21\u578B",
       (value) => {
-        this.plugin.settings.model = value;
-        this.plugin.saveSettings();
+        if (value === "custom") {
+          const customModel = prompt("\u8BF7\u8F93\u5165\u81EA\u5B9A\u4E49\u6A21\u578B\u540D\u79F0\uFF1A", this.plugin.settings.model);
+          if (customModel == null ? void 0 : customModel.trim()) {
+            this.plugin.settings.model = customModel.trim();
+            this.plugin.saveSettings();
+            modelText.textContent = customModel.trim();
+          }
+        } else {
+          this.plugin.settings.model = value;
+          this.plugin.saveSettings();
+        }
       },
       true
     );
@@ -366,33 +662,356 @@ var XiaoyuanAIChatView = class extends import_obsidian.ItemView {
       true
     );
     toolbarEl.appendChild(levelText);
-    this.sendBtn = this.createSendButton();
+    this.sendBtn = toolbarEl.createSpan({ cls: "xiaoyuan-attach-btn", title: "\u53D1\u9001" });
+    this.sendBtn.style.marginLeft = "auto";
+    (0, import_obsidian3.setIcon)(this.sendBtn, "send");
     this.sendBtn.addEventListener("click", () => this.sendMessage());
-    toolbarEl.appendChild(this.sendBtn);
     this.inputEl.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         this.sendMessage();
       }
     });
-    this.addWelcomeMessage();
   }
+  // ─── Message rendering ───────────────────────────────────────────
+  renderMessageEl(id, role, content, streaming = false) {
+    const msgEl = createDiv({ cls: `xiaoyuan-msg xiaoyuan-msg-${role}` });
+    msgEl.id = id;
+    const bubbleEl = msgEl.createDiv({ cls: "xiaoyuan-msg-bubble" });
+    if (role === "user") {
+      bubbleEl.createSpan().textContent = content;
+      if (!streaming) {
+        const undoBtn = msgEl.createSpan({ cls: "xiaoyuan-msg-action xiaoyuan-undo-btn" });
+        undoBtn.textContent = "\u21A9";
+        undoBtn.title = "\u64A4\u9500\u6B64\u6D88\u606F";
+        undoBtn.addEventListener("click", () => this.undoMessage(id));
+      }
+    } else {
+      bubbleEl.innerHTML = renderMarkdown(content.trim());
+      if (!streaming) {
+        const actionsEl = msgEl.createDiv({ cls: "xiaoyuan-msg-actions" });
+        const copyBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
+        copyBtn.textContent = "\u{1F4CB}";
+        copyBtn.title = "\u590D\u5236";
+        copyBtn.addEventListener("click", () => {
+          navigator.clipboard.writeText(content);
+          new import_obsidian3.Notice("\u5DF2\u590D\u5236");
+        });
+      }
+    }
+    return msgEl;
+  }
+  addWelcomeMessage() {
+    const s = this.plugin.settings;
+    const modeInfo = s.execMode === "cli" ? "\u5F53\u524D\u6A21\u5F0F\uFF1ACLI\uFF08opencode serve\uFF09" : s.execMode === "hybrid" ? "\u5F53\u524D\u6A21\u5F0F\uFF1A\u6DF7\u5408\uFF08\u64CD\u4F5C\u2192CLI, \u804A\u5929\u2192API\uFF09" : "\u5F53\u524D\u6A21\u5F0F\uFF1AAPI\uFF08\u76F4\u63A5\u8C03\u7528\uFF09";
+    const msgEl = this.messagesEl.createDiv({ cls: "xiaoyuan-msg xiaoyuan-msg-assistant xiaoyuan-welcome" });
+    msgEl.createDiv({ cls: "xiaoyuan-msg-bubble" }).innerHTML = `\u{1F44B} \u4F60\u597D\uFF01\u6211\u662F\u5C0F\u5143\u3002<br><br>${modeInfo}<br><br>\u6211\u53EF\u4EE5\u5E2E\u4F60\uFF1A<br>\u2022 \u{1F4AC} \u804A\u5929\u5BF9\u8BDD<br>\u2022 \u270D\uFE0F \u6DA6\u8272\u3001\u603B\u7ED3\u3001\u8865\u5168\u7B14\u8BB0<br>\u2022 \u{1F50D} \u67E5\u8BE2\u7EF4\u57FA\u77E5\u8BC6<br><br>\u9009\u4E2D\u6587\u672C\u540E\u53F3\u952E \u2192 \u4F7F\u7528 AI \u64CD\u4F5C\u3002`;
+  }
+  addSystemMessage(text) {
+    const msgEl = this.messagesEl.createDiv({ cls: "xiaoyuan-msg xiaoyuan-msg-system" });
+    msgEl.createDiv({ cls: "xiaoyuan-msg-bubble" }).textContent = text;
+    this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
+  }
+  // ─── Send / AI ───────────────────────────────────────────────────
+  async sendMessage() {
+    const text = this.inputEl.value.trim();
+    if (!text) return;
+    this.addMessage("user", text);
+    this.updateSessionTitle();
+    this.inputEl.value = "";
+    this.setInputDisabled(true);
+    try {
+      await this.callAI(text);
+    } catch (err) {
+      this.addMessage("assistant", `\u274C \u9519\u8BEF\uFF1A${err.message}`);
+      await this.saveCurrentSession();
+    } finally {
+      this.setInputDisabled(false);
+      this.inputEl.focus();
+    }
+  }
+  async callAI(userMessage) {
+    const s = this.plugin.settings;
+    if (s.execMode === "cli") {
+      const vaultDir = getVaultBasePath(this.app.vault);
+      const allMessages = [
+        { role: "system", content: s.systemPrompt },
+        ...this.messages.map((m) => ({ role: m.role, content: m.content })),
+        { role: "user", content: userMessage }
+      ];
+      const prompt2 = allMessages.map((m) => `${m.role === "system" ? "[\u7CFB\u7EDF]" : m.role === "user" ? "[\u7528\u6237]" : "[\u52A9\u624B]"}: ${m.content}`).join("\n\n");
+      return callAIWithCLI(prompt2, s, vaultDir);
+    }
+    if (!s.apiKey) throw new Error("API Key \u672A\u914D\u7F6E\u3002\u8BF7\u5728\u8BBE\u7F6E\u4E2D\u586B\u5199\u3002");
+    const resp = await callAIWithAPI(s.apiEndpoint, s.apiKey, s.model, [
+      { role: "system", content: s.systemPrompt },
+      ...this.messages.map((m) => ({ role: m.role, content: m.content })),
+      { role: "user", content: userMessage }
+    ], s.maxTokens, s.temperature, true);
+    return this.processStreamResponse(resp);
+  }
+  async processStreamResponse(resp) {
+    return new Promise((resolve, reject) => {
+      var _a;
+      const reader = (_a = resp.body) == null ? void 0 : _a.getReader();
+      if (!reader) {
+        reject(new Error("\u65E0\u6CD5\u8BFB\u53D6\u54CD\u5E94\u6D41"));
+        return;
+      }
+      const decoder = new TextDecoder("utf-8");
+      let fullContent = "";
+      let messageId = "";
+      const readChunk = async () => {
+        var _a2, _b, _c;
+        try {
+          const { done, value } = await reader.read();
+          if (done) {
+            await this.saveCurrentSession();
+            this.updateSessionTitle();
+            resolve(fullContent || "\uFF08\u65E0\u54CD\u5E94\uFF09");
+            return;
+          }
+          const chunk = decoder.decode(value, { stream: true });
+          for (const line of chunk.split("\n")) {
+            const trimmedLine = line.trim();
+            if (!trimmedLine || !trimmedLine.startsWith("data:")) continue;
+            const dataStr = trimmedLine.slice(5).trim();
+            if (dataStr === "[DONE]") {
+              reader.releaseLock();
+              await this.saveCurrentSession();
+              this.updateSessionTitle();
+              resolve(fullContent || "\uFF08\u65E0\u54CD\u5E94\uFF09");
+              return;
+            }
+            try {
+              const data = JSON.parse(dataStr);
+              const content = (_c = (_b = (_a2 = data.choices) == null ? void 0 : _a2[0]) == null ? void 0 : _b.delta) == null ? void 0 : _c.content;
+              if (content) {
+                fullContent += content;
+                if (!messageId) {
+                  messageId = this.addStreamingMessage(fullContent);
+                } else {
+                  this.updateStreamingMessage(messageId, fullContent);
+                }
+              }
+            } catch (e) {
+              console.warn("\u89E3\u6790\u6D41\u5F0F\u6570\u636E\u5931\u8D25:", e);
+            }
+          }
+          readChunk();
+        } catch (err) {
+          reader.releaseLock();
+          reject(err instanceof Error ? err : new Error("\u6D41\u5F0F\u54CD\u5E94\u5904\u7406\u5931\u8D25"));
+        }
+      };
+      readChunk();
+    });
+  }
+  addStreamingMessage(content) {
+    const id = "msg-" + ++this.msgIdCounter;
+    this.messages.push({ id, role: "assistant", content });
+    this.messagesEl.appendChild(this.renderMessageEl(id, "assistant", content, true));
+    this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
+    return id;
+  }
+  updateStreamingMessage(messageId, content) {
+    const msgEl = this.messagesEl.querySelector(`#${messageId}`);
+    if (!msgEl) return;
+    const bubbleEl = msgEl.querySelector(".xiaoyuan-msg-bubble");
+    if (bubbleEl) bubbleEl.innerHTML = renderMarkdown(content.trim());
+    const idx = this.messages.findIndex((m) => m.id === messageId);
+    if (idx !== -1) this.messages[idx].content = content;
+    this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
+  }
+  // ─── Session management ──────────────────────────────────────────
+  async loadSessions() {
+    var _a, _b;
+    try {
+      const path = getChatHistoryPath(this.plugin.settings.chatHistoryPath);
+      await ensureChatHistoryFolder(this.app.vault, path);
+      const meta = await loadSessionsMeta(this.plugin);
+      this.sessions = await scanChatHistoryFolder(this.app.vault, path);
+      this.currentSessionId = meta.currentSessionId;
+      if (this.sessions.length === 0) {
+        const oldMessages = migrateOldData(meta);
+        if (oldMessages && oldMessages.length > 0) {
+          const newSession = {
+            id: "session-" + Date.now(),
+            title: ((_b = (_a = oldMessages[0]) == null ? void 0 : _a.content) == null ? void 0 : _b.slice(0, 30)) || "\u5386\u53F2\u5BF9\u8BDD",
+            messages: [],
+            createdAt: Date.now(),
+            updatedAt: Date.now()
+          };
+          this.sessions.push(newSession);
+          this.messages = [...oldMessages];
+          await saveSessionToFile(this.app.vault, path, newSession.id, newSession, oldMessages);
+        }
+      }
+    } catch (e) {
+      console.warn("\u52A0\u8F7D\u4F1A\u8BDD\u5931\u8D25:", e);
+    }
+    if (this.sessions.length === 0) {
+      await this.createNewSession();
+    } else {
+      const target = this.sessions.find((s) => s.id === this.currentSessionId) || this.sessions[0];
+      this.currentSessionId = target.id;
+      await this.loadSession(target);
+      await saveSessionsMeta(this.plugin, this.sessions, this.currentSessionId);
+    }
+    this.updateSessionSelector();
+  }
+  async loadSession(session) {
+    const path = getChatHistoryPath(this.plugin.settings.chatHistoryPath);
+    this.messages = await loadSessionFromFile(this.app.vault, path, session.id);
+    this.msgIdCounter = this.messages.length;
+    this.messagesEl.empty();
+    if (this.messages.length === 0) {
+      this.addWelcomeMessage();
+      return;
+    }
+    for (const msg of this.messages) {
+      this.messagesEl.appendChild(this.renderMessageEl(msg.id, msg.role, msg.content, false));
+    }
+    this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
+  }
+  async saveCurrentSession() {
+    if (this.messages.length === 0) return;
+    const path = getChatHistoryPath(this.plugin.settings.chatHistoryPath);
+    const session = this.sessions.find((s) => s.id === this.currentSessionId);
+    if (session) {
+      session.updatedAt = Date.now();
+      if (session.title === "\u65B0\u5BF9\u8BDD") {
+        session.title = this.messages[0].content.slice(0, 30) + (this.messages[0].content.length > 30 ? "..." : "");
+      }
+    }
+    await saveSessionToFile(this.app.vault, path, this.currentSessionId, session, this.messages);
+    await saveSessionsMeta(this.plugin, this.sessions, this.currentSessionId);
+  }
+  async createNewSession() {
+    const newSession = {
+      id: "session-" + Date.now(),
+      title: "\u65B0\u5BF9\u8BDD",
+      messages: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    this.sessions.unshift(newSession);
+    this.currentSessionId = newSession.id;
+    this.messages = [];
+    this.msgIdCounter = 0;
+    this.messagesEl.empty();
+    this.addWelcomeMessage();
+    this.updateSessionSelector();
+  }
+  async switchSession(sessionId) {
+    await this.saveCurrentSession();
+    const session = this.sessions.find((s) => s.id === sessionId);
+    if (session) {
+      this.currentSessionId = sessionId;
+      await this.loadSession(session);
+      this.updateSessionSelector();
+      await saveSessionsMeta(this.plugin, this.sessions, this.currentSessionId);
+      this.addSystemMessage(`\u5DF2\u5207\u6362\u5230\u4F1A\u8BDD: ${session.title}`);
+    }
+  }
+  async deleteSession(sessionId) {
+    if (this.sessions.length <= 1) {
+      new import_obsidian3.Notice("\u81F3\u5C11\u4FDD\u7559\u4E00\u4E2A\u5BF9\u8BDD");
+      return;
+    }
+    const idx = this.sessions.findIndex((s) => s.id === sessionId);
+    if (idx === -1) return;
+    this.sessions.splice(idx, 1);
+    await deleteSessionFile(this.app.vault, getChatHistoryPath(this.plugin.settings.chatHistoryPath), sessionId);
+    if (this.currentSessionId === sessionId) {
+      const next = this.sessions[0];
+      this.currentSessionId = next.id;
+      await this.loadSession(next);
+    }
+    await saveSessionsMeta(this.plugin, this.sessions, this.currentSessionId);
+    this.updateSessionSelector();
+    new import_obsidian3.Notice("\u5DF2\u5220\u9664");
+  }
+  async showSessionDropdown(e) {
+    document.querySelectorAll(".xiaoyuan-session-dropdown").forEach((el) => el.remove());
+    await this.saveCurrentSession();
+    const path = getChatHistoryPath(this.plugin.settings.chatHistoryPath);
+    this.sessions = await scanChatHistoryFolder(this.app.vault, path);
+    if (!this.sessions.find((s) => s.id === this.currentSessionId)) {
+      if (this.sessions.length > 0) {
+        this.currentSessionId = this.sessions[0].id;
+        await this.loadSession(this.sessions[0]);
+      } else {
+        await this.createNewSession();
+      }
+      this.updateSessionSelector();
+    }
+    await saveSessionsMeta(this.plugin, this.sessions, this.currentSessionId);
+    const dropdown = document.body.createDiv({ cls: "xiaoyuan-session-dropdown" });
+    const rect = e.target.getBoundingClientRect();
+    dropdown.style.cssText = `position:fixed;top:${rect.bottom}px;left:${rect.left}px;max-height:300px;overflow-y:auto;`;
+    for (const session of this.sessions) {
+      const item = dropdown.createDiv({ cls: "xiaoyuan-session-dropdown-item" });
+      if (session.id === this.currentSessionId) item.classList.add("active");
+      const titleEl = item.createSpan({ cls: "xiaoyuan-session-dropdown-title" });
+      titleEl.textContent = session.title;
+      const deleteBtn = item.createSpan({ cls: "xiaoyuan-session-dropdown-delete" });
+      deleteBtn.textContent = "\xD7";
+      deleteBtn.title = "\u5220\u9664\u6B64\u5BF9\u8BDD";
+      deleteBtn.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        this.deleteSession(session.id);
+        dropdown.remove();
+      });
+      item.addEventListener("click", () => {
+        this.switchSession(session.id);
+        dropdown.remove();
+      });
+    }
+    const closeDropdown = (ev) => {
+      if (!dropdown.contains(ev.target)) {
+        dropdown.remove();
+        document.removeEventListener("click", closeDropdown);
+      }
+    };
+    setTimeout(() => document.addEventListener("click", closeDropdown), 0);
+  }
+  updateSessionTitle() {
+    const session = this.sessions.find((s) => s.id === this.currentSessionId);
+    if (session && session.title === "\u65B0\u5BF9\u8BDD" && this.messages.length > 0) {
+      session.title = this.messages[0].content.slice(0, 30) + (this.messages[0].content.length > 30 ? "..." : "");
+      session.updatedAt = Date.now();
+      this.updateSessionSelector();
+    }
+  }
+  updateSessionSelector() {
+    const current = this.sessions.find((s) => s.id === this.currentSessionId);
+    if (current && this.sessionSelector) {
+      this.sessionSelector.textContent = current.title;
+    }
+  }
+  undoMessage(id) {
+    const idx = this.messages.findIndex((m) => m.id === id);
+    if (idx === -1) return;
+    this.messages = this.messages.slice(0, idx);
+    const msgEls = this.messagesEl.querySelectorAll(".xiaoyuan-msg");
+    for (let i = msgEls.length - 1; i >= idx; i--) msgEls[i].remove();
+    this.saveCurrentSession();
+    new import_obsidian3.Notice("\u5DF2\u64A4\u9500");
+  }
+  // ─── UI helpers ──────────────────────────────────────────────────
   createSelector(className, options, currentValue, title, onChange, dropdownUp = false) {
     var _a;
-    const text = document.createElement("span");
-    text.classList.add(className);
+    const text = createSpan({ cls: className, title });
     const currentOption = options.find((m) => m.value === currentValue);
     text.textContent = (currentOption == null ? void 0 : currentOption.label) || ((_a = options[0]) == null ? void 0 : _a.label) || "";
-    text.setAttribute("title", title);
     text.addEventListener("click", (e) => {
       e.stopPropagation();
       document.querySelectorAll(".xiaoyuan-mode-dropdown").forEach((el) => el.remove());
-      const dropdown = document.createElement("div");
-      dropdown.classList.add("xiaoyuan-mode-dropdown");
+      const dropdown = createDiv({ cls: "xiaoyuan-mode-dropdown" });
       if (dropdownUp) dropdown.classList.add("xiaoyuan-mode-dropdown-up");
-      options.forEach((m) => {
-        const item = document.createElement("div");
-        item.classList.add("xiaoyuan-mode-dropdown-item");
+      for (const m of options) {
+        const item = dropdown.createDiv({ cls: "xiaoyuan-mode-dropdown-item" });
         if (m.value === currentValue) item.classList.add("active");
         item.textContent = m.label;
         item.addEventListener("click", () => {
@@ -400,166 +1019,171 @@ var XiaoyuanAIChatView = class extends import_obsidian.ItemView {
           onChange(m.value);
           dropdown.remove();
         });
-        dropdown.appendChild(item);
-      });
+      }
       text.appendChild(dropdown);
-      const closeDropdown = (ev) => {
+      const close = (ev) => {
         if (!dropdown.contains(ev.target)) {
           dropdown.remove();
-          document.removeEventListener("click", closeDropdown);
+          document.removeEventListener("click", close);
         }
       };
-      setTimeout(() => document.addEventListener("click", closeDropdown), 0);
+      setTimeout(() => document.addEventListener("click", close), 0);
     });
     return text;
   }
-  createSendButton() {
-    const btn = document.createElement("span");
-    btn.title = "\u53D1\u9001";
-    btn.classList.add("xiaoyuan-attach-btn");
-    btn.style.marginLeft = "auto";
-    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>`;
-    return btn;
-  }
-  addWelcomeMessage() {
-    const s = this.plugin.settings;
-    const modeInfo = s.execMode === "cli" ? `\u5F53\u524D\u6A21\u5F0F\uFF1ACLI\uFF08opencode serve\uFF09` : s.execMode === "hybrid" ? `\u5F53\u524D\u6A21\u5F0F\uFF1A\u6DF7\u5408\uFF08\u64CD\u4F5C\u2192CLI, \u804A\u5929\u2192API\uFF09` : `\u5F53\u524D\u6A21\u5F0F\uFF1AAPI\uFF08\u76F4\u63A5\u8C03\u7528\uFF09`;
-    const msgEl = this.messagesEl.createDiv({ cls: "xiaoyuan-msg xiaoyuan-msg-assistant xiaoyuan-welcome" });
-    const bubble = msgEl.createDiv({ cls: "xiaoyuan-msg-bubble" });
-    bubble.innerHTML = `\u{1F44B} \u4F60\u597D\uFF01\u6211\u662F\u5C0F\u5143\u3002<br><br>${modeInfo}<br><br>\u6211\u53EF\u4EE5\u5E2E\u4F60\uFF1A<br>\u2022 \u{1F4AC} \u804A\u5929\u5BF9\u8BDD<br>\u2022 \u270D\uFE0F \u6DA6\u8272\u3001\u603B\u7ED3\u3001\u8865\u5168\u7B14\u8BB0<br>\u2022 \u{1F50D} \u67E5\u8BE2\u7EF4\u57FA\u77E5\u8BC6<br><br>\u9009\u4E2D\u6587\u672C\u540E\u53F3\u952E \u2192 \u4F7F\u7528 AI \u64CD\u4F5C\u3002`;
-  }
-  async sendMessage() {
-    const text = this.inputEl.value.trim();
-    if (!text) return;
-    this.addMessage("user", text);
-    this.inputEl.value = "";
-    this.disableInput(true);
-    try {
-      const response = await this.callAI(text);
-      this.addMessage("assistant", response);
-    } catch (err) {
-      this.addMessage("assistant", `\u274C \u9519\u8BEF\uFF1A${err.message}`);
-    } finally {
-      this.disableInput(false);
-      this.inputEl.focus();
-    }
-  }
-  addMessage(role, content) {
-    const id = "msg-" + ++this.msgIdCounter;
-    this.messages.push({ id, role, content });
-    const msgEl = this.messagesEl.createDiv({ cls: `xiaoyuan-msg xiaoyuan-msg-${role}` });
-    msgEl.id = id;
-    const bubbleEl = msgEl.createDiv({ cls: "xiaoyuan-msg-bubble" });
-    if (role === "user") {
-      const textEl = bubbleEl.createSpan();
-      textEl.textContent = content;
-      const undoBtn = msgEl.createSpan({ cls: "xiaoyuan-msg-action xiaoyuan-undo-btn" });
-      undoBtn.textContent = "\u21A9";
-      undoBtn.title = "\u64A4\u9500\u6B64\u6D88\u606F";
-      undoBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        this.undoMessage(id);
-      });
-    } else {
-      bubbleEl.innerHTML = this.renderMarkdown(content.trim());
-      const actionsEl = msgEl.createDiv({ cls: "xiaoyuan-msg-actions" });
-      const copyBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
-      copyBtn.textContent = "\u{1F4CB}";
-      copyBtn.title = "\u590D\u5236";
-      copyBtn.addEventListener("click", () => {
-        navigator.clipboard.writeText(content);
-        new import_obsidian.Notice("\u5DF2\u590D\u5236");
-      });
-    }
-    this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
-  }
-  undoMessage(id) {
-    const idx = this.messages.findIndex((m) => m.id === id);
-    if (idx === -1) return;
-    this.messages = this.messages.slice(0, idx);
-    const msgEls = this.messagesEl.querySelectorAll(".xiaoyuan-msg");
-    for (let i = msgEls.length - 1; i >= idx; i--) {
-      msgEls[i].remove();
-    }
-    new import_obsidian.Notice("\u5DF2\u64A4\u9500");
-  }
-  renderMarkdown(text) {
-    const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    let h = esc(text);
-    h = h.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code class="language-$1">$2</code></pre>').replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>").replace(/\*([^*]+)\*/g, "<em>$1</em>").replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>').replace(/^- (.+)$/gm, "\u2022 $1").replace(/\n/g, "<br>");
-    return h;
-  }
-  async callAI(userMessage) {
-    var _a, _b, _c;
-    const s = this.plugin.settings;
-    if (s.execMode === "cli") {
-      const vaultDir = this.app.vault.adapter.getBasePath();
-      const allMessages = [
-        { role: "system", content: s.systemPrompt },
-        ...this.messages.map((m) => ({ role: m.role, content: m.content })),
-        { role: "user", content: userMessage }
-      ];
-      const prompt = allMessages.map((m) => `${m.role === "system" ? "[\u7CFB\u7EDF]" : m.role === "user" ? "[\u7528\u6237]" : "[\u52A9\u624B]"}: ${m.content}`).join("\n\n");
-      return callOpenCodeCLI(prompt, s, vaultDir);
-    }
-    if (!s.apiKey) throw new Error("API Key \u672A\u914D\u7F6E\u3002\u8BF7\u5728\u8BBE\u7F6E\u4E2D\u586B\u5199\u3002");
-    const body = {
-      model: s.model,
-      messages: [
-        { role: "system", content: s.systemPrompt },
-        ...this.messages.map((m) => ({ role: m.role, content: m.content })),
-        { role: "user", content: userMessage }
-      ],
-      max_tokens: s.maxTokens,
-      temperature: s.temperature,
-      stream: false
-    };
-    const resp = await fetch(s.apiEndpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${s.apiKey}` },
-      body: JSON.stringify(body)
-    });
-    if (!resp.ok) {
-      const errText = await resp.text().catch(() => "");
-      throw new Error(`API ${resp.status}: ${errText.slice(0, 200)}`);
-    }
-    const data = await resp.json();
-    return ((_c = (_b = (_a = data.choices) == null ? void 0 : _a[0]) == null ? void 0 : _b.message) == null ? void 0 : _c.content) || "\uFF08\u65E0\u54CD\u5E94\uFF09";
-  }
-  disableInput(disabled) {
+  setInputDisabled(disabled) {
     this.inputEl.disabled = disabled;
-    if (disabled) {
-      this.sendBtn.classList.add("disabled");
-    } else {
-      this.sendBtn.classList.remove("disabled");
+    this.sendBtn.classList.toggle("disabled", disabled);
+  }
+};
+
+// src/settings.ts
+var import_obsidian4 = require("obsidian");
+var XiaoyuanAISettingTab = class extends import_obsidian4.PluginSettingTab {
+  constructor(app, plugin) {
+    super(app, plugin);
+    this.plugin = plugin;
+  }
+  display() {
+    const { containerEl } = this;
+    containerEl.empty();
+    containerEl.createEl("h2", { text: "\u5C0F\u5143 \u8BBE\u7F6E" });
+    const s = this.plugin.settings;
+    new import_obsidian4.Setting(containerEl).setName("\u6267\u884C\u6A21\u5F0F").setDesc("\u9009\u62E9\u5982\u4F55\u8C03\u7528 AI \u80FD\u529B").addDropdown((dd) => {
+      dd.addOption("hybrid", "\u{1F310} \u6DF7\u5408\u6A21\u5F0F\uFF08\u64CD\u4F5C\u2192CLI, \u804A\u5929\u2192API\uFF09");
+      dd.addOption("cli", "\u{1F4BB} CLI \u6A21\u5F0F\uFF08\u5168\u90E8\u901A\u8FC7 opencode serve\uFF09");
+      dd.addOption("api", "\u2601\uFE0F API \u6A21\u5F0F\uFF08\u76F4\u63A5\u8C03\u7528 API\uFF09");
+      dd.setValue(s.execMode);
+      dd.onChange(async (val) => {
+        s.execMode = val;
+        await this.plugin.saveSettings();
+        this.display();
+      });
+    });
+    if (s.execMode === "cli" || s.execMode === "hybrid") {
+      containerEl.createEl("h3", { text: "CLI \u914D\u7F6E" });
+      new import_obsidian4.Setting(containerEl).setName("opencode \u8DEF\u5F84").setDesc("opencode \u53EF\u6267\u884C\u6587\u4EF6\u8DEF\u5F84\u3002\u5168\u5C40\u5B89\u88C5\u586B opencode \u5373\u53EF\u3002").addText(
+        (text) => text.setPlaceholder("opencode").setValue(s.opencodePath).onChange(async (val) => {
+          s.opencodePath = val;
+          await this.plugin.saveSettings();
+        })
+      );
+      new import_obsidian4.Setting(containerEl).setName("\u670D\u52A1\u5668\u7AEF\u53E3").setDesc("opencode serve \u7684\u76D1\u542C\u7AEF\u53E3").addText(
+        (text) => text.setPlaceholder("16226").setValue(String(s.serverPort)).onChange(async (val) => {
+          const n = parseInt(val);
+          if (n > 0 && n < 65536) {
+            s.serverPort = n;
+            await this.plugin.saveSettings();
+          }
+        })
+      );
+      new import_obsidian4.Setting(containerEl).setName("\u9ED8\u8BA4\u6784\u5EFA\u6A21\u5F0F").setDesc("plan = \u89C4\u5212\u4F18\u5148\uFF0Cbuild = \u76F4\u63A5\u6267\u884C").addDropdown((dd) => {
+        dd.addOption("plan", "plan").addOption("build", "build");
+        dd.setValue(s.buildMode);
+        dd.onChange(async (val) => {
+          s.buildMode = val;
+          await this.plugin.saveSettings();
+        });
+      });
+      new import_obsidian4.Setting(containerEl).setName("\u9ED8\u8BA4\u7EA7\u522B").setDesc("opencode \u7684\u6267\u884C\u7EA7\u522B\uFF08low / medium / high / max\uFF09").addDropdown((dd) => {
+        dd.addOption("low", "low").addOption("medium", "medium").addOption("high", "high").addOption("max", "max");
+        dd.setValue(s.level);
+        dd.onChange(async (val) => {
+          s.level = val;
+          await this.plugin.saveSettings();
+        });
+      });
+      new import_obsidian4.Setting(containerEl).setName("\u6D4B\u8BD5 CLI \u8FDE\u63A5").setDesc("\u542F\u52A8/\u6D4B\u8BD5 opencode serve \u662F\u5426\u6B63\u5E38").addButton((btn) => {
+        btn.setButtonText("\u6D4B\u8BD5\u8FDE\u63A5");
+        btn.onClick(async () => {
+          btn.disabled = true;
+          btn.setButtonText("\u68C0\u6D4B\u4E2D...");
+          try {
+            await ensureServer(s, getVaultBasePath(this.app.vault));
+            new import_obsidian4.Notice("\u2705 opencode serve \u8FDE\u63A5\u6B63\u5E38");
+          } catch (e) {
+            new import_obsidian4.Notice("\u274C \u65E0\u6CD5\u542F\u52A8 opencode serve\uFF1A" + e.message);
+          } finally {
+            btn.disabled = false;
+            btn.setButtonText("\u6D4B\u8BD5\u8FDE\u63A5");
+          }
+        });
+      });
     }
-  }
-  refresh() {
-    this.messages = [];
-    this.messagesEl.empty();
-    this.addWelcomeMessage();
-  }
-  async onClose() {
-    this.viewContainer.empty();
+    if (s.execMode === "api" || s.execMode === "hybrid") {
+      containerEl.createEl("h3", { text: "API \u914D\u7F6E" });
+      new import_obsidian4.Setting(containerEl).setName("API \u7AEF\u70B9").setDesc("OpenAI \u517C\u5BB9\u7684 API \u5730\u5740").addText(
+        (text) => text.setPlaceholder("https://api.openai.com/v1/chat/completions").setValue(s.apiEndpoint).onChange(async (val) => {
+          s.apiEndpoint = val;
+          await this.plugin.saveSettings();
+        })
+      );
+      new import_obsidian4.Setting(containerEl).setName("API Key").setDesc("\u4F60\u7684 API \u5BC6\u94A5").addText((text) => {
+        text.setPlaceholder("sk-...").setValue(s.apiKey);
+        text.inputEl.type = "password";
+        text.onChange(async (val) => {
+          s.apiKey = val;
+          await this.plugin.saveSettings();
+        });
+      });
+      new import_obsidian4.Setting(containerEl).setName("\u6A21\u578B").addText(
+        (text) => text.setPlaceholder("gpt-4o").setValue(s.model).onChange(async (val) => {
+          s.model = val;
+          await this.plugin.saveSettings();
+        })
+      );
+      new import_obsidian4.Setting(containerEl).setName("\u7CFB\u7EDF\u63D0\u793A\u8BCD").addTextArea((text) => {
+        text.setValue(s.systemPrompt);
+        text.inputEl.rows = 4;
+        text.onChange(async (val) => {
+          s.systemPrompt = val;
+          await this.plugin.saveSettings();
+        });
+      });
+      new import_obsidian4.Setting(containerEl).setName("\u6700\u5927 Token \u6570").addText(
+        (text) => text.setPlaceholder("4096").setValue(String(s.maxTokens)).onChange(async (val) => {
+          const n = parseInt(val);
+          if (n > 0) {
+            s.maxTokens = n;
+            await this.plugin.saveSettings();
+          }
+        })
+      );
+      new import_obsidian4.Setting(containerEl).setName("\u6E29\u5EA6").addSlider(
+        (slider) => slider.setLimits(0, 2, 0.1).setValue(s.temperature).onChange(async (val) => {
+          s.temperature = val;
+          await this.plugin.saveSettings();
+        })
+      );
+    }
+    containerEl.createEl("hr");
+    containerEl.createEl("h3", { text: "\u5B58\u50A8\u914D\u7F6E" });
+    new import_obsidian4.Setting(containerEl).setName("\u804A\u5929\u5386\u53F2\u5B58\u50A8\u8DEF\u5F84").setDesc("\u804A\u5929\u5386\u53F2 Markdown \u6587\u4EF6\u7684\u5B58\u50A8\u76EE\u5F55\uFF0C\u9ED8\u8BA4 .chatHistory\uFF08\u9690\u85CF\u6587\u4EF6\u5939\uFF09").addText(
+      (text) => text.setPlaceholder(".chatHistory").setValue(s.chatHistoryPath).onChange(async (val) => {
+        if (val.trim()) {
+          s.chatHistoryPath = val.trim();
+          await this.plugin.saveSettings();
+        }
+      })
+    );
+    containerEl.createEl("hr");
+    containerEl.createEl("h3", { text: "\u5E2E\u52A9" });
+    const help = containerEl.createDiv({ cls: "xiaoyuan-help-text" });
+    help.innerHTML = `
+      <p><strong>\u6267\u884C\u6A21\u5F0F\u8BF4\u660E\uFF1A</strong></p>
+      <p>\u2022 <strong>\u6DF7\u5408\u6A21\u5F0F\uFF08\u9ED8\u8BA4\uFF09</strong>\uFF1A\u6587\u672C\u64CD\u4F5C\u548C Wiki \u547D\u4EE4\u8D70 opencode serve\uFF0C\u804A\u5929\u8D70 API\u3002\u6700\u4F73\u4F53\u9A8C\u3002</p>
+      <p>\u2022 <strong>CLI \u6A21\u5F0F</strong>\uFF1A\u6240\u6709\u64CD\u4F5C\u901A\u8FC7 opencode serve \u6267\u884C\u3002</p>
+      <p>\u2022 <strong>API \u6A21\u5F0F</strong>\uFF1A\u6240\u6709\u64CD\u4F5C\u76F4\u63A5\u8C03\u7528 API\u3002</p>
+      <p><strong>\u6587\u672C\u64CD\u4F5C\uFF1A</strong>\u5728\u7F16\u8F91\u5668\u4E2D\u9009\u4E2D\u6587\u672C \u2192 \u53F3\u952E \u2192 "\u4F7F\u7528 AI" \u5B50\u83DC\u5355</p>
+      <p><strong>\u804A\u5929\uFF1A</strong>\u70B9\u51FB\u5DE6\u4FA7 Ribbon \u680F\u7684 \u{1F4AC} \u56FE\u6807\u6253\u5F00\u804A\u5929\u9762\u677F</p>
+      <p><strong>Wiki \u547D\u4EE4\uFF1A</strong>\u901A\u8FC7\u547D\u4EE4\u9762\u677F\u641C\u7D22 "\u5C0F\u5143" \u627E\u5230\u7EF4\u57FA\u547D\u4EE4</p>
+    `;
   }
 };
-var OPERATION_PROMPTS = {
-  polish: "\u4F60\u662F\u4E00\u4E2A\u6587\u5B57\u6DA6\u8272\u52A9\u624B\u3002\u8BF7\u6DA6\u8272\u4EE5\u4E0B\u6587\u672C\uFF0C\u6539\u8FDB\u8868\u8FBE\u3001\u8BED\u6CD5\u548C\u6D41\u7545\u5EA6\uFF0C\u4FDD\u6301\u539F\u610F\u4E0D\u53D8\u3002\u53EA\u8F93\u51FA\u6DA6\u8272\u540E\u7684\u7ED3\u679C\uFF0C\u4E0D\u8981\u6DFB\u52A0\u4EFB\u4F55\u89E3\u91CA\uFF1A\n\n",
-  summarize: "\u4F60\u662F\u4E00\u4E2A\u603B\u7ED3\u52A9\u624B\u3002\u8BF7\u5BF9\u4EE5\u4E0B\u6587\u672C\u8FDB\u884C\u7B80\u6D01\u7684\u603B\u7ED3\uFF0C\u63D0\u53D6\u5173\u952E\u8981\u70B9\u3002\u7528\u4E2D\u6587\u603B\u7ED3\uFF0C\u53EA\u8F93\u51FA\u603B\u7ED3\u5185\u5BB9\uFF1A\n\n",
-  complete: "\u4F60\u662F\u4E00\u4E2A\u5199\u4F5C\u52A9\u624B\u3002\u8BF7\u6839\u636E\u4E0A\u4E0B\u6587\uFF0C\u81EA\u7136\u5730\u8865\u5168\u4EE5\u4E0B\u5185\u5BB9\uFF0C\u4FDD\u6301\u98CE\u683C\u4E00\u81F4\uFF1A\n\n",
-  expand: "\u4F60\u662F\u4E00\u4E2A\u5199\u4F5C\u52A9\u624B\u3002\u8BF7\u6269\u5199\u4EE5\u4E0B\u5185\u5BB9\uFF0C\u589E\u52A0\u7EC6\u8282\u3001\u4F8B\u5B50\u548C\u6DF1\u5EA6\uFF0C\u4FDD\u7559\u539F\u6587\u7684\u6838\u5FC3\u89C2\u70B9\uFF1A\n\n",
-  translate: "\u4F60\u662F\u4E00\u4E2A\u7FFB\u8BD1\u52A9\u624B\u3002\u8BF7\u5C06\u4EE5\u4E0B\u6587\u672C\u7FFB\u8BD1\u6210\u4E2D\u6587\uFF0C\u4FDD\u6301\u4E13\u4E1A\u6027\u548C\u6D41\u7545\u5EA6\uFF1A\n\n",
-  continue: "\u4F60\u662F\u4E00\u4E2A\u5199\u4F5C\u52A9\u624B\u3002\u8BF7\u6839\u636E\u4EE5\u4E0B\u5185\u5BB9\u81EA\u7136\u5730\u7EED\u5199\uFF0C\u4FDD\u6301\u98CE\u683C\u4E00\u81F4\uFF1A\n\n"
-};
-var OPERATION_LABELS = {
-  polish: "\u6DA6\u8272",
-  summarize: "\u603B\u7ED3",
-  complete: "\u8865\u5168",
-  expand: "\u6269\u5199",
-  translate: "\u7FFB\u8BD1\u4E3A\u4E2D\u6587",
-  continue: "\u7EED\u5199"
-};
-var TextOperationModal = class extends import_obsidian.Modal {
+
+// src/modals.ts
+var import_obsidian5 = require("obsidian");
+var TextOperationModal = class extends import_obsidian5.Modal {
   constructor(app, plugin, operation, inputText) {
     super(app);
     this.plugin = plugin;
@@ -579,36 +1203,24 @@ var TextOperationModal = class extends import_obsidian.Modal {
     this.processOperation();
   }
   async processOperation() {
-    var _a, _b, _c;
     try {
       const s = this.plugin.settings;
-      const prompt = (OPERATION_PROMPTS[this.operation] || OPERATION_PROMPTS.polish) + this.inputText;
+      const prompt2 = (OPERATION_PROMPTS[this.operation] || OPERATION_PROMPTS.polish) + this.inputText;
       let result;
       if (s.execMode === "cli" || s.execMode === "hybrid") {
         this.modeLabel.textContent = "CLI";
-        const vaultDir = this.app.vault.adapter.getBasePath();
-        result = await callOpenCodeCLI(prompt, s, vaultDir);
+        const vaultDir = getVaultBasePath(this.app.vault);
+        result = await callAIWithCLI(prompt2, s, vaultDir);
       } else {
         this.modeLabel.textContent = "API";
         if (!s.apiKey) {
-          new import_obsidian.Notice("API Key \u672A\u914D\u7F6E");
+          new import_obsidian5.Notice("API Key \u672A\u914D\u7F6E");
           this.close();
           return;
         }
-        const resp = await fetch(s.apiEndpoint, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${s.apiKey}` },
-          body: JSON.stringify({
-            model: s.model,
-            messages: [{ role: "user", content: prompt }],
-            max_tokens: s.maxTokens,
-            temperature: s.temperature,
-            stream: false
-          })
-        });
-        if (!resp.ok) throw new Error(`API ${resp.status}`);
-        const data = await resp.json();
-        result = ((_c = (_b = (_a = data.choices) == null ? void 0 : _a[0]) == null ? void 0 : _b.message) == null ? void 0 : _c.content) || "\uFF08\u65E0\u54CD\u5E94\uFF09";
+        result = await callAIWithAPIJson(s.apiEndpoint, s.apiKey, s.model, [
+          { role: "user", content: prompt2 }
+        ], s.maxTokens, s.temperature);
       }
       this.loadingEl.classList.add("hidden");
       this.resultEl.classList.add("show");
@@ -619,14 +1231,14 @@ var TextOperationModal = class extends import_obsidian.Modal {
         const editor = this.plugin.getActiveEditor();
         if (editor) {
           editor.replaceSelection(result);
-          new import_obsidian.Notice("\u5DF2\u66FF\u6362");
-        } else new import_obsidian.Notice("\u672A\u627E\u5230\u6D3B\u52A8\u7F16\u8F91\u5668");
+          new import_obsidian5.Notice("\u5DF2\u66FF\u6362");
+        } else new import_obsidian5.Notice("\u672A\u627E\u5230\u6D3B\u52A8\u7F16\u8F91\u5668");
         this.close();
       });
       const copyBtn = btnRow.createEl("button", { text: "\u590D\u5236\u7ED3\u679C", cls: "xiaoyuan-btn-secondary" });
       copyBtn.addEventListener("click", () => {
         navigator.clipboard.writeText(result);
-        new import_obsidian.Notice("\u5DF2\u590D\u5236");
+        new import_obsidian5.Notice("\u5DF2\u590D\u5236");
       });
       const closeBtn = btnRow.createEl("button", { text: "\u5173\u95ED", cls: "xiaoyuan-btn-secondary" });
       closeBtn.addEventListener("click", () => this.close());
@@ -638,12 +1250,7 @@ var TextOperationModal = class extends import_obsidian.Modal {
     this.contentEl.empty();
   }
 };
-var WIKI_SYSTEM_PROMPTS = {
-  query: "\u4F60\u662F\u4E00\u4E2A\u7EF4\u57FA\u77E5\u8BC6\u5E93\u7684\u68C0\u7D22\u52A9\u624B\u3002\u6839\u636E\u7528\u6237\u7684\u95EE\u9898\uFF0C\u4ECE\u77E5\u8BC6\u5E93\u89D2\u5EA6\u7ED9\u51FA\u7EFC\u5408\u6027\u7684\u56DE\u7B54\u3002\u5982\u679C\u4E0D\u77E5\u9053\uFF0C\u5C31\u8BDA\u5B9E\u8BF4\u4E0D\u77E5\u9053\u3002",
-  capture: "\u4F60\u6B63\u5728\u5C06\u7528\u6237\u63D0\u4F9B\u7684\u5185\u5BB9\u6574\u7406\u4E3A\u7EF4\u57FA\u7B14\u8BB0\u3002\u8BF7\u63D0\u53D6\u5173\u952E\u4FE1\u606F\uFF0C\u5206\u7C7B\uFF08concept/skill/reference/decision\uFF09\uFF0C\u8F93\u51FA\u5E26 YAML frontmatter \u7684 Obsidian Markdown \u683C\u5F0F\u3002",
-  ingest: "\u4F60\u6B63\u5728\u6444\u5165\u6587\u6863\u3002\u8BF7\u5206\u6790\u5185\u5BB9\uFF0C\u84B8\u998F\u51FA\u6838\u5FC3\u6982\u5FF5\u3001\u5B9E\u4F53\u3001\u6280\u80FD\uFF0C\u7528\u4E2D\u6587\u8F93\u51FA\u591A\u4E2A\u7EF4\u57FA\u9875\u9762\uFF08\u5E26 frontmatter \u548C [[\u7EF4\u57FA\u94FE\u63A5]]\uFF09\u3002"
-};
-var WikiCommandModal = class extends import_obsidian.Modal {
+var WikiCommandModal = class extends import_obsidian5.Modal {
   constructor(app, plugin, command) {
     super(app);
     this.plugin = plugin;
@@ -662,10 +1269,9 @@ var WikiCommandModal = class extends import_obsidian.Modal {
     const submitBtn = btnRow.createEl("button", { text: "\u6267\u884C", cls: "xiaoyuan-btn-primary" });
     const resultEl = contentEl.createDiv({ cls: "xiaoyuan-wiki-result" });
     submitBtn.addEventListener("click", async () => {
-      var _a, _b, _c;
       const text = inputEl.value.trim();
       if (!text) {
-        new import_obsidian.Notice("\u8BF7\u8F93\u5165\u5185\u5BB9");
+        new import_obsidian5.Notice("\u8BF7\u8F93\u5165\u5185\u5BB9");
         return;
       }
       submitBtn.disabled = true;
@@ -679,29 +1285,15 @@ var WikiCommandModal = class extends import_obsidian.Modal {
 
 ---
 ${text}` : text;
-          const vaultDir = this.app.vault.adapter.getBasePath();
-          result = await callOpenCodeCLI(fullPrompt, s, vaultDir);
+          const vaultDir = getVaultBasePath(this.app.vault);
+          result = await callAIWithCLI(fullPrompt, s, vaultDir);
         } else {
           if (!s.apiKey) {
-            new import_obsidian.Notice("\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u914D\u7F6E API Key");
+            new import_obsidian5.Notice("\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u914D\u7F6E API Key");
             return;
           }
-          const resp = await fetch(s.apiEndpoint, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${s.apiKey}` },
-            body: JSON.stringify({
-              model: s.model,
-              messages: [
-                ...systemPrompt ? [{ role: "system", content: systemPrompt }] : [],
-                { role: "user", content: text }
-              ],
-              max_tokens: s.maxTokens,
-              temperature: s.temperature,
-              stream: false
-            })
-          });
-          const data = await resp.json();
-          result = ((_c = (_b = (_a = data.choices) == null ? void 0 : _a[0]) == null ? void 0 : _b.message) == null ? void 0 : _c.content) || "\uFF08\u65E0\u54CD\u5E94\uFF09";
+          const messages = systemPrompt ? [{ role: "system", content: systemPrompt }, { role: "user", content: text }] : [{ role: "user", content: text }];
+          result = await callAIWithAPIJson(s.apiEndpoint, s.apiKey, s.model, messages, s.maxTokens, s.temperature);
         }
         resultEl.classList.add("show");
         resultEl.textContent = result;
@@ -717,160 +1309,10 @@ ${text}` : text;
     closeBtn.addEventListener("click", () => this.close());
   }
 };
-var XiaoyuanAISettingTab = class extends import_obsidian.PluginSettingTab {
-  constructor(app, plugin) {
-    super(app, plugin);
-    this.plugin = plugin;
-  }
-  display() {
-    const { containerEl } = this;
-    containerEl.empty();
-    containerEl.createEl("h2", { text: "\u5C0F\u5143 \u8BBE\u7F6E" });
-    new import_obsidian.Setting(containerEl).setName("\u6267\u884C\u6A21\u5F0F").setDesc("\u9009\u62E9\u5982\u4F55\u8C03\u7528 AI \u80FD\u529B").addDropdown((dd) => {
-      dd.addOption("hybrid", "\u{1F310} \u6DF7\u5408\u6A21\u5F0F\uFF08\u64CD\u4F5C\u2192CLI, \u804A\u5929\u2192API\uFF09");
-      dd.addOption("cli", "\u{1F4BB} CLI \u6A21\u5F0F\uFF08\u5168\u90E8\u901A\u8FC7 opencode serve\uFF09");
-      dd.addOption("api", "\u2601\uFE0F API \u6A21\u5F0F\uFF08\u76F4\u63A5\u8C03\u7528 API\uFF09");
-      dd.setValue(this.plugin.settings.execMode);
-      dd.onChange(async (val) => {
-        this.plugin.settings.execMode = val;
-        await this.plugin.saveSettings();
-        this.display();
-      });
-    });
-    const s = this.plugin.settings;
-    if (s.execMode === "cli" || s.execMode === "hybrid") {
-      containerEl.createEl("h3", { text: "CLI \u914D\u7F6E" });
-      new import_obsidian.Setting(containerEl).setName("opencode \u8DEF\u5F84").setDesc("opencode \u53EF\u6267\u884C\u6587\u4EF6\u8DEF\u5F84\u3002\u5168\u5C40\u5B89\u88C5\u586B opencode \u5373\u53EF\u3002").addText(
-        (text) => text.setPlaceholder("opencode").setValue(s.opencodePath).onChange(async (val) => {
-          s.opencodePath = val;
-          await this.plugin.saveSettings();
-        })
-      );
-      new import_obsidian.Setting(containerEl).setName("\u670D\u52A1\u5668\u7AEF\u53E3").setDesc("opencode serve \u7684\u76D1\u542C\u7AEF\u53E3").addText(
-        (text) => text.setPlaceholder("16226").setValue(String(s.serverPort)).onChange(async (val) => {
-          const n = parseInt(val);
-          if (n > 0 && n < 65536) {
-            s.serverPort = n;
-            await this.plugin.saveSettings();
-          }
-        })
-      );
-      new import_obsidian.Setting(containerEl).setName("\u9ED8\u8BA4\u6784\u5EFA\u6A21\u5F0F").setDesc("plan = \u89C4\u5212\u4F18\u5148\uFF0Cbuild = \u76F4\u63A5\u6267\u884C").addDropdown((dd) => {
-        dd.addOption("plan", "plan");
-        dd.addOption("build", "build");
-        dd.setValue(s.buildMode);
-        dd.onChange(async (val) => {
-          s.buildMode = val;
-          await this.plugin.saveSettings();
-        });
-      });
-      new import_obsidian.Setting(containerEl).setName("\u9ED8\u8BA4\u7EA7\u522B").setDesc("opencode \u7684\u6267\u884C\u7EA7\u522B\uFF08low / medium / high / max\uFF09").addDropdown((dd) => {
-        dd.addOption("low", "low");
-        dd.addOption("medium", "medium");
-        dd.addOption("high", "high");
-        dd.addOption("max", "max");
-        dd.setValue(s.level);
-        dd.onChange(async (val) => {
-          s.level = val;
-          await this.plugin.saveSettings();
-        });
-      });
-      new import_obsidian.Setting(containerEl).setName("\u6D4B\u8BD5 CLI \u8FDE\u63A5").setDesc("\u542F\u52A8/\u6D4B\u8BD5 opencode serve \u662F\u5426\u6B63\u5E38").addButton((btn) => {
-        btn.setButtonText("\u6D4B\u8BD5\u8FDE\u63A5");
-        btn.onClick(async () => {
-          btn.disabled = true;
-          btn.setButtonText("\u68C0\u6D4B\u4E2D...");
-          try {
-            const pw = s.serverPassword || "xiaoyuan-plugin-" + Math.random().toString(36).slice(2, 10);
-            if (!s.serverPassword) {
-              s.serverPassword = pw;
-              await this.plugin.saveSettings();
-            }
-            const alive = await probeServer(s.serverPort);
-            if (alive) {
-              new import_obsidian.Notice("\u2705 \u68C0\u6D4B\u5230\u5DF2\u6709\u670D\u52A1\u5668\u5728\u8FD0\u884C");
-              btn.setButtonText("\u5DF2\u6709\u670D\u52A1");
-              return;
-            }
-            btn.setButtonText("\u542F\u52A8\u4E2D...");
-            const vaultDir = this.app.vault.adapter.getBasePath();
-            await startOpenCodeServer(s.opencodePath, s.serverPort, pw, vaultDir);
-            const result = await callOpenCodeAPI("\u56DE\u590D OK", s.serverPort, pw);
-            new import_obsidian.Notice(`\u2705 opencode \u8FDE\u63A5\u6210\u529F\uFF1A${result}`);
-          } catch (err) {
-            new import_obsidian.Notice(`\u274C CLI \u5931\u8D25\uFF1A${err.message}`);
-          } finally {
-            btn.disabled = false;
-            btn.setButtonText("\u6D4B\u8BD5\u8FDE\u63A5");
-          }
-        });
-      });
-    }
-    if (s.execMode === "api" || s.execMode === "hybrid") {
-      containerEl.createEl("h3", { text: "API \u914D\u7F6E" });
-      new import_obsidian.Setting(containerEl).setName("API \u7AEF\u70B9").setDesc("OpenAI \u517C\u5BB9\u7684 API \u5730\u5740").addText(
-        (text) => text.setPlaceholder("https://api.openai.com/v1/chat/completions").setValue(s.apiEndpoint).onChange(async (val) => {
-          s.apiEndpoint = val;
-          await this.plugin.saveSettings();
-        })
-      );
-      new import_obsidian.Setting(containerEl).setName("API Key").setDesc("\u4F60\u7684 API \u5BC6\u94A5").addText((text) => {
-        text.setPlaceholder("sk-...").setValue(s.apiKey);
-        text.inputEl.type = "password";
-        text.onChange(async (val) => {
-          s.apiKey = val;
-          await this.plugin.saveSettings();
-        });
-      });
-      new import_obsidian.Setting(containerEl).setName("\u6A21\u578B").addText(
-        (text) => text.setPlaceholder("gpt-4o").setValue(s.model).onChange(async (val) => {
-          s.model = val;
-          await this.plugin.saveSettings();
-        })
-      );
-      new import_obsidian.Setting(containerEl).setName("\u7CFB\u7EDF\u63D0\u793A\u8BCD").addTextArea((text) => {
-        text.setValue(s.systemPrompt);
-        text.inputEl.rows = 4;
-        text.onChange(async (val) => {
-          s.systemPrompt = val;
-          await this.plugin.saveSettings();
-        });
-      });
-      new import_obsidian.Setting(containerEl).setName("\u6700\u5927 Token \u6570").addText(
-        (text) => text.setPlaceholder("4096").setValue(String(s.maxTokens)).onChange(async (val) => {
-          const n = parseInt(val);
-          if (n > 0) {
-            s.maxTokens = n;
-            await this.plugin.saveSettings();
-          }
-        })
-      );
-      new import_obsidian.Setting(containerEl).setName("\u6E29\u5EA6").addSlider(
-        (slider) => slider.setLimits(0, 2, 0.1).setValue(s.temperature).onChange(async (val) => {
-          s.temperature = val;
-          await this.plugin.saveSettings();
-        })
-      );
-    }
-    containerEl.createEl("hr");
-    containerEl.createEl("h3", { text: "\u5E2E\u52A9" });
-    const help = containerEl.createDiv();
-    help.innerHTML = `
-      <p><strong>\u6267\u884C\u6A21\u5F0F\u8BF4\u660E\uFF1A</strong></p>
-      <p>\u2022 <strong>\u6DF7\u5408\u6A21\u5F0F\uFF08\u9ED8\u8BA4\uFF09</strong>\uFF1A\u6587\u672C\u64CD\u4F5C\u548C Wiki \u547D\u4EE4\u8D70 opencode serve\uFF0C\u804A\u5929\u8D70 API\u3002\u6700\u4F73\u4F53\u9A8C\u3002</p>
-      <p>\u2022 <strong>CLI \u6A21\u5F0F</strong>\uFF1A\u6240\u6709\u64CD\u4F5C\u901A\u8FC7 opencode serve \u6267\u884C\u3002</p>
-      <p>\u2022 <strong>API \u6A21\u5F0F</strong>\uFF1A\u6240\u6709\u64CD\u4F5C\u76F4\u63A5\u8C03\u7528 API\u3002</p>
-      <p><strong>\u6587\u672C\u64CD\u4F5C\uFF1A</strong>\u5728\u7F16\u8F91\u5668\u4E2D\u9009\u4E2D\u6587\u672C \u2192 \u53F3\u952E \u2192 "\u4F7F\u7528 AI" \u5B50\u83DC\u5355</p>
-      <p><strong>\u804A\u5929\uFF1A</strong>\u70B9\u51FB\u5DE6\u4FA7 Ribbon \u680F\u7684 \u{1F4AC} \u56FE\u6807\u6253\u5F00\u804A\u5929\u9762\u677F</p>
-      <p><strong>Wiki \u547D\u4EE4\uFF1A</strong>\u901A\u8FC7\u547D\u4EE4\u9762\u677F\u641C\u7D22 "\u5C0F\u5143" \u627E\u5230\u7EF4\u57FA\u547D\u4EE4</p>
-    `;
-    help.classList.add("xiaoyuan-help-text");
-  }
-};
-var XiaoyuanAIPlugin = class extends import_obsidian.Plugin {
+
+// src/main.ts
+var XiaoyuanAIPlugin = class extends import_obsidian6.Plugin {
   async onload() {
-    serverProcess = null;
-    serverStartPromise = null;
     await this.loadSettings();
     this.registerView(VIEW_TYPE_XIAOYUAN_AI_CHAT, (leaf) => new XiaoyuanAIChatView(leaf, this));
     this.addRibbonIcon("message-circle", "\u5C0F\u5143", () => this.activateChatView());
@@ -878,8 +1320,7 @@ var XiaoyuanAIPlugin = class extends import_obsidian.Plugin {
       this.app.workspace.on("editor-menu", (menu, editor) => {
         const sel = editor.getSelection();
         if (!sel) return;
-        const ops = ["polish", "summarize", "complete", "expand", "translate", "continue"];
-        ops.forEach((op) => {
+        ["polish", "summarize", "complete", "expand", "translate", "continue"].forEach((op) => {
           menu.addItem((item) => {
             item.setTitle(`AI ${OPERATION_LABELS[op]}`);
             item.setIcon(op === "polish" ? "pencil" : op === "summarize" ? "align-justify" : "plus");
@@ -888,7 +1329,21 @@ var XiaoyuanAIPlugin = class extends import_obsidian.Plugin {
         });
       })
     );
-    this.addCommand({ id: "xiaoyuanAI-toggle-chat", name: "\u5207\u6362\u5C0F\u5143\u804A\u5929\u9762\u677F", callback: () => this.activateChatView() });
+    this.addCommand({
+      id: "xiaoyuanAI-toggle-chat",
+      name: "\u5207\u6362\u5C0F\u5143\u804A\u5929\u9762\u677F",
+      callback: () => this.activateChatView(),
+      hotkeys: [{ modifiers: ["Ctrl", "Shift"], key: "C" }]
+    });
+    this.addCommand({
+      id: "xiaoyuanAI-new-chat",
+      name: "\u{1F4AC} \u65B0\u5EFA AI \u5BF9\u8BDD",
+      callback: () => {
+        const leaf = this.activateChatView();
+        if ((leaf == null ? void 0 : leaf.view) instanceof XiaoyuanAIChatView) leaf.view.newChat();
+      },
+      hotkeys: [{ modifiers: ["Ctrl", "Shift"], key: "N" }]
+    });
     ["polish", "summarize", "complete", "expand", "translate", "continue"].forEach((op) => {
       this.addCommand({
         id: `xiaoyuanAI-${op}`,
@@ -899,17 +1354,28 @@ var XiaoyuanAIPlugin = class extends import_obsidian.Plugin {
         }
       });
     });
-    this.addCommand({ id: "xiaoyuanAI-wiki-query", name: "\u{1F50D} Wiki \u67E5\u8BE2", callback: () => new WikiCommandModal(this.app, this, "query").open() });
-    this.addCommand({ id: "xiaoyuanAI-wiki-capture", name: "\u{1F4E5} Wiki \u6355\u6349", callback: () => new WikiCommandModal(this.app, this, "capture").open() });
-    this.addCommand({ id: "xiaoyuanAI-wiki-ingest", name: "\u{1F4E5} Wiki \u6444\u5165", callback: () => new WikiCommandModal(this.app, this, "ingest").open() });
-    this.addCommand({ id: "xiaoyuanAI-new-chat", name: "\u{1F4AC} \u65B0\u5EFA AI \u5BF9\u8BDD", callback: () => this.activateChatView() });
+    this.addCommand({
+      id: "xiaoyuanAI-wiki-query",
+      name: "\u{1F50D} Wiki \u67E5\u8BE2",
+      callback: () => new WikiCommandModal(this.app, this, "query").open()
+    });
+    this.addCommand({
+      id: "xiaoyuanAI-wiki-capture",
+      name: "\u{1F4E5} Wiki \u6355\u6349",
+      callback: () => new WikiCommandModal(this.app, this, "capture").open()
+    });
+    this.addCommand({
+      id: "xiaoyuanAI-wiki-ingest",
+      name: "\u{1F4E5} Wiki \u6444\u5165",
+      callback: () => new WikiCommandModal(this.app, this, "ingest").open()
+    });
     this.addCommand({
       id: "xiaoyuanAI-chat-with-note",
       name: "\u{1F4C4} \u7528\u5F53\u524D\u7B14\u8BB0\u5F00\u542F AI \u5BF9\u8BDD",
       callback: async () => {
         const file = this.app.workspace.getActiveFile();
         if (!file) {
-          new import_obsidian.Notice("\u8BF7\u5148\u6253\u5F00\u4E00\u4E2A\u7B14\u8BB0");
+          new import_obsidian6.Notice("\u8BF7\u5148\u6253\u5F00\u4E00\u4E2A\u7B14\u8BB0");
           return;
         }
         const content = await this.app.vault.read(file);
@@ -924,11 +1390,12 @@ ${content.slice(0, 3e3)}`);
     this.addSettingTab(new XiaoyuanAISettingTab(this.app, this));
   }
   activateChatView() {
+    var _a, _b;
     const { workspace } = this.app;
     let leaf = workspace.getLeavesOfType(VIEW_TYPE_XIAOYUAN_AI_CHAT).first();
     if (!leaf) {
       const useRight = this.settings.chatViewType === "right";
-      leaf = useRight ? workspace.getRightLeaf(false) || void 0 : workspace.getLeftLeaf(false) || void 0;
+      leaf = useRight ? (_a = workspace.getRightLeaf(false)) != null ? _a : void 0 : (_b = workspace.getLeftLeaf(false)) != null ? _b : void 0;
       if (leaf) leaf.setViewState({ type: VIEW_TYPE_XIAOYUAN_AI_CHAT, active: true });
     }
     if (leaf) workspace.revealLeaf(leaf);
@@ -945,7 +1412,7 @@ ${content.slice(0, 3e3)}`);
     await this.saveData(this.settings);
   }
   async onunload() {
-    await stopOpenCodeServer();
+    await stopServer();
     this.app.workspace.detachLeavesOfType(VIEW_TYPE_XIAOYUAN_AI_CHAT);
   }
 };
