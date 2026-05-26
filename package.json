@@ -2,7 +2,7 @@
   "name": "xiaoyuanAI",
   "version": "1.0.0",
   "description": "AI Xiaoyuan plugin for Obsidian",
-  "main": "dist/main.js",
+  "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",
     "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production"

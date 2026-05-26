@@ -32,38 +32,127 @@ export interface MessageResponse {
   parts: Part[];
 }
 
-export interface XiaoyuanAISettings {
-  execMode: "api" | "cli" | "hybrid";
-  opencodePath: string;
-  serverPort: number;
-  serverPassword: string;
-  apiEndpoint: string;
-  apiKey: string;
+export interface FileDiff {
+  file: string;
+  before: string;
+  after: string;
+  additions: number;
+  deletions: number;
+}
+
+export interface ModelCaps {
+  text: boolean;
+  image: boolean;
+  pdf: boolean;
+  audio: boolean;
+  video: boolean;
+  reasoning: boolean;
+  toolcall: boolean;
+  attachment: boolean;
+  temperature: boolean;
+}
+
+export interface ModelEntry {
+  id: string;
+  displayName: string;
+}
+
+export interface OpenCodeSettings {
+  cliPath: string;
+  autoStart: boolean;
+  hostname: string;
+  port: number;
   model: string;
+  providerId: string;
+  modelId: string;
+  agent: string;
+  textEnabled: boolean;
+  imageEnabled: boolean;
+  pdfEnabled: boolean;
+}
+
+export interface ApiProviderConfig {
+  id: string;
+  name: string;
+  baseUrl: string;
+  model: string;
+  models: string[];
+  apiKey: string;
+}
+
+export type ReasoningEffort = "none" | "minimal" | "low" | "medium" | "high" | "xhigh";
+export type ReasoningEffortAPI = "none" | "low" | "medium" | "high";
+export type PermissionMode = "read-only" | "workspace-write" | "danger-full-access";
+export interface XiaoyuanAISettings {
+  execMode: "api" | "cli";
+
+  opencode: OpenCodeSettings;
+
+  activeApiProviderId: string;
+  apiProviders: ApiProviderConfig[];
+
+  proxyEnabled: boolean;
+  proxyUrl: string;
+  mcpEnabled: boolean;
+  defaultReasoning: ReasoningEffort;
+  apiReasoningEffort: ReasoningEffortAPI;
+  defaultPermission: PermissionMode;
+  autoOpen: boolean;
+  showContext: boolean;
+  chatViewType: "left" | "right";
+
   systemPrompt: string;
   maxTokens: number;
   temperature: number;
-  chatViewType: "left" | "right";
-  buildMode: "plan" | "build";
-  level: "low" | "medium" | "high" | "max";
   chatHistoryPath: string;
+  showDiffPreview: boolean;
+  showThinking: boolean;
+
+  opencodeModels?: { label: string; value: string }[];
+  opencodeModelCaps?: Record<string, ModelCaps>;
+  opencodeAgents?: { name: string; description?: string }[];
 }
 
+export const DEFAULT_OPENCODE_SETTINGS: OpenCodeSettings = {
+  cliPath: "opencode",
+  autoStart: false,
+  hostname: "127.0.0.1",
+  port: 16226,
+  model: "",
+  providerId: "",
+  modelId: "",
+  agent: "build",
+  textEnabled: true,
+  imageEnabled: false,
+  pdfEnabled: false,
+};
+
 export const DEFAULT_SETTINGS: XiaoyuanAISettings = {
-  execMode: "hybrid",
-  opencodePath: "opencode",
-  serverPort: 16226,
-  serverPassword: "",
-  apiEndpoint: "https://api.openai.com/v1/chat/completions",
-  apiKey: "",
-  model: "gpt-4o",
+  execMode: "cli",
+
+  opencode: { ...DEFAULT_OPENCODE_SETTINGS },
+
+  activeApiProviderId: "",
+  apiProviders: [
+    { id: "default", name: "默认 API", baseUrl: "https://api.openai.com/v1", model: "gpt-4o", models: ["gpt-4o"], apiKey: "" },
+  ],
+
+  proxyEnabled: false,
+  proxyUrl: "",
+  mcpEnabled: false,
+  defaultReasoning: "low",
+  apiReasoningEffort: "none",
+  defaultPermission: "read-only",
+  autoOpen: true,
+  showContext: false,
+  chatViewType: "right",
+
   systemPrompt: "你是一个 AI 助手，集成在 Obsidian 笔记软件中。用户正在做笔记或写作。请用中文回答，保持简洁专业。",
   maxTokens: 4096,
   temperature: 0.7,
-  chatViewType: "right",
-  buildMode: "build",
-  level: "low",
   chatHistoryPath: ".chatHistory",
+  showDiffPreview: true,
+  showThinking: true,
 };
 
 export const CHAT_SESSIONS_KEY = "xiaoyuan-chat-sessions";

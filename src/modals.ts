@@ -2,6 +2,12 @@ import { App, Modal, Notice } from "obsidian";
 import type XiaoyuanAIPlugin from "./main";
 import { callAIWithCLI, callAIWithAPIJson, getVaultBasePath } from "./ai";
 import { OPERATION_PROMPTS, OPERATION_LABELS, WIKI_SYSTEM_PROMPTS } from "./types";
+import type { ApiProviderConfig } from "./types";
+
+function getActiveProvider(s: { apiProviders: ApiProviderConfig[]; activeApiProviderId: string }): ApiProviderConfig | undefined {
+  if (s.activeApiProviderId) return s.apiProviders.find(p => p.id === s.activeApiProviderId);
+  return s.apiProviders[0];
+}
 
 export class TextOperationModal extends Modal {
   plugin: XiaoyuanAIPlugin;
@@ -40,16 +46,17 @@ export class TextOperationModal extends Modal {
       const prompt = (OPERATION_PROMPTS[this.operation] || OPERATION_PROMPTS.polish) + this.inputText;
       let result: string;
 
-      if (s.execMode === "cli" || s.execMode === "hybrid") {
+      if (s.execMode === "cli") {
         this.modeLabel.textContent = "CLI";
         const vaultDir = getVaultBasePath(this.app.vault);
         result = await callAIWithCLI(prompt, s, vaultDir);
       } else {
         this.modeLabel.textContent = "API";
-        if (!s.apiKey) { new Notice("API Key 未配置"); this.close(); return; }
-        result = await callAIWithAPIJson(s.apiEndpoint, s.apiKey, s.model, [
+        const provider = getActiveProvider(s);
+        if (!provider || !provider.apiKey) { new Notice("API Key 未配置"); this.close(); return; }
+        result = await callAIWithAPIJson(provider.baseUrl + "/chat/completions", provider.apiKey, provider.model, [
           { role: "user", content: prompt },
-        ], s.maxTokens, s.temperature);
+        ], s.maxTokens, s.temperature, s.apiReasoningEffort);
       }
 
       this.loadingEl.classList.add("hidden");
@@ -77,6 +84,33 @@ export class TextOperationModal extends Modal {
   }
 
   onClose() { this.contentEl.empty(); }
+}
+
+export class TextInputModal extends Modal {
+  constructor(
+    app: App,
+    private title: string,
+    private placeholder: string,
+    private defaultValue: string,
+    private onSubmit: (value: string) => void,
+  ) { super(app); }
+
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.createEl("h3", { text: this.title });
+    const input = contentEl.createEl("input", {
+      attr: { type: "text", placeholder: this.placeholder },
+    });
+    input.value = this.defaultValue;
+    input.style.width = "100%";
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { this.onSubmit(input.value); this.close(); }
+    });
+    input.focus();
+    input.select();
+    const btn = contentEl.createEl("button", { text: "确定" });
+    btn.onclick = () => { this.onSubmit(input.value); this.close(); };
+  }
 }
 
 export class WikiCommandModal extends Modal {
@@ -117,16 +151,17 @@ export class WikiCommandModal extends Modal {
         const systemPrompt = WIKI_SYSTEM_PROMPTS[this.command] || "";
         let result: string;
 
-        if (s.execMode === "cli" || s.execMode === "hybrid") {
+        if (s.execMode === "cli") {
           const fullPrompt = systemPrompt ? `${systemPrompt}\n\n---\n${text}` : text;
           const vaultDir = getVaultBasePath(this.app.vault);
           result = await callAIWithCLI(fullPrompt, s, vaultDir);
         } else {
-          if (!s.apiKey) { new Notice("请先在设置中配置 API Key"); return; }
+          const provider = getActiveProvider(s);
+          if (!provider || !provider.apiKey) { new Notice("请先在设置中配置 API Key"); return; }
           const messages: { role: "system" | "user"; content: string }[] = systemPrompt
             ? [{ role: "system", content: systemPrompt }, { role: "user", content: text }]
             : [{ role: "user", content: text }];
-          result = await callAIWithAPIJson(s.apiEndpoint, s.apiKey, s.model, messages, s.maxTokens, s.temperature);
+          result = await callAIWithAPIJson(provider.baseUrl + "/chat/completions", provider.apiKey, provider.model, messages, s.maxTokens, s.temperature, s.apiReasoningEffort);
         }
 
         resultEl.classList.add("show");

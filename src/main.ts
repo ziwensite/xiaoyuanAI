@@ -3,8 +3,9 @@ import { XiaoyuanAISettings, DEFAULT_SETTINGS, VIEW_TYPE_XIAOYUAN_AI_CHAT } from
 import { XiaoyuanAIChatView } from "./view";
 import { XiaoyuanAISettingTab } from "./settings";
 import { TextOperationModal, WikiCommandModal } from "./modals";
-import { stopServer } from "./server";
 import { OPERATION_LABELS } from "./types";
+import { ensureOpenCodeServer, stopOpenCodeServer } from "./ai";
+import { getVaultBasePath } from "./server";
 
 export default class XiaoyuanAIPlugin extends Plugin {
   settings!: XiaoyuanAISettings;
@@ -83,6 +84,29 @@ export default class XiaoyuanAIPlugin extends Plugin {
     });
 
     this.addSettingTab(new XiaoyuanAISettingTab(this.app, this));
+
+    if (this.settings.execMode === "cli" && this.settings.opencode.autoStart) {
+      this.autoStartServer();
+    }
+
+    if (this.settings.autoOpen) {
+      this.app.workspace.onLayoutReady(() => this.activateChatView());
+    }
+  }
+
+  private async autoStartServer(): Promise<void> {
+    try {
+      const vaultDir = getVaultBasePath(this.app.vault);
+      await ensureOpenCodeServer(
+        this.settings.opencode.cliPath,
+        this.settings.opencode.hostname,
+        this.settings.opencode.port,
+        vaultDir,
+        true,
+      );
+    } catch (err) {
+      console.warn("自动启动 opencode serve 失败:", err);
+    }
   }
 
   activateChatView(): WorkspaceLeaf | undefined {
@@ -105,7 +129,7 @@ export default class XiaoyuanAIPlugin extends Plugin {
   async saveSettings() { await this.saveData(this.settings); }
 
   async onunload() {
-    await stopServer();
+    stopOpenCodeServer();
     this.app.workspace.detachLeavesOfType(VIEW_TYPE_XIAOYUAN_AI_CHAT);
   }
 }

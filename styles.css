@@ -63,10 +63,9 @@
   gap: 6px;
 }
 
-
 .xiaoyuan-attach-btn {
   color: var(--text-muted);
-  font-size: 14px;
+  font-size: 0.8em;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -372,6 +371,7 @@
   cursor: pointer;
   border-radius: 4px;
   padding: 2px 6px;
+  position: relative;
 }
 
 .xiaoyuan-mode-selector:hover {
@@ -381,7 +381,7 @@
 
 .xiaoyuan-settings-icon {
   color: var(--text-muted);
-  font-size: 14px;
+  font-size: 0.8em;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -416,7 +416,6 @@
 .xiaoyuan-mode-dropdown-item {
   padding: 4px 8px;
   cursor: pointer;
-  font-size: 0.8em;
   color: var(--text-normal);
 }
 
@@ -444,7 +443,7 @@
   justify-content: space-between;
   padding: 8px 12px;
   cursor: pointer;
-  font-size: 0.85em;
+  font-size: 0.8em;
   color: var(--text-normal);
   border-bottom: 1px solid transparent;
 }
@@ -636,12 +635,6 @@
   display: block;
 }
 
-.xiaoyuan-help-text {
-  color: var(--text-muted);
-  font-size: 13px;
-  line-height: 1.6;
-}
-
 .xiaoyuan-hidden {
   display: none;
 }
@@ -662,3 +655,391 @@
   background-color: var(--background-primary);
   cursor: pointer;
 }
+
+/* ─── Thinking Block ──────────────────────────────── */
+
+.xiaoyuan-thinking {
+  margin-bottom: 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  background: var(--background-primary-alt);
+  overflow: hidden;
+}
+
+.xiaoyuan-thinking summary {
+  cursor: pointer;
+  padding: 4px 8px;
+  font-size: 0.8em;
+  color: var(--text-muted);
+  font-weight: 500;
+  user-select: none;
+}
+
+.xiaoyuan-thinking summary:hover {
+  background: var(--background-modifier-hover);
+}
+
+.xiaoyuan-thinking-content {
+  padding: 4px 8px 8px;
+  font-size: 0.85em;
+  line-height: 1.5;
+  color: var(--text-muted);
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.xiaoyuan-thinking-content p {
+  margin: 4px 0;
+}
+
+/* ─── Diff Preview ─────────────────────────────────── */
+
+.xiaoyuan-diffs {
+  margin-top: 8px;
+  border-top: 1px solid var(--background-modifier-border);
+  padding-top: 6px;
+  font-size: 12px;
+}
+
+.xiaoyuan-diffs-summary {
+  cursor: pointer;
+  color: var(--text-muted);
+  font-weight: 500;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.xiaoyuan-diffs-summary:hover {
+  background-color: var(--background-modifier-hover);
+}
+
+.xiaoyuan-diff-file {
+  margin: 4px 0;
+  padding: 4px;
+  border-radius: 4px;
+  background-color: var(--background-primary-alt);
+}
+
+.xiaoyuan-diff-file-header {
+  font-family: var(--font-monospace);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 4px;
+  color: var(--text-normal);
+}
+
+.xiaoyuan-diff-content {
+  overflow-x: auto;
+  margin-top: 2px;
+}
+
+.xiaoyuan-diff-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-monospace);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.xiaoyuan-diff-table td {
+  padding: 0 4px;
+  white-space: pre;
+}
+
+.xiaoyuan-diff-table td:first-child,
+.xiaoyuan-diff-table td:nth-child(2) {
+  color: var(--text-faint);
+  text-align: right;
+  width: 2.5em;
+  user-select: none;
+}
+
+.xiaoyuan-diff-table td:last-child {
+  width: 100%;
+}
+
+.xiaoyuan-diff-table .diff-context td:last-child {
+  color: var(--text-muted);
+}
+
+.xiaoyuan-diff-table .diff-added td:last-child {
+  color: var(--color-green);
+}
+
+.xiaoyuan-diff-table .diff-removed td:last-child {
+  color: var(--color-red);
+}
+
+.xiaoyuan-diff-table .diff-changed td:last-child {
+  color: var(--color-yellow);
+}
+
+.xiaoyuan-connection-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ═══════════════════════════════════════════════════════
+   Settings — ported from xiaoyuan-Agent
+   ═══════════════════════════════════════════════════════ */
+
+.xy-settings-status {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0 16px;
+  padding: 12px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  background: var(--background-secondary);
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.xy-settings-status-row {
+  display: grid;
+  grid-template-columns: 18px minmax(78px, auto) minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.xy-settings-status-icon,
+.xy-setting-icon {
+  display: inline-flex;
+  color: var(--interactive-accent);
+}
+
+.xy-settings-status-icon svg,
+.xy-setting-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.xy-settings-status-label {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.xy-settings-status-value {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-normal);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.xy-settings-status-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.xy-status-btn {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.xy-status-btn:hover {
+  background: var(--background-modifier-hover);
+}
+
+/* Tab bar */
+.xy-settings-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+  margin: 0 0 14px;
+}
+
+.xy-settings-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  max-width: 100%;
+  min-width: 0;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  color: var(--text-muted);
+  background: var(--background-primary);
+  cursor: pointer;
+}
+
+.xy-settings-tab.is-active {
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
+  background: var(--interactive-accent);
+}
+
+.xy-settings-tab-icon,
+.xy-settings-tab-icon svg {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+}
+
+.xy-settings-tab span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Setting with icon */
+.xy-setting-name-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.xy-setting-with-icon {
+  min-width: 0;
+}
+
+.xy-setting-with-icon .setting-item-info {
+  min-width: 0;
+}
+
+.xy-setting-with-icon .setting-item-control {
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+/* API provider cards */
+.xy-api-provider-row {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  margin-bottom: 10px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 7px;
+  background: var(--background-primary);
+}
+
+.xy-api-provider-row.is-active {
+  border-color: var(--interactive-accent);
+}
+
+.xy-api-provider-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.xy-api-provider-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--text-normal);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.xy-api-provider-actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.xy-api-provider-field {
+  display: grid;
+  grid-template-columns: minmax(86px, 120px) minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.xy-api-provider-label {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.xy-api-provider-input,
+.xy-api-provider-textarea {
+  width: 100%;
+  min-width: 0;
+}
+
+.xy-api-provider-textarea {
+  min-height: 58px;
+  resize: vertical;
+}
+
+.xy-api-provider-content {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.xy-status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* Model picker group dropdown */
+
+.xy-model-picker-group-title {
+  font-size: 1em;
+  font-weight: var(--font-semibold, 600);
+  padding: 6px 8px 2px;
+  cursor: pointer;
+  color: var(--text-muted);
+  user-select: none;
+}
+.xy-model-picker-group-title:hover {
+  color: var(--text-normal);
+}
+.xy-model-picker-group-title::before {
+  content: "▶ ";
+  font-size: 0.7em;
+}
+.xy-model-picker-group-title.is-open::before {
+  content: "▼ ";
+}
+.xy-model-picker-group-children {
+  display: none;
+}
+.xy-model-picker-group-children.is-open {
+  display: block;
+}
+
+.xy-model-picker-dropdown {
+  max-height: 300px;
+  overflow-y: auto;
+  min-width: 180px;
+}
+
+.xy-model-picker-trigger-text {
+  display: inline-block;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+.xy-model-picker-trigger {
+  cursor: pointer;
+}
+
