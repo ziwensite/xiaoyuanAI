@@ -125,7 +125,10 @@ export default class XiaoyuanAIPlugin extends Plugin {
     return (this.app.workspace as any).activeEditor?.editor || null;
   }
 
-  async loadSettings() { this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData()); }
+  async loadSettings() {
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    if (!this.settings.opencode.agent) this.settings.opencode.agent = "build";
+  }
   async saveSettings() { await this.saveData(this.settings); }
 
   async onunload() {

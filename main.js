@@ -2793,6 +2793,7 @@ ${content.slice(0, 3e3)}`);
   }
   async loadSettings() {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    if (!this.settings.opencode.agent) this.settings.opencode.agent = "build";
   }
   async saveSettings() {
     await this.saveData(this.settings);
