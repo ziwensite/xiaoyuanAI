@@ -160,23 +160,29 @@ export class XiaoyuanAIChatView extends ItemView {
       });
     }
 
-    const modeText = this.createSelector(
-      "xiaoyuan-mode-selector",
-      [
-        { value: "api", label: "API" },
-        { value: "cli", label: "CLI" },
-      ],
-      s.execMode,
-      "点击切换执行模式",
-      (value) => {
-        s.execMode = value as "api" | "cli";
-        this.plugin.saveSettings();
-        this.rebuildHeader();
-        this.rebuildToolbar();
-        if (value === "cli") this.syncCLIModels();
-        this.refresh();
-      },
-    );
+    const modeText = right.createSpan({ cls: "xiaoyuan-mode-selector" });
+    modeText.textContent = s.execMode === "cli" ? "CLI" : "API";
+    setTooltip(modeText, "点击切换执行模式");
+    modeText.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this.showPopup(modeText, (popup) => {
+        this.addPopupItem(popup, "API", s.execMode === "api", () => {
+          s.execMode = "api";
+          this.plugin.saveSettings();
+          this.rebuildHeader();
+          this.rebuildToolbar();
+          this.refresh();
+        });
+        this.addPopupItem(popup, "CLI", s.execMode === "cli", () => {
+          s.execMode = "cli";
+          this.plugin.saveSettings();
+          this.rebuildHeader();
+          this.rebuildToolbar();
+          this.syncCLIModels();
+          this.refresh();
+        });
+      });
+    });
     right.appendChild(modeText);
 
     const settingsIcon = right.createSpan({ cls: "xiaoyuan-settings-icon" });
@@ -212,7 +218,7 @@ export class XiaoyuanAIChatView extends ItemView {
 
     // 📎 Attach file
     const attachBtn = container.createSpan({ cls: "xiaoyuan-attach-btn" });
-    setIcon(attachBtn, "paperclip");
+    attachBtn.textContent = "+";
     setTooltip(attachBtn, "添加附件");
     attachBtn.addEventListener("click", () => this.pickFiles());
 
@@ -221,27 +227,108 @@ export class XiaoyuanAIChatView extends ItemView {
       const agentOptions = (s.opencodeAgents || []).length
         ? (s.opencodeAgents || []).map((a) => ({ value: a.name, label: a.name }))
         : [{ value: "build", label: "build" }, { value: "plan", label: "plan" }];
-      const agentText = this.createSelector(
-        "xiaoyuan-level-select",
-        agentOptions,
-        s.opencode.agent,
-        "点击切换 agent",
-        (value) => { s.opencode.agent = value; this.plugin.saveSettings(); },
-        true,
-      );
+      const agentText = container.createSpan({ cls: "xiaoyuan-level-select" });
+      agentText.textContent = s.opencode.agent;
+      setTooltip(agentText, "点击切换 agent");
+      agentText.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.showPopup(agentText, (popup) => {
+          for (const m of agentOptions) {
+            this.addPopupItem(popup, m.label, m.value === s.opencode.agent, () => {
+              s.opencode.agent = m.value;
+              this.plugin.saveSettings();
+              agentText.textContent = m.value;
+            });
+          }
+        }, { direction: "up" });
+      });
       container.appendChild(agentText);
     }
 
     // Model trigger
     const trigger = container.createSpan({ cls: "xiaoyuan-model-select" });
-    const triggerText = trigger.createSpan({ cls: "xy-model-picker-trigger-text" });
-    triggerText.textContent = s.execMode === "cli"
+    trigger.textContent = s.execMode === "cli"
       ? (s.opencode.model ? s.opencode.model.split("/").pop() || s.opencode.model : "模型")
       : (getActiveProvider(s)?.model || "模型");
     setTooltip(trigger, s.execMode === "cli" ? s.opencode.model || "未选择" : getActiveProvider(s)?.model || "未选择");
-    trigger.addEventListener("click", () => this.showToolbarModelPicker(trigger));
-
-    // Reasoning level
+    trigger.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this.showPopup(trigger, (popup) => {
+        if (s.execMode === "cli") {
+          const syncItem = popup.createDiv({ cls: "xy-popup-item" });
+          syncItem.createSpan({ cls: "xy-popup-label" }).textContent = "⟳ 同步模型列表";
+          syncItem.addEventListener("click", (ev) => {
+            ev.stopPropagation();
+            popup.remove();
+            this.syncCLIModels();
+          });
+          const models = s.opencodeModels || [];
+          if (models.length === 0) {
+            const loadingItem = popup.createDiv({ cls: "xy-popup-item" });
+            loadingItem.createSpan({ cls: "xy-popup-label" }).textContent = "正在同步...";
+            this.syncCLIModels().catch(() => {});
+          }
+          const groups = new Map<string, { label: string; value: string }[]>();
+          for (const m of models) {
+            const provider = m.value.includes("/") ? m.value.split("/")[0] : "其他";
+            if (!groups.has(provider)) groups.set(provider, []);
+            groups.get(provider)!.push(m);
+          }
+          const sortedGroups = [...groups.entries()].sort(([a], [b]) => {
+            if (a === "opencode") return -1;
+            if (b === "opencode") return 1;
+            return a.localeCompare(b);
+          });
+          for (const [providerName, items] of sortedGroups) {
+            popup.createDiv({ cls: "xy-popup-separator" });
+            const groupTitle = popup.createDiv({ cls: "xy-popup-group-title" });
+            const arrow = groupTitle.createSpan({ cls: "xy-popup-arrow" });
+            arrow.textContent = "▶";
+            groupTitle.createSpan({ cls: "xy-popup-label" }).textContent = providerName;
+            const children = popup.createDiv({ cls: "xy-popup-group-children" });
+            children.classList.add("is-collapsed");
+            for (const m of items) {
+              this.addPopupItem(children, m.label, m.value === s.opencode.model, () => {
+                s.opencode.model = m.value;
+                this.plugin.saveSettings();
+                trigger.textContent = m.label;
+                setTooltip(trigger, m.value);
+              });
+            }
+            groupTitle.addEventListener("click", (ev) => {
+              ev.stopPropagation();
+              const open = arrow.textContent === "▼";
+              arrow.textContent = open ? "▶" : "▼";
+              children.classList.toggle("is-collapsed", open);
+            });
+          }
+        } else {
+          const provider = getActiveProvider(s);
+          const apiModels = provider?.models || s.apiProviders[0]?.models || [];
+          const currentModel = provider?.model || "";
+          if (currentModel && !apiModels.includes(currentModel)) {
+            this.addPopupItem(popup, `${currentModel}（当前）`, true, () => {
+              if (provider) provider.model = currentModel;
+              this.plugin.saveSettings();
+              trigger.textContent = currentModel;
+              setTooltip(trigger, currentModel);
+            });
+          }
+          if (apiModels.length === 0 && !currentModel) {
+            const emptyItem = popup.createDiv({ cls: "xy-popup-item" });
+            emptyItem.createSpan({ cls: "xy-popup-label" }).textContent = "未配置模型列表，请在设置中添加";
+          }
+          for (const m of apiModels) {
+            this.addPopupItem(popup, m, m === currentModel, () => {
+              if (provider) provider.model = m;
+              this.plugin.saveSettings();
+              trigger.textContent = m;
+              setTooltip(trigger, m);
+            });
+          }
+        }
+      }, { direction: "up", maxHeight: "50vh" });
+    });
     const apiLevels = [
       { value: "none", label: "none" },
       { value: "low", label: "low" },
@@ -257,32 +344,44 @@ export class XiaoyuanAIChatView extends ItemView {
         { value: "high", label: "high" },
         { value: "xhigh", label: "xhigh" },
       ];
-      const levelText = this.createSelector(
-        "xiaoyuan-level-select",
-        levels,
-        s.defaultReasoning,
-        "点击切换思考强度",
-        (value) => { s.defaultReasoning = value as any; this.plugin.saveSettings(); },
-        true,
-      );
+      const levelText = container.createSpan({ cls: "xiaoyuan-level-select" });
+      levelText.textContent = s.defaultReasoning;
+      setTooltip(levelText, "点击切换思考强度");
+      levelText.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.showPopup(levelText, (popup) => {
+          for (const m of levels) {
+            this.addPopupItem(popup, m.label, m.value === s.defaultReasoning, () => {
+              s.defaultReasoning = m.value as any;
+              this.plugin.saveSettings();
+              levelText.textContent = m.label;
+            });
+          }
+        }, { direction: "up" });
+      });
       container.appendChild(levelText);
     } else {
-      const apiLevelText = this.createSelector(
-        "xiaoyuan-level-select",
-        apiLevels,
-        s.apiReasoningEffort,
-        "点击切换思考强度",
-        (value) => { s.apiReasoningEffort = value as any; this.plugin.saveSettings(); },
-        true,
-      );
+      const apiLevelText = container.createSpan({ cls: "xiaoyuan-level-select" });
+      apiLevelText.textContent = s.apiReasoningEffort;
+      setTooltip(apiLevelText, "点击切换思考强度");
+      apiLevelText.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.showPopup(apiLevelText, (popup) => {
+          for (const m of apiLevels) {
+            this.addPopupItem(popup, m.label, m.value === s.apiReasoningEffort, () => {
+              s.apiReasoningEffort = m.value as any;
+              this.plugin.saveSettings();
+              apiLevelText.textContent = m.label;
+            });
+          }
+        }, { direction: "up" });
+      });
       container.appendChild(apiLevelText);
     }
 
     // Send/Stop button
     this.sendBtn = container.createSpan({ cls: "xiaoyuan-attach-btn" });
     this.sendBtn.style.marginLeft = "auto";
-    setIcon(this.sendBtn, "send");
-    setTooltip(this.sendBtn, "发送");
     this.sendBtn.addEventListener("click", () => {
       if (this.abortController) {
         this.abortController.abort();
@@ -290,6 +389,7 @@ export class XiaoyuanAIChatView extends ItemView {
         this.sendMessage();
       }
     });
+    this.setProcessingState(false);
   }
 
   private async syncCLIModels() {
@@ -340,111 +440,6 @@ export class XiaoyuanAIChatView extends ItemView {
       this.connectionStatusEl.style.cssText = `display:inline-block;width:8px;height:8px;border-radius:50%;cursor:pointer;background:${ok ? "var(--color-green)" : "var(--color-red)"};`;
       setTooltip(this.connectionStatusEl, ok ? "opencode 可用" : "opencode 不可用");
     }
-  }
-
-  private showToolbarModelPicker(trigger: HTMLElement) {
-    // Remove existing dropdown
-    const existing = trigger.querySelector(".xiaoyuan-mode-dropdown");
-    if (existing) { existing.remove(); return; }
-
-    const s = this.plugin.settings;
-    const dropdown = createDiv({ cls: "xiaoyuan-mode-dropdown xy-model-picker-dropdown xiaoyuan-mode-dropdown-up" });
-    trigger.appendChild(dropdown);
-
-    const addItem = (label: string, onClick: () => void, isActive = false) => {
-      const item = dropdown.createDiv({ cls: "xiaoyuan-mode-dropdown-item" });
-      if (isActive) item.classList.add("active");
-      item.textContent = label;
-      item.addEventListener("click", (e) => { e.stopPropagation(); onClick(); });
-      return item;
-    };
-
-    if (s.execMode === "cli") {
-      addItem("⟳ 同步模型列表", () => { dropdown.remove(); this.syncCLIModels(); });
-
-      const models = s.opencodeModels || [];
-
-      if (models.length === 0) {
-        // Show loading if empty and not already loading
-        addItem("正在同步...", () => {});
-        this.syncCLIModels().catch(() => {});
-      }
-
-      // Group models by provider
-      const groups = new Map<string, { label: string; value: string }[]>();
-      for (const m of models) {
-        const provider = m.value.includes("/") ? m.value.split("/")[0] : "其他";
-        if (!groups.has(provider)) groups.set(provider, []);
-        groups.get(provider)!.push(m);
-      }
-
-      // Sort: opencode first, rest alphabetically
-      const sortedGroups = [...groups.entries()].sort(([a], [b]) => {
-        if (a === "opencode") return -1;
-        if (b === "opencode") return 1;
-        return a.localeCompare(b);
-      });
-
-      for (const [provider, items] of sortedGroups) {
-        const titleEl = dropdown.createDiv({ cls: "xy-model-picker-group-title" });
-        titleEl.textContent = provider;
-
-        const childrenEl = dropdown.createDiv({ cls: "xy-model-picker-group-children" });
-        for (const m of items) {
-          const item = childrenEl.createDiv({ cls: "xiaoyuan-mode-dropdown-item" });
-          if (m.value === s.opencode.model) item.classList.add("active");
-          item.textContent = m.label;
-          item.addEventListener("click", (e) => {
-            e.stopPropagation();
-            s.opencode.model = m.value;
-            this.plugin.saveSettings();
-            dropdown.remove();
-            this.rebuildToolbar();
-          });
-        }
-
-        titleEl.addEventListener("click", (e) => {
-          e.stopPropagation();
-          titleEl.classList.toggle("is-open");
-          childrenEl.classList.toggle("is-open");
-        });
-      }
-    } else {
-      const provider = getActiveProvider(s);
-      const apiModels = provider?.models || s.apiProviders[0]?.models || [];
-      const currentModel = provider?.model || "";
-
-      if (currentModel && !apiModels.includes(currentModel)) {
-        addItem(`${currentModel}（当前）`, () => {
-          if (provider) provider.model = currentModel;
-          this.plugin.saveSettings();
-          dropdown.remove();
-          this.rebuildToolbar();
-        }, true);
-      }
-
-      if (apiModels.length === 0 && !currentModel) {
-        addItem("未配置模型列表，请在设置中添加", () => {});
-      }
-
-      for (const m of apiModels) {
-        addItem(m, () => {
-          if (provider) provider.model = m;
-          this.plugin.saveSettings();
-          dropdown.remove();
-          this.rebuildToolbar();
-        }, m === currentModel);
-      }
-    }
-
-    // Close on click outside
-    const close = (ev: MouseEvent) => {
-      if (!trigger.contains(ev.target as Node)) {
-        dropdown.remove();
-        document.removeEventListener("click", close);
-      }
-    };
-    setTimeout(() => document.addEventListener("click", close), 0);
   }
 
   // ─── Message rendering ───────────────────────────────────────────
@@ -933,9 +928,8 @@ export class XiaoyuanAIChatView extends ItemView {
   }
 
   private async showSessionDropdown(e: MouseEvent) {
-    // Toggle: close if already open
-    if (document.querySelector(".xiaoyuan-session-dropdown")) {
-      document.querySelectorAll(".xiaoyuan-session-dropdown").forEach((el) => el.remove());
+    if (document.querySelector(".xy-popup")) {
+      document.querySelectorAll(".xy-popup").forEach((el) => el.remove());
       return;
     }
     await this.saveCurrentSession();
@@ -954,29 +948,63 @@ export class XiaoyuanAIChatView extends ItemView {
     }
     await saveSessionsMeta(this.plugin, this.sessions, this.currentSessionId);
 
-    const dropdown = document.body.createDiv({ cls: "xiaoyuan-session-dropdown" });
-    const rect = (e.target as HTMLElement).getBoundingClientRect();
-    dropdown.style.cssText = `position:fixed;top:${rect.bottom}px;left:${rect.left}px;max-height:300px;overflow-y:auto;`;
+    this.showPopup(e.target as HTMLElement, (popup) => {
+      for (const session of this.sessions) {
+        const item = popup.createDiv({ cls: "xy-popup-item" });
 
-    for (const session of this.sessions) {
-      const item = dropdown.createDiv({ cls: "xiaoyuan-session-dropdown-item" });
-      if (session.id === this.currentSessionId) item.classList.add("active");
+        const checkEl = item.createSpan({ cls: "xy-popup-check" });
+        checkEl.textContent = session.id === this.currentSessionId ? "✓" : "";
 
-      const titleEl = item.createSpan({ cls: "xiaoyuan-session-dropdown-title" });
-      titleEl.textContent = session.title;
+        const titleEl = item.createSpan({ cls: "xy-popup-label" });
+        titleEl.textContent = session.title;
 
-      const deleteBtn = item.createSpan({ cls: "xiaoyuan-session-dropdown-delete" });
-      deleteBtn.textContent = "\u00D7";
-      setTooltip(deleteBtn, "删除此对话");
-      deleteBtn.addEventListener("click", (ev) => { ev.stopPropagation(); this.deleteSession(session.id); dropdown.remove(); });
+        const startRename = (ev: Event) => {
+          ev.stopPropagation();
+          const input = document.createElement("input");
+          input.type = "text";
+          input.value = session.title;
+          input.style.cssText = "flex:1;min-width:0;padding:2px 4px;font-size:inherit;background:transparent;border:1px solid var(--background-modifier-border);border-radius:4px;color:var(--text-normal);";
+          const finish = (save: boolean) => {
+            if (save) {
+              const newTitle = input.value.trim() || session.title;
+              if (newTitle !== session.title) {
+                session.title = newTitle;
+                this.updateSessionSelector();
+                saveSessionsMeta(this.plugin, this.sessions, this.currentSessionId);
+              }
+            }
+            const span = createSpan({ cls: "xy-popup-label" });
+            span.textContent = session.title;
+            input.replaceWith(span);
+          };
+          input.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") { e.preventDefault(); finish(true); }
+            else if (e.key === "Escape") { finish(false); }
+          });
+          input.addEventListener("blur", () => finish(true));
+          input.addEventListener("click", (e) => e.stopPropagation());
+          titleEl.replaceWith(input);
+          input.focus();
+          input.select();
+        };
 
-      item.addEventListener("click", () => { this.switchSession(session.id); dropdown.remove(); });
-    }
+        const suffix = item.createSpan({ cls: "xy-popup-suffix" });
+        const renameBtn = suffix.createSpan({ cls: "xy-popup-suffix-btn" });
+        renameBtn.textContent = "\u270E";
+        renameBtn.style.fontSize = "12px";
+        setTooltip(renameBtn, "重命名");
+        renameBtn.addEventListener("click", startRename);
 
-    const closeDropdown = (ev: MouseEvent) => {
-      if (!dropdown.contains(ev.target as Node)) { dropdown.remove(); document.removeEventListener("click", closeDropdown); }
-    };
-    setTimeout(() => document.addEventListener("click", closeDropdown), 0);
+        const deleteBtn = suffix.createSpan({ cls: "xy-popup-suffix-btn" });
+        deleteBtn.classList.add("danger");
+        deleteBtn.textContent = "\u00D7";
+        deleteBtn.style.fontSize = "16px";
+        setTooltip(deleteBtn, "删除此对话");
+        deleteBtn.addEventListener("click", (ev) => { ev.stopPropagation(); this.deleteSession(session.id); popup.remove(); });
+
+        item.addEventListener("click", () => { this.switchSession(session.id); popup.remove(); });
+      }
+    }, { maxHeight: "300px" });
   }
 
   private updateSessionTitle() {
@@ -1056,65 +1084,73 @@ export class XiaoyuanAIChatView extends ItemView {
     }
   }
 
+  // ─── Popup helpers ───────────────────────────────────────────────
+
+  private showPopup(
+    trigger: HTMLElement,
+    buildContent: (popup: HTMLDivElement) => void,
+    options?: { maxHeight?: string; direction?: "down" | "up" },
+  ): HTMLDivElement | null {
+    if (document.querySelector(".xy-popup")) {
+      document.querySelectorAll(".xy-popup").forEach((el) => el.remove());
+      return null;
+    }
+    const popup = document.body.createDiv({ cls: "xy-popup" });
+    const rect = trigger.getBoundingClientRect();
+    popup.style.cssText = `position:fixed;left:${rect.left}px;`;
+    if (options?.maxHeight) popup.style.maxHeight = options.maxHeight;
+    buildContent(popup);
+    if (options?.direction === "up") {
+      document.body.appendChild(popup);
+      popup.style.bottom = `${window.innerHeight - rect.top + 2}px`;
+    } else {
+      popup.style.top = `${rect.bottom}px`;
+      document.body.appendChild(popup);
+    }
+    setTimeout(() => {
+      const handler = (ev: MouseEvent) => {
+        if (!popup.contains(ev.target as Node)) {
+          popup.remove();
+          document.removeEventListener("click", handler);
+        }
+      };
+      document.addEventListener("click", handler);
+    }, 0);
+    return popup;
+  }
+
+  private addPopupItem(
+    parent: HTMLElement,
+    label: string,
+    checked: boolean,
+    onClick: () => void,
+  ): HTMLDivElement {
+    const item = parent.createDiv({ cls: "xy-popup-item" });
+    const check = item.createSpan({ cls: "xy-popup-check" });
+    check.textContent = checked ? "✓" : "";
+    const labelEl = item.createSpan({ cls: "xy-popup-label" });
+    labelEl.textContent = label;
+    item.addEventListener("click", (e) => {
+      e.stopPropagation();
+      onClick();
+      const popup = item.closest(".xy-popup") as HTMLDivElement;
+      if (popup) popup.remove();
+    });
+    return item;
+  }
+
   // ─── UI helpers ──────────────────────────────────────────────────
 
   private setProcessingState(processing: boolean) {
-    this.sendBtn.classList.toggle("disabled", processing);
     if (processing) {
-      setIcon(this.sendBtn, "square");
+      setIcon(this.sendBtn, "circle-stop");
       setTooltip(this.sendBtn, "停止");
       this.sendBtn.style.color = "var(--color-red)";
     } else {
-      setIcon(this.sendBtn, "send");
+      setIcon(this.sendBtn, "circle-arrow-right");
       setTooltip(this.sendBtn, "发送");
       this.sendBtn.style.color = "";
     }
     this.inputEl.disabled = processing;
-  }
-
-  private createSelector(
-    className: string,
-    options: { value: string; label: string }[],
-    currentValue: string,
-    title: string,
-    onChange: (value: string) => void,
-    dropdownUp = false,
-  ): HTMLSpanElement {
-    const text = createSpan({ cls: className });
-    setTooltip(text, title);
-    const currentOption = options.find((m) => m.value === currentValue);
-    text.textContent = currentOption?.label || options[0]?.label || "";
-
-    text.addEventListener("click", (e) => {
-      e.stopPropagation();
-
-      const existingDropdown = text.querySelector(".xiaoyuan-mode-dropdown");
-      if (existingDropdown) { existingDropdown.remove(); return; }
-
-      document.querySelectorAll(".xiaoyuan-mode-dropdown").forEach((el) => el.remove());
-
-      const dropdown = createDiv({ cls: "xiaoyuan-mode-dropdown" });
-      if (dropdownUp) dropdown.classList.add("xiaoyuan-mode-dropdown-up");
-
-      for (const m of options) {
-        const item = dropdown.createDiv({ cls: "xiaoyuan-mode-dropdown-item" });
-        if (m.value === currentValue) item.classList.add("active");
-        item.textContent = m.label;
-        item.addEventListener("click", () => {
-          text.textContent = m.label;
-          onChange(m.value);
-          dropdown.remove();
-        });
-      }
-
-      text.appendChild(dropdown);
-
-      const close = (ev: MouseEvent) => {
-        if (!dropdown.contains(ev.target as Node)) { dropdown.remove(); document.removeEventListener("click", close); }
-      };
-      setTimeout(() => document.addEventListener("click", close), 0);
-    });
-
-    return text;
   }
 }

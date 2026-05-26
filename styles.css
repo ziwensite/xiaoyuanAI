@@ -327,11 +327,10 @@
   font-size: 0.9em;
   cursor: pointer;
   border-radius: 4px;
-  padding: 4px 24px 4px 10px;
+  padding: 4px 18px 4px 8px;
   background-color: var(--background-secondary);
   position: relative;
-  min-width: 120px;
-  max-width: 200px;
+  min-width: 80px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -370,8 +369,19 @@
   font-size: 0.8em;
   cursor: pointer;
   border-radius: 4px;
-  padding: 2px 6px;
+  padding: 2px 6px 2px 18px;
   position: relative;
+}
+
+.xiaoyuan-mode-selector::before {
+  content: "▼";
+  position: absolute;
+  left: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.6em;
+  color: var(--text-muted);
+  pointer-events: none;
 }
 
 .xiaoyuan-mode-selector:hover {
@@ -395,99 +405,106 @@
   background-color: var(--background-modifier-hover);
 }
 
-.xiaoyuan-mode-dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  background-color: var(--background-primary);
+/* ═══════════════════════════════════════════════════════
+   Unified Popup Menu — all selectors (mode, agent, model, reasoning, session)
+   ═══════════════════════════════════════════════════════ */
+
+.xy-popup {
+  background: var(--background-primary);
   border: 1px solid var(--background-modifier-border);
-  border-radius: 4px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 100;
+  border-radius: var(--radius-m, 6px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
   min-width: 80px;
-}
-
-.xiaoyuan-mode-dropdown-up {
-  bottom: 100%;
-  top: auto;
-  margin-bottom: 4px;
-}
-
-.xiaoyuan-mode-dropdown-item {
-  padding: 4px 8px;
-  cursor: pointer;
-  color: var(--text-normal);
-}
-
-.xiaoyuan-mode-dropdown-item:hover {
-  background-color: var(--background-hover);
-}
-
-.xiaoyuan-mode-dropdown-item.active {
-  color: var(--text-accent);
-}
-
-.xiaoyuan-session-dropdown {
-  background-color: var(--background-primary);
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 6px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  padding: 4px 0;
   z-index: 1000;
-  min-width: 200px;
-  max-width: 300px;
 }
 
-.xiaoyuan-session-dropdown-item {
+.xy-popup-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
+  gap: 6px;
+  padding: 6px 10px;
+  font-size: var(--font-ui-small, 13px);
   cursor: pointer;
-  font-size: 0.8em;
   color: var(--text-normal);
-  border-bottom: 1px solid transparent;
 }
 
-.xiaoyuan-session-dropdown-item:last-child {
-  border-bottom: none;
+.xy-popup-item:hover {
+  background: var(--menu-item-hover-bg, var(--background-modifier-hover));
 }
 
-.xiaoyuan-session-dropdown-item:hover {
-  background-color: var(--background-modifier-hover);
-}
-
-.xiaoyuan-session-dropdown-item.active {
-  background-color: var(--background-modifier-hover);
-}
-
-.xiaoyuan-session-dropdown-item.active .xiaoyuan-session-dropdown-title {
+.xy-popup-check {
+  font-size: 0.85em;
+  min-width: 16px;
+  text-align: center;
   color: var(--text-accent);
 }
 
-.xiaoyuan-session-dropdown-title {
+.xy-popup-label {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  margin-right: 8px;
 }
 
-.xiaoyuan-session-dropdown-delete {
+.xy-popup-suffix {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.xy-popup-suffix-btn {
   color: var(--text-muted);
-  font-size: 16px;
   font-weight: bold;
   cursor: pointer;
   padding: 0 4px;
   opacity: 0;
-  transition: opacity 0.15s;
+  transition: opacity 0.12s;
 }
 
-.xiaoyuan-session-dropdown-item:hover .xiaoyuan-session-dropdown-delete {
+.xy-popup-item:hover .xy-popup-suffix-btn {
   opacity: 1;
 }
 
-.xiaoyuan-session-dropdown-delete:hover {
-  color: var(--text-error);
+.xy-popup-suffix-btn.danger:hover {
+  color: var(--color-red);
+}
+
+.xy-popup-suffix-btn:hover {
+  color: var(--text-accent);
+}
+
+.xy-popup-separator {
+  height: 1px;
+  background: var(--background-modifier-border);
+  margin: 4px 10px;
+}
+
+.xy-popup-group-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  font-size: var(--font-ui-small, 13px);
+  cursor: pointer;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.xy-popup-group-title:hover {
+  background: var(--menu-item-hover-bg, var(--background-modifier-hover));
+}
+
+.xy-popup-arrow {
+  font-size: 0.6em;
+  color: var(--text-muted);
+  min-width: 10px;
+}
+
+.xy-popup-group-children.is-collapsed {
+  display: none;
 }
 
 .xiaoyuan-chat-view-container {
@@ -995,51 +1012,5 @@
   border-radius: 50%;
   cursor: pointer;
   flex-shrink: 0;
-}
-
-/* Model picker group dropdown */
-
-.xy-model-picker-group-title {
-  font-size: 1em;
-  font-weight: var(--font-semibold, 600);
-  padding: 6px 8px 2px;
-  cursor: pointer;
-  color: var(--text-muted);
-  user-select: none;
-}
-.xy-model-picker-group-title:hover {
-  color: var(--text-normal);
-}
-.xy-model-picker-group-title::before {
-  content: "▶ ";
-  font-size: 0.7em;
-}
-.xy-model-picker-group-title.is-open::before {
-  content: "▼ ";
-}
-.xy-model-picker-group-children {
-  display: none;
-}
-.xy-model-picker-group-children.is-open {
-  display: block;
-}
-
-.xy-model-picker-dropdown {
-  max-height: 300px;
-  overflow-y: auto;
-  min-width: 180px;
-}
-
-.xy-model-picker-trigger-text {
-  display: inline-block;
-  max-width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  vertical-align: bottom;
-}
-
-.xy-model-picker-trigger {
-  cursor: pointer;
 }
 

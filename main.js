@@ -1001,23 +1001,29 @@ var XiaoyuanAIChatView = class extends import_obsidian.ItemView {
         this.syncCLIModels();
       });
     }
-    const modeText = this.createSelector(
-      "xiaoyuan-mode-selector",
-      [
-        { value: "api", label: "API" },
-        { value: "cli", label: "CLI" }
-      ],
-      s.execMode,
-      "\u70B9\u51FB\u5207\u6362\u6267\u884C\u6A21\u5F0F",
-      (value) => {
-        s.execMode = value;
-        this.plugin.saveSettings();
-        this.rebuildHeader();
-        this.rebuildToolbar();
-        if (value === "cli") this.syncCLIModels();
-        this.refresh();
-      }
-    );
+    const modeText = right.createSpan({ cls: "xiaoyuan-mode-selector" });
+    modeText.textContent = s.execMode === "cli" ? "CLI" : "API";
+    (0, import_obsidian.setTooltip)(modeText, "\u70B9\u51FB\u5207\u6362\u6267\u884C\u6A21\u5F0F");
+    modeText.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this.showPopup(modeText, (popup) => {
+        this.addPopupItem(popup, "API", s.execMode === "api", () => {
+          s.execMode = "api";
+          this.plugin.saveSettings();
+          this.rebuildHeader();
+          this.rebuildToolbar();
+          this.refresh();
+        });
+        this.addPopupItem(popup, "CLI", s.execMode === "cli", () => {
+          s.execMode = "cli";
+          this.plugin.saveSettings();
+          this.rebuildHeader();
+          this.rebuildToolbar();
+          this.syncCLIModels();
+          this.refresh();
+        });
+      });
+    });
     right.appendChild(modeText);
     const settingsIcon = right.createSpan({ cls: "xiaoyuan-settings-icon" });
     (0, import_obsidian.setIcon)(settingsIcon, "settings");
@@ -1048,29 +1054,111 @@ var XiaoyuanAIChatView = class extends import_obsidian.ItemView {
     var _a, _b;
     const s = this.plugin.settings;
     const attachBtn = container.createSpan({ cls: "xiaoyuan-attach-btn" });
-    (0, import_obsidian.setIcon)(attachBtn, "paperclip");
+    attachBtn.textContent = "+";
     (0, import_obsidian.setTooltip)(attachBtn, "\u6DFB\u52A0\u9644\u4EF6");
     attachBtn.addEventListener("click", () => this.pickFiles());
     if (s.execMode === "cli") {
       const agentOptions = (s.opencodeAgents || []).length ? (s.opencodeAgents || []).map((a) => ({ value: a.name, label: a.name })) : [{ value: "build", label: "build" }, { value: "plan", label: "plan" }];
-      const agentText = this.createSelector(
-        "xiaoyuan-level-select",
-        agentOptions,
-        s.opencode.agent,
-        "\u70B9\u51FB\u5207\u6362 agent",
-        (value) => {
-          s.opencode.agent = value;
-          this.plugin.saveSettings();
-        },
-        true
-      );
+      const agentText = container.createSpan({ cls: "xiaoyuan-level-select" });
+      agentText.textContent = s.opencode.agent;
+      (0, import_obsidian.setTooltip)(agentText, "\u70B9\u51FB\u5207\u6362 agent");
+      agentText.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.showPopup(agentText, (popup) => {
+          for (const m of agentOptions) {
+            this.addPopupItem(popup, m.label, m.value === s.opencode.agent, () => {
+              s.opencode.agent = m.value;
+              this.plugin.saveSettings();
+              agentText.textContent = m.value;
+            });
+          }
+        }, { direction: "up" });
+      });
       container.appendChild(agentText);
     }
     const trigger = container.createSpan({ cls: "xiaoyuan-model-select" });
-    const triggerText = trigger.createSpan({ cls: "xy-model-picker-trigger-text" });
-    triggerText.textContent = s.execMode === "cli" ? s.opencode.model ? s.opencode.model.split("/").pop() || s.opencode.model : "\u6A21\u578B" : ((_a = getActiveProvider(s)) == null ? void 0 : _a.model) || "\u6A21\u578B";
+    trigger.textContent = s.execMode === "cli" ? s.opencode.model ? s.opencode.model.split("/").pop() || s.opencode.model : "\u6A21\u578B" : ((_a = getActiveProvider(s)) == null ? void 0 : _a.model) || "\u6A21\u578B";
     (0, import_obsidian.setTooltip)(trigger, s.execMode === "cli" ? s.opencode.model || "\u672A\u9009\u62E9" : ((_b = getActiveProvider(s)) == null ? void 0 : _b.model) || "\u672A\u9009\u62E9");
-    trigger.addEventListener("click", () => this.showToolbarModelPicker(trigger));
+    trigger.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this.showPopup(trigger, (popup) => {
+        var _a2;
+        if (s.execMode === "cli") {
+          const syncItem = popup.createDiv({ cls: "xy-popup-item" });
+          syncItem.createSpan({ cls: "xy-popup-label" }).textContent = "\u27F3 \u540C\u6B65\u6A21\u578B\u5217\u8868";
+          syncItem.addEventListener("click", (ev) => {
+            ev.stopPropagation();
+            popup.remove();
+            this.syncCLIModels();
+          });
+          const models = s.opencodeModels || [];
+          if (models.length === 0) {
+            const loadingItem = popup.createDiv({ cls: "xy-popup-item" });
+            loadingItem.createSpan({ cls: "xy-popup-label" }).textContent = "\u6B63\u5728\u540C\u6B65...";
+            this.syncCLIModels().catch(() => {
+            });
+          }
+          const groups = /* @__PURE__ */ new Map();
+          for (const m of models) {
+            const provider = m.value.includes("/") ? m.value.split("/")[0] : "\u5176\u4ED6";
+            if (!groups.has(provider)) groups.set(provider, []);
+            groups.get(provider).push(m);
+          }
+          const sortedGroups = [...groups.entries()].sort(([a], [b]) => {
+            if (a === "opencode") return -1;
+            if (b === "opencode") return 1;
+            return a.localeCompare(b);
+          });
+          for (const [providerName, items] of sortedGroups) {
+            popup.createDiv({ cls: "xy-popup-separator" });
+            const groupTitle = popup.createDiv({ cls: "xy-popup-group-title" });
+            const arrow = groupTitle.createSpan({ cls: "xy-popup-arrow" });
+            arrow.textContent = "\u25B6";
+            groupTitle.createSpan({ cls: "xy-popup-label" }).textContent = providerName;
+            const children = popup.createDiv({ cls: "xy-popup-group-children" });
+            children.classList.add("is-collapsed");
+            for (const m of items) {
+              this.addPopupItem(children, m.label, m.value === s.opencode.model, () => {
+                s.opencode.model = m.value;
+                this.plugin.saveSettings();
+                trigger.textContent = m.label;
+                (0, import_obsidian.setTooltip)(trigger, m.value);
+              });
+            }
+            groupTitle.addEventListener("click", (ev) => {
+              ev.stopPropagation();
+              const open = arrow.textContent === "\u25BC";
+              arrow.textContent = open ? "\u25B6" : "\u25BC";
+              children.classList.toggle("is-collapsed", open);
+            });
+          }
+        } else {
+          const provider = getActiveProvider(s);
+          const apiModels = (provider == null ? void 0 : provider.models) || ((_a2 = s.apiProviders[0]) == null ? void 0 : _a2.models) || [];
+          const currentModel = (provider == null ? void 0 : provider.model) || "";
+          if (currentModel && !apiModels.includes(currentModel)) {
+            this.addPopupItem(popup, `${currentModel}\uFF08\u5F53\u524D\uFF09`, true, () => {
+              if (provider) provider.model = currentModel;
+              this.plugin.saveSettings();
+              trigger.textContent = currentModel;
+              (0, import_obsidian.setTooltip)(trigger, currentModel);
+            });
+          }
+          if (apiModels.length === 0 && !currentModel) {
+            const emptyItem = popup.createDiv({ cls: "xy-popup-item" });
+            emptyItem.createSpan({ cls: "xy-popup-label" }).textContent = "\u672A\u914D\u7F6E\u6A21\u578B\u5217\u8868\uFF0C\u8BF7\u5728\u8BBE\u7F6E\u4E2D\u6DFB\u52A0";
+          }
+          for (const m of apiModels) {
+            this.addPopupItem(popup, m, m === currentModel, () => {
+              if (provider) provider.model = m;
+              this.plugin.saveSettings();
+              trigger.textContent = m;
+              (0, import_obsidian.setTooltip)(trigger, m);
+            });
+          }
+        }
+      }, { direction: "up", maxHeight: "50vh" });
+    });
     const apiLevels = [
       { value: "none", label: "none" },
       { value: "low", label: "low" },
@@ -1086,36 +1174,42 @@ var XiaoyuanAIChatView = class extends import_obsidian.ItemView {
         { value: "high", label: "high" },
         { value: "xhigh", label: "xhigh" }
       ];
-      const levelText = this.createSelector(
-        "xiaoyuan-level-select",
-        levels,
-        s.defaultReasoning,
-        "\u70B9\u51FB\u5207\u6362\u601D\u8003\u5F3A\u5EA6",
-        (value) => {
-          s.defaultReasoning = value;
-          this.plugin.saveSettings();
-        },
-        true
-      );
+      const levelText = container.createSpan({ cls: "xiaoyuan-level-select" });
+      levelText.textContent = s.defaultReasoning;
+      (0, import_obsidian.setTooltip)(levelText, "\u70B9\u51FB\u5207\u6362\u601D\u8003\u5F3A\u5EA6");
+      levelText.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.showPopup(levelText, (popup) => {
+          for (const m of levels) {
+            this.addPopupItem(popup, m.label, m.value === s.defaultReasoning, () => {
+              s.defaultReasoning = m.value;
+              this.plugin.saveSettings();
+              levelText.textContent = m.label;
+            });
+          }
+        }, { direction: "up" });
+      });
       container.appendChild(levelText);
     } else {
-      const apiLevelText = this.createSelector(
-        "xiaoyuan-level-select",
-        apiLevels,
-        s.apiReasoningEffort,
-        "\u70B9\u51FB\u5207\u6362\u601D\u8003\u5F3A\u5EA6",
-        (value) => {
-          s.apiReasoningEffort = value;
-          this.plugin.saveSettings();
-        },
-        true
-      );
+      const apiLevelText = container.createSpan({ cls: "xiaoyuan-level-select" });
+      apiLevelText.textContent = s.apiReasoningEffort;
+      (0, import_obsidian.setTooltip)(apiLevelText, "\u70B9\u51FB\u5207\u6362\u601D\u8003\u5F3A\u5EA6");
+      apiLevelText.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.showPopup(apiLevelText, (popup) => {
+          for (const m of apiLevels) {
+            this.addPopupItem(popup, m.label, m.value === s.apiReasoningEffort, () => {
+              s.apiReasoningEffort = m.value;
+              this.plugin.saveSettings();
+              apiLevelText.textContent = m.label;
+            });
+          }
+        }, { direction: "up" });
+      });
       container.appendChild(apiLevelText);
     }
     this.sendBtn = container.createSpan({ cls: "xiaoyuan-attach-btn" });
     this.sendBtn.style.marginLeft = "auto";
-    (0, import_obsidian.setIcon)(this.sendBtn, "send");
-    (0, import_obsidian.setTooltip)(this.sendBtn, "\u53D1\u9001");
     this.sendBtn.addEventListener("click", () => {
       if (this.abortController) {
         this.abortController.abort();
@@ -1123,6 +1217,7 @@ var XiaoyuanAIChatView = class extends import_obsidian.ItemView {
         this.sendMessage();
       }
     });
+    this.setProcessingState(false);
   }
   async syncCLIModels() {
     const s = this.plugin.settings;
@@ -1171,104 +1266,6 @@ var XiaoyuanAIChatView = class extends import_obsidian.ItemView {
       this.connectionStatusEl.style.cssText = `display:inline-block;width:8px;height:8px;border-radius:50%;cursor:pointer;background:${ok ? "var(--color-green)" : "var(--color-red)"};`;
       (0, import_obsidian.setTooltip)(this.connectionStatusEl, ok ? "opencode \u53EF\u7528" : "opencode \u4E0D\u53EF\u7528");
     }
-  }
-  showToolbarModelPicker(trigger) {
-    var _a;
-    const existing = trigger.querySelector(".xiaoyuan-mode-dropdown");
-    if (existing) {
-      existing.remove();
-      return;
-    }
-    const s = this.plugin.settings;
-    const dropdown = createDiv({ cls: "xiaoyuan-mode-dropdown xy-model-picker-dropdown xiaoyuan-mode-dropdown-up" });
-    trigger.appendChild(dropdown);
-    const addItem = (label, onClick, isActive = false) => {
-      const item = dropdown.createDiv({ cls: "xiaoyuan-mode-dropdown-item" });
-      if (isActive) item.classList.add("active");
-      item.textContent = label;
-      item.addEventListener("click", (e) => {
-        e.stopPropagation();
-        onClick();
-      });
-      return item;
-    };
-    if (s.execMode === "cli") {
-      addItem("\u27F3 \u540C\u6B65\u6A21\u578B\u5217\u8868", () => {
-        dropdown.remove();
-        this.syncCLIModels();
-      });
-      const models = s.opencodeModels || [];
-      if (models.length === 0) {
-        addItem("\u6B63\u5728\u540C\u6B65...", () => {
-        });
-        this.syncCLIModels().catch(() => {
-        });
-      }
-      const groups = /* @__PURE__ */ new Map();
-      for (const m of models) {
-        const provider = m.value.includes("/") ? m.value.split("/")[0] : "\u5176\u4ED6";
-        if (!groups.has(provider)) groups.set(provider, []);
-        groups.get(provider).push(m);
-      }
-      const sortedGroups = [...groups.entries()].sort(([a], [b]) => {
-        if (a === "opencode") return -1;
-        if (b === "opencode") return 1;
-        return a.localeCompare(b);
-      });
-      for (const [provider, items] of sortedGroups) {
-        const titleEl = dropdown.createDiv({ cls: "xy-model-picker-group-title" });
-        titleEl.textContent = provider;
-        const childrenEl = dropdown.createDiv({ cls: "xy-model-picker-group-children" });
-        for (const m of items) {
-          const item = childrenEl.createDiv({ cls: "xiaoyuan-mode-dropdown-item" });
-          if (m.value === s.opencode.model) item.classList.add("active");
-          item.textContent = m.label;
-          item.addEventListener("click", (e) => {
-            e.stopPropagation();
-            s.opencode.model = m.value;
-            this.plugin.saveSettings();
-            dropdown.remove();
-            this.rebuildToolbar();
-          });
-        }
-        titleEl.addEventListener("click", (e) => {
-          e.stopPropagation();
-          titleEl.classList.toggle("is-open");
-          childrenEl.classList.toggle("is-open");
-        });
-      }
-    } else {
-      const provider = getActiveProvider(s);
-      const apiModels = (provider == null ? void 0 : provider.models) || ((_a = s.apiProviders[0]) == null ? void 0 : _a.models) || [];
-      const currentModel = (provider == null ? void 0 : provider.model) || "";
-      if (currentModel && !apiModels.includes(currentModel)) {
-        addItem(`${currentModel}\uFF08\u5F53\u524D\uFF09`, () => {
-          if (provider) provider.model = currentModel;
-          this.plugin.saveSettings();
-          dropdown.remove();
-          this.rebuildToolbar();
-        }, true);
-      }
-      if (apiModels.length === 0 && !currentModel) {
-        addItem("\u672A\u914D\u7F6E\u6A21\u578B\u5217\u8868\uFF0C\u8BF7\u5728\u8BBE\u7F6E\u4E2D\u6DFB\u52A0", () => {
-        });
-      }
-      for (const m of apiModels) {
-        addItem(m, () => {
-          if (provider) provider.model = m;
-          this.plugin.saveSettings();
-          dropdown.remove();
-          this.rebuildToolbar();
-        }, m === currentModel);
-      }
-    }
-    const close = (ev) => {
-      if (!trigger.contains(ev.target)) {
-        dropdown.remove();
-        document.removeEventListener("click", close);
-      }
-    };
-    setTimeout(() => document.addEventListener("click", close), 0);
   }
   // ─── Message rendering ───────────────────────────────────────────
   renderMessageEl(id, role, content, streaming = false, thinking) {
@@ -1721,8 +1718,8 @@ ${att.data}
     new import_obsidian.Notice("\u5DF2\u5220\u9664");
   }
   async showSessionDropdown(e) {
-    if (document.querySelector(".xiaoyuan-session-dropdown")) {
-      document.querySelectorAll(".xiaoyuan-session-dropdown").forEach((el) => el.remove());
+    if (document.querySelector(".xy-popup")) {
+      document.querySelectorAll(".xy-popup").forEach((el) => el.remove());
       return;
     }
     await this.saveCurrentSession();
@@ -1738,34 +1735,68 @@ ${att.data}
       this.updateSessionSelector();
     }
     await saveSessionsMeta(this.plugin, this.sessions, this.currentSessionId);
-    const dropdown = document.body.createDiv({ cls: "xiaoyuan-session-dropdown" });
-    const rect = e.target.getBoundingClientRect();
-    dropdown.style.cssText = `position:fixed;top:${rect.bottom}px;left:${rect.left}px;max-height:300px;overflow-y:auto;`;
-    for (const session of this.sessions) {
-      const item = dropdown.createDiv({ cls: "xiaoyuan-session-dropdown-item" });
-      if (session.id === this.currentSessionId) item.classList.add("active");
-      const titleEl = item.createSpan({ cls: "xiaoyuan-session-dropdown-title" });
-      titleEl.textContent = session.title;
-      const deleteBtn = item.createSpan({ cls: "xiaoyuan-session-dropdown-delete" });
-      deleteBtn.textContent = "\xD7";
-      (0, import_obsidian.setTooltip)(deleteBtn, "\u5220\u9664\u6B64\u5BF9\u8BDD");
-      deleteBtn.addEventListener("click", (ev) => {
-        ev.stopPropagation();
-        this.deleteSession(session.id);
-        dropdown.remove();
-      });
-      item.addEventListener("click", () => {
-        this.switchSession(session.id);
-        dropdown.remove();
-      });
-    }
-    const closeDropdown = (ev) => {
-      if (!dropdown.contains(ev.target)) {
-        dropdown.remove();
-        document.removeEventListener("click", closeDropdown);
+    this.showPopup(e.target, (popup) => {
+      for (const session of this.sessions) {
+        const item = popup.createDiv({ cls: "xy-popup-item" });
+        const checkEl = item.createSpan({ cls: "xy-popup-check" });
+        checkEl.textContent = session.id === this.currentSessionId ? "\u2713" : "";
+        const titleEl = item.createSpan({ cls: "xy-popup-label" });
+        titleEl.textContent = session.title;
+        const startRename = (ev) => {
+          ev.stopPropagation();
+          const input = document.createElement("input");
+          input.type = "text";
+          input.value = session.title;
+          input.style.cssText = "flex:1;min-width:0;padding:2px 4px;font-size:inherit;background:transparent;border:1px solid var(--background-modifier-border);border-radius:4px;color:var(--text-normal);";
+          const finish = (save) => {
+            if (save) {
+              const newTitle = input.value.trim() || session.title;
+              if (newTitle !== session.title) {
+                session.title = newTitle;
+                this.updateSessionSelector();
+                saveSessionsMeta(this.plugin, this.sessions, this.currentSessionId);
+              }
+            }
+            const span = createSpan({ cls: "xy-popup-label" });
+            span.textContent = session.title;
+            input.replaceWith(span);
+          };
+          input.addEventListener("keydown", (e2) => {
+            if (e2.key === "Enter") {
+              e2.preventDefault();
+              finish(true);
+            } else if (e2.key === "Escape") {
+              finish(false);
+            }
+          });
+          input.addEventListener("blur", () => finish(true));
+          input.addEventListener("click", (e2) => e2.stopPropagation());
+          titleEl.replaceWith(input);
+          input.focus();
+          input.select();
+        };
+        const suffix = item.createSpan({ cls: "xy-popup-suffix" });
+        const renameBtn = suffix.createSpan({ cls: "xy-popup-suffix-btn" });
+        renameBtn.textContent = "\u270E";
+        renameBtn.style.fontSize = "12px";
+        (0, import_obsidian.setTooltip)(renameBtn, "\u91CD\u547D\u540D");
+        renameBtn.addEventListener("click", startRename);
+        const deleteBtn = suffix.createSpan({ cls: "xy-popup-suffix-btn" });
+        deleteBtn.classList.add("danger");
+        deleteBtn.textContent = "\xD7";
+        deleteBtn.style.fontSize = "16px";
+        (0, import_obsidian.setTooltip)(deleteBtn, "\u5220\u9664\u6B64\u5BF9\u8BDD");
+        deleteBtn.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          this.deleteSession(session.id);
+          popup.remove();
+        });
+        item.addEventListener("click", () => {
+          this.switchSession(session.id);
+          popup.remove();
+        });
       }
-    };
-    setTimeout(() => document.addEventListener("click", closeDropdown), 0);
+    }, { maxHeight: "300px" });
   }
   updateSessionTitle() {
     const session = this.sessions.find((s) => s.id === this.currentSessionId);
@@ -1838,56 +1869,61 @@ ${att.data}
       });
     }
   }
+  // ─── Popup helpers ───────────────────────────────────────────────
+  showPopup(trigger, buildContent, options) {
+    if (document.querySelector(".xy-popup")) {
+      document.querySelectorAll(".xy-popup").forEach((el) => el.remove());
+      return null;
+    }
+    const popup = document.body.createDiv({ cls: "xy-popup" });
+    const rect = trigger.getBoundingClientRect();
+    popup.style.cssText = `position:fixed;left:${rect.left}px;`;
+    if (options == null ? void 0 : options.maxHeight) popup.style.maxHeight = options.maxHeight;
+    buildContent(popup);
+    if ((options == null ? void 0 : options.direction) === "up") {
+      document.body.appendChild(popup);
+      popup.style.bottom = `${window.innerHeight - rect.top + 2}px`;
+    } else {
+      popup.style.top = `${rect.bottom}px`;
+      document.body.appendChild(popup);
+    }
+    setTimeout(() => {
+      const handler = (ev) => {
+        if (!popup.contains(ev.target)) {
+          popup.remove();
+          document.removeEventListener("click", handler);
+        }
+      };
+      document.addEventListener("click", handler);
+    }, 0);
+    return popup;
+  }
+  addPopupItem(parent, label, checked, onClick) {
+    const item = parent.createDiv({ cls: "xy-popup-item" });
+    const check = item.createSpan({ cls: "xy-popup-check" });
+    check.textContent = checked ? "\u2713" : "";
+    const labelEl = item.createSpan({ cls: "xy-popup-label" });
+    labelEl.textContent = label;
+    item.addEventListener("click", (e) => {
+      e.stopPropagation();
+      onClick();
+      const popup = item.closest(".xy-popup");
+      if (popup) popup.remove();
+    });
+    return item;
+  }
   // ─── UI helpers ──────────────────────────────────────────────────
   setProcessingState(processing) {
-    this.sendBtn.classList.toggle("disabled", processing);
     if (processing) {
-      (0, import_obsidian.setIcon)(this.sendBtn, "square");
+      (0, import_obsidian.setIcon)(this.sendBtn, "circle-stop");
       (0, import_obsidian.setTooltip)(this.sendBtn, "\u505C\u6B62");
       this.sendBtn.style.color = "var(--color-red)";
     } else {
-      (0, import_obsidian.setIcon)(this.sendBtn, "send");
+      (0, import_obsidian.setIcon)(this.sendBtn, "circle-arrow-right");
       (0, import_obsidian.setTooltip)(this.sendBtn, "\u53D1\u9001");
       this.sendBtn.style.color = "";
     }
     this.inputEl.disabled = processing;
-  }
-  createSelector(className, options, currentValue, title, onChange, dropdownUp = false) {
-    var _a;
-    const text = createSpan({ cls: className });
-    (0, import_obsidian.setTooltip)(text, title);
-    const currentOption = options.find((m) => m.value === currentValue);
-    text.textContent = (currentOption == null ? void 0 : currentOption.label) || ((_a = options[0]) == null ? void 0 : _a.label) || "";
-    text.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const existingDropdown = text.querySelector(".xiaoyuan-mode-dropdown");
-      if (existingDropdown) {
-        existingDropdown.remove();
-        return;
-      }
-      document.querySelectorAll(".xiaoyuan-mode-dropdown").forEach((el) => el.remove());
-      const dropdown = createDiv({ cls: "xiaoyuan-mode-dropdown" });
-      if (dropdownUp) dropdown.classList.add("xiaoyuan-mode-dropdown-up");
-      for (const m of options) {
-        const item = dropdown.createDiv({ cls: "xiaoyuan-mode-dropdown-item" });
-        if (m.value === currentValue) item.classList.add("active");
-        item.textContent = m.label;
-        item.addEventListener("click", () => {
-          text.textContent = m.label;
-          onChange(m.value);
-          dropdown.remove();
-        });
-      }
-      text.appendChild(dropdown);
-      const close = (ev) => {
-        if (!dropdown.contains(ev.target)) {
-          dropdown.remove();
-          document.removeEventListener("click", close);
-        }
-      };
-      setTimeout(() => document.addEventListener("click", close), 0);
-    });
-    return text;
   }
 };
 
