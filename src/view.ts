@@ -109,7 +109,7 @@ export class XiaoyuanAIChatView extends ItemView {
 
   private async autoSyncCLIModels() {
     const s = this.plugin.settings;
-    if (s.opencode.model) return;
+    if (s.opencode.model && s.opencodeModels?.some(m => m.value === s.opencode.model)) return;
     await this.syncCLIModels();
   }
 
@@ -413,6 +413,9 @@ export class XiaoyuanAIChatView extends ItemView {
       }
       if (!s.opencode.model && result.models.length > 0) {
         s.opencode.model = result.models[0].id;
+      }
+      if (s.opencode.model && result.models.length > 0 && !result.models.some(m => m.id === s.opencode.model)) {
+        s.opencode.model = result.defaultModel || result.models[0].id;
       }
       await this.plugin.saveSettings();
       if (result.models.length === 0) {

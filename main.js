@@ -959,8 +959,9 @@ var XiaoyuanAIChatView = class extends import_obsidian.ItemView {
     }
   }
   async autoSyncCLIModels() {
+    var _a;
     const s = this.plugin.settings;
-    if (s.opencode.model) return;
+    if (s.opencode.model && ((_a = s.opencodeModels) == null ? void 0 : _a.some((m) => m.value === s.opencode.model))) return;
     await this.syncCLIModels();
   }
   // ─── Header ──────────────────────────────────────────────────────
@@ -1241,6 +1242,9 @@ var XiaoyuanAIChatView = class extends import_obsidian.ItemView {
       }
       if (!s.opencode.model && result.models.length > 0) {
         s.opencode.model = result.models[0].id;
+      }
+      if (s.opencode.model && result.models.length > 0 && !result.models.some((m) => m.id === s.opencode.model)) {
+        s.opencode.model = result.defaultModel || result.models[0].id;
       }
       await this.plugin.saveSettings();
       if (result.models.length === 0) {
