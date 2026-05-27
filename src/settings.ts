@@ -1,6 +1,7 @@
 import { App, PluginSettingTab, Setting, Notice, setIcon } from "obsidian";
 import type XiaoyuanAIPlugin from "./main";
 import type { XiaoyuanAISettings, ApiProviderConfig } from "./types";
+import { showPopup, addPopupItem } from "./view";
 
 type TabId = "cli" | "api" | "general";
 
@@ -260,7 +261,7 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
         text.inputEl.addEventListener("click", (e) => {
           if (s.opencodeModels && s.opencodeModels.length > 0) {
             e.preventDefault();
-            this.showModelPicker(container, s.opencodeModels!, (val) => {
+            this.showModelPicker(text.inputEl, s.opencodeModels!, (val) => {
               s.opencode.model = val;
               this.plugin.saveSettings().then(() => this.display());
             });
@@ -624,59 +625,48 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
   }
 
   private showModelPicker(
-    container: HTMLElement,
+    trigger: HTMLElement,
     models: { label: string; value: string }[],
     onSelect: (value: string) => void,
   ) {
-    const existing = container.querySelector(".xy-model-picker-overlay");
-    if (existing) { existing.remove(); return; }
+    showPopup(trigger, (popup) => {
+      const s = this.plugin.settings;
+      const currentModel = s.opencode.model;
 
-    const overlay = container.createDiv({ cls: "xy-model-picker-overlay" });
-    const popup = overlay.createDiv({ cls: "xy-model-picker" });
+      const syncItem = popup.createDiv({ cls: "xy-popup-item" });
+      syncItem.createSpan({ cls: "xy-popup-label" }).textContent = "⟳ 同步模型列表";
+      syncItem.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        popup.remove();
+      });
 
-    const header = popup.createDiv({ cls: "xy-model-picker-header" });
-    header.createSpan({ text: "选择模型" });
-    const closeBtn = header.createEl("button", { cls: "xy-model-picker-close", text: "✕" });
-    closeBtn.onclick = () => overlay.remove();
-
-    const searchInput = popup.createEl("input", {
-      cls: "xy-model-picker-search",
-      attr: { placeholder: "搜索模型..." },
-    });
-    searchInput.type = "text";
-
-    const list = popup.createDiv({ cls: "xy-model-picker-list" });
-
-    const groups = new Map<string, { label: string; value: string }[]>();
-    for (const m of models) {
-      const provider = m.value.includes("/") ? m.value.split("/")[0] : "其他";
-      if (!groups.has(provider)) groups.set(provider, []);
-      groups.get(provider)!.push(m);
-    }
-
-    const renderItems = (filter: string) => {
-      list.empty();
-      const lowerFilter = filter.toLowerCase();
-      for (const [provider, items] of groups) {
-        const filtered = items.filter((m) => m.label.toLowerCase().includes(lowerFilter));
-        if (filtered.length === 0) continue;
-        const groupEl = list.createDiv({ cls: "xy-model-picker-group" });
-        groupEl.createDiv({ cls: "xy-model-picker-group-title", text: provider });
-        for (const m of filtered) {
-          const item = groupEl.createDiv({ cls: "xy-model-picker-item" });
-          item.textContent = m.label;
-          item.onclick = () => { onSelect(m.value); overlay.remove(); };
-        }
+      const groups = new Map<string, { label: string; value: string }[]>();
+      for (const m of models) {
+        const provider = m.value.includes("/") ? m.value.split("/")[0] : "其他";
+        if (!groups.has(provider)) groups.set(provider, []);
+        groups.get(provider)!.push(m);
       }
-    };
 
-    searchInput.addEventListener("input", () => renderItems(searchInput.value));
-    renderItems("");
-
-    searchInput.focus();
-
-    overlay.addEventListener("click", (e) => {
-      if (e.target === overlay) overlay.remove();
-    });
+      for (const [providerName, items] of groups) {
+        popup.createDiv({ cls: "xy-popup-separator" });
+        const groupTitle = popup.createDiv({ cls: "xy-popup-group-title" });
+        const arrow = groupTitle.createSpan({ cls: "xy-popup-arrow" });
+        arrow.textContent = "▶";
+        groupTitle.createSpan({ cls: "xy-popup-label" }).textContent = providerName;
+        const children = popup.createDiv({ cls: "xy-popup-group-children" });
+        children.classList.add("is-collapsed");
+        for (const m of items) {
+          addPopupItem(children, m.label, m.value === currentModel, () => {
+            onSelect(m.value);
+          });
+        }
+        groupTitle.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          const open = arrow.textContent === "▼";
+          arrow.textContent = open ? "▶" : "▼";
+          children.classList.toggle("is-collapsed", open);
+        });
+      }
+    }, { direction: "down", maxHeight: "50vh" });
   }
 }

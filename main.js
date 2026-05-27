@@ -960,7 +960,7 @@ var XiaoyuanAIChatView = class extends import_obsidian.ItemView {
   }
   async autoSyncCLIModels() {
     const s = this.plugin.settings;
-    if (s.opencodeModels && s.opencodeModels.length > 0) return;
+    if (s.opencode.model) return;
     await this.syncCLIModels();
   }
   // ─── Header ──────────────────────────────────────────────────────
@@ -1006,21 +1006,22 @@ var XiaoyuanAIChatView = class extends import_obsidian.ItemView {
     (0, import_obsidian.setTooltip)(modeText, "\u70B9\u51FB\u5207\u6362\u6267\u884C\u6A21\u5F0F");
     modeText.addEventListener("click", (e) => {
       e.stopPropagation();
-      this.showPopup(modeText, (popup) => {
-        this.addPopupItem(popup, "API", s.execMode === "api", () => {
+      showPopup(modeText, (popup) => {
+        addPopupItem(popup, "API", s.execMode === "api", () => {
           s.execMode = "api";
           this.plugin.saveSettings();
           this.rebuildHeader();
           this.rebuildToolbar();
-          this.refresh();
+          this.addSystemMessage("\u2705 \u5DF2\u5207\u6362\u5230 API \u6A21\u5F0F");
+          new import_obsidian.Notice("\u5DF2\u5207\u6362\u5230 API \u6A21\u5F0F");
         });
-        this.addPopupItem(popup, "CLI", s.execMode === "cli", () => {
+        addPopupItem(popup, "CLI", s.execMode === "cli", () => {
           s.execMode = "cli";
           this.plugin.saveSettings();
           this.rebuildHeader();
           this.rebuildToolbar();
-          this.syncCLIModels();
-          this.refresh();
+          this.addSystemMessage("\u2705 \u5DF2\u5207\u6362\u5230 CLI \u6A21\u5F0F");
+          new import_obsidian.Notice("\u5DF2\u5207\u6362\u5230 CLI \u6A21\u5F0F");
         });
       });
     });
@@ -1064,12 +1065,13 @@ var XiaoyuanAIChatView = class extends import_obsidian.ItemView {
       (0, import_obsidian.setTooltip)(agentText, "\u70B9\u51FB\u5207\u6362 agent");
       agentText.addEventListener("click", (e) => {
         e.stopPropagation();
-        this.showPopup(agentText, (popup) => {
+        showPopup(agentText, (popup) => {
           for (const m of agentOptions) {
-            this.addPopupItem(popup, m.label, m.value === s.opencode.agent, () => {
+            addPopupItem(popup, m.label, m.value === s.opencode.agent, () => {
               s.opencode.agent = m.value;
               this.plugin.saveSettings();
               agentText.textContent = m.value;
+              new import_obsidian.Notice(`\u5DF2\u5207\u6362\u5230 agent: ${m.value}`);
             });
           }
         }, { direction: "up" });
@@ -1081,7 +1083,7 @@ var XiaoyuanAIChatView = class extends import_obsidian.ItemView {
     (0, import_obsidian.setTooltip)(trigger, s.execMode === "cli" ? s.opencode.model || "\u672A\u9009\u62E9" : ((_b = getActiveProvider(s)) == null ? void 0 : _b.model) || "\u672A\u9009\u62E9");
     trigger.addEventListener("click", (e) => {
       e.stopPropagation();
-      this.showPopup(trigger, (popup) => {
+      showPopup(trigger, (popup) => {
         var _a2;
         if (s.execMode === "cli") {
           const syncItem = popup.createDiv({ cls: "xy-popup-item" });
@@ -1118,11 +1120,12 @@ var XiaoyuanAIChatView = class extends import_obsidian.ItemView {
             const children = popup.createDiv({ cls: "xy-popup-group-children" });
             children.classList.add("is-collapsed");
             for (const m of items) {
-              this.addPopupItem(children, m.label, m.value === s.opencode.model, () => {
+              addPopupItem(children, m.label, m.value === s.opencode.model, () => {
                 s.opencode.model = m.value;
                 this.plugin.saveSettings();
                 trigger.textContent = m.label;
                 (0, import_obsidian.setTooltip)(trigger, m.value);
+                new import_obsidian.Notice(`\u5DF2\u5207\u6362\u5230\u6A21\u578B: ${m.label}`);
               });
             }
             groupTitle.addEventListener("click", (ev) => {
@@ -1137,11 +1140,12 @@ var XiaoyuanAIChatView = class extends import_obsidian.ItemView {
           const apiModels = (provider == null ? void 0 : provider.models) || ((_a2 = s.apiProviders[0]) == null ? void 0 : _a2.models) || [];
           const currentModel = (provider == null ? void 0 : provider.model) || "";
           if (currentModel && !apiModels.includes(currentModel)) {
-            this.addPopupItem(popup, `${currentModel}\uFF08\u5F53\u524D\uFF09`, true, () => {
+            addPopupItem(popup, `${currentModel}\uFF08\u5F53\u524D\uFF09`, true, () => {
               if (provider) provider.model = currentModel;
               this.plugin.saveSettings();
               trigger.textContent = currentModel;
               (0, import_obsidian.setTooltip)(trigger, currentModel);
+              new import_obsidian.Notice(`\u5DF2\u5207\u6362\u5230\u6A21\u578B: ${currentModel}`);
             });
           }
           if (apiModels.length === 0 && !currentModel) {
@@ -1149,11 +1153,12 @@ var XiaoyuanAIChatView = class extends import_obsidian.ItemView {
             emptyItem.createSpan({ cls: "xy-popup-label" }).textContent = "\u672A\u914D\u7F6E\u6A21\u578B\u5217\u8868\uFF0C\u8BF7\u5728\u8BBE\u7F6E\u4E2D\u6DFB\u52A0";
           }
           for (const m of apiModels) {
-            this.addPopupItem(popup, m, m === currentModel, () => {
+            addPopupItem(popup, m, m === currentModel, () => {
               if (provider) provider.model = m;
               this.plugin.saveSettings();
               trigger.textContent = m;
               (0, import_obsidian.setTooltip)(trigger, m);
+              new import_obsidian.Notice(`\u5DF2\u5207\u6362\u5230\u6A21\u578B: ${m}`);
             });
           }
         }
@@ -1179,12 +1184,13 @@ var XiaoyuanAIChatView = class extends import_obsidian.ItemView {
       (0, import_obsidian.setTooltip)(levelText, "\u70B9\u51FB\u5207\u6362\u601D\u8003\u5F3A\u5EA6");
       levelText.addEventListener("click", (e) => {
         e.stopPropagation();
-        this.showPopup(levelText, (popup) => {
+        showPopup(levelText, (popup) => {
           for (const m of levels) {
-            this.addPopupItem(popup, m.label, m.value === s.defaultReasoning, () => {
+            addPopupItem(popup, m.label, m.value === s.defaultReasoning, () => {
               s.defaultReasoning = m.value;
               this.plugin.saveSettings();
               levelText.textContent = m.label;
+              new import_obsidian.Notice(`\u63A8\u7406\u5F3A\u5EA6: ${m.label}`);
             });
           }
         }, { direction: "up" });
@@ -1196,12 +1202,13 @@ var XiaoyuanAIChatView = class extends import_obsidian.ItemView {
       (0, import_obsidian.setTooltip)(apiLevelText, "\u70B9\u51FB\u5207\u6362\u601D\u8003\u5F3A\u5EA6");
       apiLevelText.addEventListener("click", (e) => {
         e.stopPropagation();
-        this.showPopup(apiLevelText, (popup) => {
+        showPopup(apiLevelText, (popup) => {
           for (const m of apiLevels) {
-            this.addPopupItem(popup, m.label, m.value === s.apiReasoningEffort, () => {
+            addPopupItem(popup, m.label, m.value === s.apiReasoningEffort, () => {
               s.apiReasoningEffort = m.value;
               this.plugin.saveSettings();
               apiLevelText.textContent = m.label;
+              new import_obsidian.Notice(`\u63A8\u7406\u5F3A\u5EA6: ${m.label}`);
             });
           }
         }, { direction: "up" });
@@ -1231,6 +1238,9 @@ var XiaoyuanAIChatView = class extends import_obsidian.ItemView {
       s.opencodeModelCaps = result.caps;
       if (result.defaultModel && !s.opencode.model) {
         s.opencode.model = result.defaultModel;
+      }
+      if (!s.opencode.model && result.models.length > 0) {
+        s.opencode.model = result.models[0].id;
       }
       await this.plugin.saveSettings();
       if (result.models.length === 0) {
@@ -1735,7 +1745,7 @@ ${att.data}
       this.updateSessionSelector();
     }
     await saveSessionsMeta(this.plugin, this.sessions, this.currentSessionId);
-    this.showPopup(e.target, (popup) => {
+    showPopup(e.target, (popup) => {
       for (const session of this.sessions) {
         const item = popup.createDiv({ cls: "xy-popup-item" });
         const checkEl = item.createSpan({ cls: "xy-popup-check" });
@@ -1870,48 +1880,6 @@ ${att.data}
     }
   }
   // ─── Popup helpers ───────────────────────────────────────────────
-  showPopup(trigger, buildContent, options) {
-    if (document.querySelector(".xy-popup")) {
-      document.querySelectorAll(".xy-popup").forEach((el) => el.remove());
-      return null;
-    }
-    const popup = document.body.createDiv({ cls: "xy-popup" });
-    const rect = trigger.getBoundingClientRect();
-    popup.style.cssText = `position:fixed;left:${rect.left}px;`;
-    if (options == null ? void 0 : options.maxHeight) popup.style.maxHeight = options.maxHeight;
-    buildContent(popup);
-    if ((options == null ? void 0 : options.direction) === "up") {
-      document.body.appendChild(popup);
-      popup.style.bottom = `${window.innerHeight - rect.top + 2}px`;
-    } else {
-      popup.style.top = `${rect.bottom}px`;
-      document.body.appendChild(popup);
-    }
-    setTimeout(() => {
-      const handler = (ev) => {
-        if (!popup.contains(ev.target)) {
-          popup.remove();
-          document.removeEventListener("click", handler);
-        }
-      };
-      document.addEventListener("click", handler);
-    }, 0);
-    return popup;
-  }
-  addPopupItem(parent, label, checked, onClick) {
-    const item = parent.createDiv({ cls: "xy-popup-item" });
-    const check = item.createSpan({ cls: "xy-popup-check" });
-    check.textContent = checked ? "\u2713" : "";
-    const labelEl = item.createSpan({ cls: "xy-popup-label" });
-    labelEl.textContent = label;
-    item.addEventListener("click", (e) => {
-      e.stopPropagation();
-      onClick();
-      const popup = item.closest(".xy-popup");
-      if (popup) popup.remove();
-    });
-    return item;
-  }
   // ─── UI helpers ──────────────────────────────────────────────────
   setProcessingState(processing) {
     if (processing) {
@@ -1926,6 +1894,48 @@ ${att.data}
     this.inputEl.disabled = processing;
   }
 };
+function showPopup(trigger, buildContent, options) {
+  if (document.querySelector(".xy-popup")) {
+    document.querySelectorAll(".xy-popup").forEach((el) => el.remove());
+    return null;
+  }
+  const popup = document.body.createDiv({ cls: "xy-popup" });
+  const rect = trigger.getBoundingClientRect();
+  popup.style.cssText = `position:fixed;left:${rect.left}px;`;
+  if (options == null ? void 0 : options.maxHeight) popup.style.maxHeight = options.maxHeight;
+  buildContent(popup);
+  if ((options == null ? void 0 : options.direction) === "up") {
+    document.body.appendChild(popup);
+    popup.style.bottom = `${window.innerHeight - rect.top + 2}px`;
+  } else {
+    popup.style.top = `${rect.bottom}px`;
+    document.body.appendChild(popup);
+  }
+  setTimeout(() => {
+    const handler = (ev) => {
+      if (!popup.contains(ev.target)) {
+        popup.remove();
+        document.removeEventListener("click", handler);
+      }
+    };
+    document.addEventListener("click", handler);
+  }, 0);
+  return popup;
+}
+function addPopupItem(parent, label, checked, onClick) {
+  const item = parent.createDiv({ cls: "xy-popup-item" });
+  const check = item.createSpan({ cls: "xy-popup-check" });
+  check.textContent = checked ? "\u2713" : "";
+  const labelEl = item.createSpan({ cls: "xy-popup-label" });
+  labelEl.textContent = label;
+  item.addEventListener("click", (e) => {
+    e.stopPropagation();
+    onClick();
+    const popup = item.closest(".xy-popup");
+    if (popup) popup.remove();
+  });
+  return item;
+}
 
 // src/settings.ts
 var import_obsidian2 = require("obsidian");
@@ -2161,7 +2171,7 @@ var XiaoyuanAISettingTab = class extends import_obsidian2.PluginSettingTab {
       text.inputEl.addEventListener("click", (e) => {
         if (s.opencodeModels && s.opencodeModels.length > 0) {
           e.preventDefault();
-          this.showModelPicker(container, s.opencodeModels, (val) => {
+          this.showModelPicker(text.inputEl, s.opencodeModels, (val) => {
             s.opencode.model = val;
             this.plugin.saveSettings().then(() => this.display());
           });
@@ -2487,54 +2497,43 @@ var XiaoyuanAISettingTab = class extends import_obsidian2.PluginSettingTab {
       });
     }), "message-square");
   }
-  showModelPicker(container, models, onSelect) {
-    const existing = container.querySelector(".xy-model-picker-overlay");
-    if (existing) {
-      existing.remove();
-      return;
-    }
-    const overlay = container.createDiv({ cls: "xy-model-picker-overlay" });
-    const popup = overlay.createDiv({ cls: "xy-model-picker" });
-    const header = popup.createDiv({ cls: "xy-model-picker-header" });
-    header.createSpan({ text: "\u9009\u62E9\u6A21\u578B" });
-    const closeBtn = header.createEl("button", { cls: "xy-model-picker-close", text: "\u2715" });
-    closeBtn.onclick = () => overlay.remove();
-    const searchInput = popup.createEl("input", {
-      cls: "xy-model-picker-search",
-      attr: { placeholder: "\u641C\u7D22\u6A21\u578B..." }
-    });
-    searchInput.type = "text";
-    const list = popup.createDiv({ cls: "xy-model-picker-list" });
-    const groups = /* @__PURE__ */ new Map();
-    for (const m of models) {
-      const provider = m.value.includes("/") ? m.value.split("/")[0] : "\u5176\u4ED6";
-      if (!groups.has(provider)) groups.set(provider, []);
-      groups.get(provider).push(m);
-    }
-    const renderItems = (filter) => {
-      list.empty();
-      const lowerFilter = filter.toLowerCase();
-      for (const [provider, items] of groups) {
-        const filtered = items.filter((m) => m.label.toLowerCase().includes(lowerFilter));
-        if (filtered.length === 0) continue;
-        const groupEl = list.createDiv({ cls: "xy-model-picker-group" });
-        groupEl.createDiv({ cls: "xy-model-picker-group-title", text: provider });
-        for (const m of filtered) {
-          const item = groupEl.createDiv({ cls: "xy-model-picker-item" });
-          item.textContent = m.label;
-          item.onclick = () => {
-            onSelect(m.value);
-            overlay.remove();
-          };
-        }
+  showModelPicker(trigger, models, onSelect) {
+    showPopup(trigger, (popup) => {
+      const s = this.plugin.settings;
+      const currentModel = s.opencode.model;
+      const syncItem = popup.createDiv({ cls: "xy-popup-item" });
+      syncItem.createSpan({ cls: "xy-popup-label" }).textContent = "\u27F3 \u540C\u6B65\u6A21\u578B\u5217\u8868";
+      syncItem.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        popup.remove();
+      });
+      const groups = /* @__PURE__ */ new Map();
+      for (const m of models) {
+        const provider = m.value.includes("/") ? m.value.split("/")[0] : "\u5176\u4ED6";
+        if (!groups.has(provider)) groups.set(provider, []);
+        groups.get(provider).push(m);
       }
-    };
-    searchInput.addEventListener("input", () => renderItems(searchInput.value));
-    renderItems("");
-    searchInput.focus();
-    overlay.addEventListener("click", (e) => {
-      if (e.target === overlay) overlay.remove();
-    });
+      for (const [providerName, items] of groups) {
+        popup.createDiv({ cls: "xy-popup-separator" });
+        const groupTitle = popup.createDiv({ cls: "xy-popup-group-title" });
+        const arrow = groupTitle.createSpan({ cls: "xy-popup-arrow" });
+        arrow.textContent = "\u25B6";
+        groupTitle.createSpan({ cls: "xy-popup-label" }).textContent = providerName;
+        const children = popup.createDiv({ cls: "xy-popup-group-children" });
+        children.classList.add("is-collapsed");
+        for (const m of items) {
+          addPopupItem(children, m.label, m.value === currentModel, () => {
+            onSelect(m.value);
+          });
+        }
+        groupTitle.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          const open = arrow.textContent === "\u25BC";
+          arrow.textContent = open ? "\u25B6" : "\u25BC";
+          children.classList.toggle("is-collapsed", open);
+        });
+      }
+    }, { direction: "down", maxHeight: "50vh" });
   }
 };
 

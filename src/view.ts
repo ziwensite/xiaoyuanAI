@@ -109,7 +109,7 @@ export class XiaoyuanAIChatView extends ItemView {
 
   private async autoSyncCLIModels() {
     const s = this.plugin.settings;
-    if (s.opencodeModels && s.opencodeModels.length > 0) return;
+    if (s.opencode.model) return;
     await this.syncCLIModels();
   }
 
@@ -165,21 +165,22 @@ export class XiaoyuanAIChatView extends ItemView {
     setTooltip(modeText, "点击切换执行模式");
     modeText.addEventListener("click", (e) => {
       e.stopPropagation();
-      this.showPopup(modeText, (popup) => {
-        this.addPopupItem(popup, "API", s.execMode === "api", () => {
+      showPopup(modeText, (popup) => {
+        addPopupItem(popup, "API", s.execMode === "api", () => {
           s.execMode = "api";
           this.plugin.saveSettings();
           this.rebuildHeader();
           this.rebuildToolbar();
-          this.refresh();
+          this.addSystemMessage("✅ 已切换到 API 模式");
+          new Notice("已切换到 API 模式");
         });
-        this.addPopupItem(popup, "CLI", s.execMode === "cli", () => {
+        addPopupItem(popup, "CLI", s.execMode === "cli", () => {
           s.execMode = "cli";
           this.plugin.saveSettings();
           this.rebuildHeader();
           this.rebuildToolbar();
-          this.syncCLIModels();
-          this.refresh();
+          this.addSystemMessage("✅ 已切换到 CLI 模式");
+          new Notice("已切换到 CLI 模式");
         });
       });
     });
@@ -232,12 +233,13 @@ export class XiaoyuanAIChatView extends ItemView {
       setTooltip(agentText, "点击切换 agent");
       agentText.addEventListener("click", (e) => {
         e.stopPropagation();
-        this.showPopup(agentText, (popup) => {
+        showPopup(agentText, (popup) => {
           for (const m of agentOptions) {
-            this.addPopupItem(popup, m.label, m.value === s.opencode.agent, () => {
+            addPopupItem(popup, m.label, m.value === s.opencode.agent, () => {
               s.opencode.agent = m.value;
               this.plugin.saveSettings();
               agentText.textContent = m.value;
+              new Notice(`已切换到 agent: ${m.value}`);
             });
           }
         }, { direction: "up" });
@@ -253,7 +255,7 @@ export class XiaoyuanAIChatView extends ItemView {
     setTooltip(trigger, s.execMode === "cli" ? s.opencode.model || "未选择" : getActiveProvider(s)?.model || "未选择");
     trigger.addEventListener("click", (e) => {
       e.stopPropagation();
-      this.showPopup(trigger, (popup) => {
+      showPopup(trigger, (popup) => {
         if (s.execMode === "cli") {
           const syncItem = popup.createDiv({ cls: "xy-popup-item" });
           syncItem.createSpan({ cls: "xy-popup-label" }).textContent = "⟳ 同步模型列表";
@@ -288,11 +290,12 @@ export class XiaoyuanAIChatView extends ItemView {
             const children = popup.createDiv({ cls: "xy-popup-group-children" });
             children.classList.add("is-collapsed");
             for (const m of items) {
-              this.addPopupItem(children, m.label, m.value === s.opencode.model, () => {
+              addPopupItem(children, m.label, m.value === s.opencode.model, () => {
                 s.opencode.model = m.value;
                 this.plugin.saveSettings();
                 trigger.textContent = m.label;
                 setTooltip(trigger, m.value);
+                new Notice(`已切换到模型: ${m.label}`);
               });
             }
             groupTitle.addEventListener("click", (ev) => {
@@ -307,11 +310,12 @@ export class XiaoyuanAIChatView extends ItemView {
           const apiModels = provider?.models || s.apiProviders[0]?.models || [];
           const currentModel = provider?.model || "";
           if (currentModel && !apiModels.includes(currentModel)) {
-            this.addPopupItem(popup, `${currentModel}（当前）`, true, () => {
+            addPopupItem(popup, `${currentModel}（当前）`, true, () => {
               if (provider) provider.model = currentModel;
               this.plugin.saveSettings();
               trigger.textContent = currentModel;
               setTooltip(trigger, currentModel);
+              new Notice(`已切换到模型: ${currentModel}`);
             });
           }
           if (apiModels.length === 0 && !currentModel) {
@@ -319,11 +323,12 @@ export class XiaoyuanAIChatView extends ItemView {
             emptyItem.createSpan({ cls: "xy-popup-label" }).textContent = "未配置模型列表，请在设置中添加";
           }
           for (const m of apiModels) {
-            this.addPopupItem(popup, m, m === currentModel, () => {
+            addPopupItem(popup, m, m === currentModel, () => {
               if (provider) provider.model = m;
               this.plugin.saveSettings();
               trigger.textContent = m;
               setTooltip(trigger, m);
+              new Notice(`已切换到模型: ${m}`);
             });
           }
         }
@@ -349,12 +354,13 @@ export class XiaoyuanAIChatView extends ItemView {
       setTooltip(levelText, "点击切换思考强度");
       levelText.addEventListener("click", (e) => {
         e.stopPropagation();
-        this.showPopup(levelText, (popup) => {
+        showPopup(levelText, (popup) => {
           for (const m of levels) {
-            this.addPopupItem(popup, m.label, m.value === s.defaultReasoning, () => {
+            addPopupItem(popup, m.label, m.value === s.defaultReasoning, () => {
               s.defaultReasoning = m.value as any;
               this.plugin.saveSettings();
               levelText.textContent = m.label;
+              new Notice(`推理强度: ${m.label}`);
             });
           }
         }, { direction: "up" });
@@ -366,12 +372,13 @@ export class XiaoyuanAIChatView extends ItemView {
       setTooltip(apiLevelText, "点击切换思考强度");
       apiLevelText.addEventListener("click", (e) => {
         e.stopPropagation();
-        this.showPopup(apiLevelText, (popup) => {
+        showPopup(apiLevelText, (popup) => {
           for (const m of apiLevels) {
-            this.addPopupItem(popup, m.label, m.value === s.apiReasoningEffort, () => {
+            addPopupItem(popup, m.label, m.value === s.apiReasoningEffort, () => {
               s.apiReasoningEffort = m.value as any;
               this.plugin.saveSettings();
               apiLevelText.textContent = m.label;
+              new Notice(`推理强度: ${m.label}`);
             });
           }
         }, { direction: "up" });
@@ -403,6 +410,9 @@ export class XiaoyuanAIChatView extends ItemView {
       s.opencodeModelCaps = result.caps;
       if (result.defaultModel && !s.opencode.model) {
         s.opencode.model = result.defaultModel;
+      }
+      if (!s.opencode.model && result.models.length > 0) {
+        s.opencode.model = result.models[0].id;
       }
       await this.plugin.saveSettings();
       if (result.models.length === 0) {
@@ -948,7 +958,7 @@ export class XiaoyuanAIChatView extends ItemView {
     }
     await saveSessionsMeta(this.plugin, this.sessions, this.currentSessionId);
 
-    this.showPopup(e.target as HTMLElement, (popup) => {
+    showPopup(e.target as HTMLElement, (popup) => {
       for (const session of this.sessions) {
         const item = popup.createDiv({ cls: "xy-popup-item" });
 
@@ -1086,59 +1096,6 @@ export class XiaoyuanAIChatView extends ItemView {
 
   // ─── Popup helpers ───────────────────────────────────────────────
 
-  private showPopup(
-    trigger: HTMLElement,
-    buildContent: (popup: HTMLDivElement) => void,
-    options?: { maxHeight?: string; direction?: "down" | "up" },
-  ): HTMLDivElement | null {
-    if (document.querySelector(".xy-popup")) {
-      document.querySelectorAll(".xy-popup").forEach((el) => el.remove());
-      return null;
-    }
-    const popup = document.body.createDiv({ cls: "xy-popup" });
-    const rect = trigger.getBoundingClientRect();
-    popup.style.cssText = `position:fixed;left:${rect.left}px;`;
-    if (options?.maxHeight) popup.style.maxHeight = options.maxHeight;
-    buildContent(popup);
-    if (options?.direction === "up") {
-      document.body.appendChild(popup);
-      popup.style.bottom = `${window.innerHeight - rect.top + 2}px`;
-    } else {
-      popup.style.top = `${rect.bottom}px`;
-      document.body.appendChild(popup);
-    }
-    setTimeout(() => {
-      const handler = (ev: MouseEvent) => {
-        if (!popup.contains(ev.target as Node)) {
-          popup.remove();
-          document.removeEventListener("click", handler);
-        }
-      };
-      document.addEventListener("click", handler);
-    }, 0);
-    return popup;
-  }
-
-  private addPopupItem(
-    parent: HTMLElement,
-    label: string,
-    checked: boolean,
-    onClick: () => void,
-  ): HTMLDivElement {
-    const item = parent.createDiv({ cls: "xy-popup-item" });
-    const check = item.createSpan({ cls: "xy-popup-check" });
-    check.textContent = checked ? "✓" : "";
-    const labelEl = item.createSpan({ cls: "xy-popup-label" });
-    labelEl.textContent = label;
-    item.addEventListener("click", (e) => {
-      e.stopPropagation();
-      onClick();
-      const popup = item.closest(".xy-popup") as HTMLDivElement;
-      if (popup) popup.remove();
-    });
-    return item;
-  }
-
   // ─── UI helpers ──────────────────────────────────────────────────
 
   private setProcessingState(processing: boolean) {
@@ -1153,4 +1110,59 @@ export class XiaoyuanAIChatView extends ItemView {
     }
     this.inputEl.disabled = processing;
   }
+}
+
+// ─── Exported popup helpers ───────────────────────────────────────
+
+export function showPopup(
+  trigger: HTMLElement,
+  buildContent: (popup: HTMLDivElement) => void,
+  options?: { maxHeight?: string; direction?: "down" | "up" },
+): HTMLDivElement | null {
+  if (document.querySelector(".xy-popup")) {
+    document.querySelectorAll(".xy-popup").forEach((el) => el.remove());
+    return null;
+  }
+  const popup = document.body.createDiv({ cls: "xy-popup" });
+  const rect = trigger.getBoundingClientRect();
+  popup.style.cssText = `position:fixed;left:${rect.left}px;`;
+  if (options?.maxHeight) popup.style.maxHeight = options.maxHeight;
+  buildContent(popup);
+  if (options?.direction === "up") {
+    document.body.appendChild(popup);
+    popup.style.bottom = `${window.innerHeight - rect.top + 2}px`;
+  } else {
+    popup.style.top = `${rect.bottom}px`;
+    document.body.appendChild(popup);
+  }
+  setTimeout(() => {
+    const handler = (ev: MouseEvent) => {
+      if (!popup.contains(ev.target as Node)) {
+        popup.remove();
+        document.removeEventListener("click", handler);
+      }
+    };
+    document.addEventListener("click", handler);
+  }, 0);
+  return popup;
+}
+
+export function addPopupItem(
+  parent: HTMLElement,
+  label: string,
+  checked: boolean,
+  onClick: () => void,
+): HTMLDivElement {
+  const item = parent.createDiv({ cls: "xy-popup-item" });
+  const check = item.createSpan({ cls: "xy-popup-check" });
+  check.textContent = checked ? "✓" : "";
+  const labelEl = item.createSpan({ cls: "xy-popup-label" });
+  labelEl.textContent = label;
+  item.addEventListener("click", (e) => {
+    e.stopPropagation();
+    onClick();
+    const popup = item.closest(".xy-popup") as HTMLDivElement;
+    if (popup) popup.remove();
+  });
+  return item;
 }
