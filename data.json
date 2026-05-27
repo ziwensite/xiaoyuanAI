@@ -5,23 +5,25 @@
     "autoStart": true,
     "hostname": "127.0.0.1",
     "port": 16226,
-    "model": "opencode/big-pickle",
-    "providerId": "opencode",
-    "modelId": "big-pickle",
-    "agent": "",
+    "model": "opencode/deepseek-v4-flash-free",
+    "providerId": "",
+    "modelId": "",
+    "agent": "plan",
     "textEnabled": true,
     "imageEnabled": false,
     "pdfEnabled": false
   },
-  "activeApiProviderId": "provider_1779707292154",
+  "activeApiProviderId": "",
   "apiProviders": [
     {
-      "id": "provider_1779707292154",
-      "name": "硅基",
-      "baseUrl": "https://api.siliconflow.cn/v1",
-      "model": "Qwen/Qwen3-8B",
-      "models": [],
-      "apiKey": "sk-qplvgjwenrkphyurizblfwsobtbrmzcqvglqqoornyzevkjl"
+      "id": "default",
+      "name": "默认 API",
+      "baseUrl": "https://api.openai.com/v1",
+      "model": "gpt-4o",
+      "models": [
+        "gpt-4o"
+      ],
+      "apiKey": ""
     }
   ],
   "proxyEnabled": false,
@@ -39,42 +41,6 @@
   "chatHistoryPath": ".chatHistory",
   "showDiffPreview": true,
   "showThinking": true,
-  "defaultMode": "build",
-  "defaultServiceTier": "standard",
-  "opencodePath": "opencode",
-  "serverPort": 16226,
-  "serverPassword": "",
-  "apiEndpoint": "https://api.openai.com/v1/chat/completions",
-  "apiKey": "",
-  "model": "gpt-4o",
-  "buildMode": "build",
-  "level": "low",
-  "opencodeModel": "gemini-1.5-flash",
-  "customApiList": [
-    {
-      "name": "API 1",
-      "endpoint": "",
-      "apiKey": "",
-      "model": "gpt-4o"
-    }
-  ],
-  "defaultApiIndex": 0,
-  "apiModels": [
-    "gpt-4o",
-    "gpt-4o-mini",
-    "gpt-4-turbo",
-    "gpt-4",
-    "gpt-3.5-turbo",
-    "claude-3-5-sonnet",
-    "claude-3-opus",
-    "claude-3-sonnet",
-    "claude-3-haiku",
-    "gemini-1.5-pro",
-    "gemini-1.5-flash",
-    "deepseek-chat"
-  ],
-  "xiaoyuan-chat-sessions": "[{\"id\":\"session-1779327052779\",\"title\":\"今天天气怎么样？\",\"createdAt\":1779327052779,\"updatedAt\":1779798389515},{\"id\":\"session-1779335072230\",\"title\":\"测试\",\"createdAt\":1779335072230,\"updatedAt\":1779436593313},{\"id\":\"session-1779325178957\",\"title\":\"介绍一下自己\",\"createdAt\":1779325178957,\"updatedAt\":1779326826793}]",
-  "xiaoyuan-current-session": "session-1779327052779",
   "opencodeModels": [
     {
       "label": "OpenCode Zen · Big Pickle",
@@ -133,5 +99,7 @@
       "name": "plan",
       "description": "Plan mode. Disallows all edit tools."
     }
-  ]
+  ],
+  "xiaoyuan-chat-sessions": "[{\"id\":\"session-1779327052779\",\"title\":\"今天天气怎么样？\",\"createdAt\":1779327052779,\"updatedAt\":1779923500601},{\"id\":\"session-1779847703815\",\"title\":\"你好测试\",\"createdAt\":1779847703815,\"updatedAt\":1779868539908},{\"id\":\"session-1779335072230\",\"title\":\"测试1111\",\"createdAt\":1779335072230,\"updatedAt\":1779807220020},{\"id\":\"session-1779325178957\",\"title\":\"介绍一下自己\",\"createdAt\":1779325178957,\"updatedAt\":1779326826793}]",
+  "xiaoyuan-current-session": "session-1779327052779"
 }

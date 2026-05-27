@@ -33,6 +33,14 @@
   box-shadow: none !important;
 }
 
+.xy-agent-build .xiaoyuan-input-container {
+  border: 2px solid #ef4444 !important;
+}
+
+.xy-agent-plan .xiaoyuan-input-container {
+  border: 2px solid #22c55e !important;
+}
+
 .xiaoyuan-chat-input {
   width: 100%;
   background: transparent;

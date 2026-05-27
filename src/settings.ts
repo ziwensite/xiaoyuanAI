@@ -133,7 +133,7 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
     this.addStatusRow(card, "waypoints", "代理", s.proxyEnabled ? s.proxyUrl : "已关闭");
 
     const actions = card.createDiv({ cls: "xy-settings-status-actions" });
-    const refreshBtn = actions.createEl("button", { cls: "xy-status-btn", text: "🔄 刷新" });
+    const refreshBtn = actions.createEl("button", { cls: "xy-status-btn", text: "刷新" });
     refreshBtn.addEventListener("click", async () => {
       await this.refreshStatusCard();
       if (s.execMode === "cli") {
@@ -635,9 +635,24 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
 
       const syncItem = popup.createDiv({ cls: "xy-popup-item" });
       syncItem.createSpan({ cls: "xy-popup-label" }).textContent = "⟳ 同步模型列表";
-      syncItem.addEventListener("click", (ev) => {
+      syncItem.addEventListener("click", async (ev) => {
         ev.stopPropagation();
         popup.remove();
+        try {
+          const { fetchOpenCodeModelsFromCLI, ensureOpenCodeServer } = await import("./ai");
+          const vaultDir = (await import("./server")).getVaultBasePath(this.app.vault);
+          await ensureOpenCodeServer(s.opencode.cliPath, s.opencode.hostname, s.opencode.port, vaultDir, true);
+          const result = await fetchOpenCodeModelsFromCLI(s.opencode.cliPath, vaultDir, s.opencode.port);
+          s.opencodeModels = result.models.map((m) => ({ label: m.id, value: m.id }));
+          s.opencodeModelCaps = result.caps;
+          if (!s.opencode.model || !result.models.some((m) => m.id === s.opencode.model)) {
+            s.opencode.model = result.defaultModel || result.models[0]?.id || "";
+          }
+          await this.plugin.saveSettings();
+          new Notice(`已同步 ${result.models.length} 个模型`);
+        } catch (err: any) {
+          new Notice(`同步失败: ${err.message}`);
+        }
       });
 
       const groups = new Map<string, { label: string; value: string }[]>();

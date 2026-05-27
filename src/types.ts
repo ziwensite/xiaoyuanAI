@@ -20,19 +20,6 @@ export interface Attachment {
   size: number;
 }
 
-export interface Part {
-  type: string;
-  text?: string;
-  id: string;
-  image?: string;
-  file?: string;
-}
-
-export interface MessageResponse {
-  info: Record<string, unknown>;
-  parts: Part[];
-}
-
 export interface FileDiff {
   file: string;
   before: string;
@@ -155,6 +142,11 @@ export const DEFAULT_SETTINGS: XiaoyuanAISettings = {
   showDiffPreview: true,
   showThinking: true,
 };
+
+export function getActiveProvider(s: { apiProviders: ApiProviderConfig[]; activeApiProviderId: string }): ApiProviderConfig | undefined {
+  if (s.activeApiProviderId) return s.apiProviders.find(p => p.id === s.activeApiProviderId);
+  return s.apiProviders[0];
+}
 
 export const CHAT_SESSIONS_KEY = "xiaoyuan-chat-sessions";
 export const CURRENT_SESSION_KEY = "xiaoyuan-current-session";

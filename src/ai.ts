@@ -27,10 +27,13 @@ interface OpenCodeProvider {
   configured?: boolean;
 }
 
+// Single-threaded (Obsidian plugin), no concurrency concern
 let currentCLISessionID = "";
+let cliCallInProgress = false;
 
 export function getCLISessionID(): string { return currentCLISessionID; }
-export function clearCLISessionID() { currentCLISessionID = ""; }
+export function clearCLISessionID() { currentCLISessionID = ""; cliCallInProgress = false; }
+export function isCLICallInProgress(): boolean { return cliCallInProgress; }
 
 function stripAnsi(str: string): string {
   return str.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, "");
@@ -193,9 +196,9 @@ function flattenProviders(providers: OpenCodeProvider[]): FlattenResult {
 }
 
 async function startTempOpenCodeServer(
-  bin: string, vaultDir: string, port: number,
+  bin: string, vaultDir: string, port: number, hostname = "127.0.0.1",
 ): Promise<{ url: string; proc: ChildProcess }> {
-  const args = ["serve", `--hostname=127.0.0.1`, `--port=${port}`];
+  const args = ["serve", `--hostname=${hostname}`, `--port=${port}`];
   const spec = buildSpawn(bin, args);
   return new Promise((resolve, reject) => {
     const proc = spawn(spec.command, spec.args, {
@@ -228,10 +231,6 @@ function stopTempServer(proc: ChildProcess): void {
   if (process.platform === "win32" && proc.pid) {
     try {
       execSync(`taskkill /f /t /pid ${proc.pid}`, { timeout: 3000, windowsHide: true });
-      return;
-    } catch {}
-    try {
-      execSync("taskkill /f /im opencode.exe", { timeout: 3000, windowsHide: true });
       return;
     } catch {}
   }
@@ -415,12 +414,15 @@ export async function callAIWithCLI(
   if (settings.mcpEnabled) args.push("--mcp");
 
   return new Promise<string>((resolve, reject) => {
+    cliCallInProgress = true;
     let connected = false;
     let stdoutBuf = "";
     let stderrBuf = "";
     let fullText = "";
     let resolved = false;
     let proc: any;
+
+    const cleanup = () => { cliCallInProgress = false; };
 
     try {
       const spec = buildSpawn(effectiveBin, args);
@@ -440,6 +442,7 @@ export async function callAIWithCLI(
     const done = (err?: Error) => {
       if (resolved) return;
       resolved = true;
+      cleanup();
       if (err) reject(err);
       else resolve(fullText || "(无响应内容)");
     };
@@ -470,6 +473,8 @@ export async function callAIWithCLI(
         const diffs: FileDiff[] = (Array.isArray(event.files) ? event.files : []).map((f: any) => ({
           file: typeof f === "string" ? f : f.path || f.file || "",
           before: f.before || "", after: f.after || "", diff: f.diff || "",
+          additions: Number(f.additions) || 0,
+          deletions: Number(f.deletions) || 0,
         })).filter((d: FileDiff) => d.file);
         if (diffs.length && onDiffs) onDiffs(diffs);
       }
@@ -547,8 +552,23 @@ export function estimateTokens(text: string): number {
 // ─── Auto-start opencode serve ──────────────────────────────────────
 
 let autoStartedProc: ChildProcess | null = null;
+let processCleanupRegistered = false;
+
+function registerProcessCleanup(proc: ChildProcess): void {
+  if (processCleanupRegistered) return;
+  processCleanupRegistered = true;
+  const cleanup = () => {
+    try { proc.kill(); } catch {}
+  };
+  process.on("exit", cleanup);
+  process.on("SIGTERM", cleanup);
+  process.on("SIGINT", cleanup);
+}
 
 export function isServerAutoStarted(): boolean {
+  if (autoStartedProc && autoStartedProc.exitCode !== null) {
+    autoStartedProc = null;
+  }
   return autoStartedProc !== null && autoStartedProc.exitCode === null;
 }
 
@@ -574,8 +594,9 @@ export async function ensureOpenCodeServer(
   }
 
   const effectiveBin = await resolveOpenCodePath(cliPath);
-  const temp = await startTempOpenCodeServer(effectiveBin, vaultDir, port);
+  const temp = await startTempOpenCodeServer(effectiveBin, vaultDir, port, hostname);
   autoStartedProc = temp.proc;
+  registerProcessCleanup(temp.proc);
   return temp.url;
 }
 

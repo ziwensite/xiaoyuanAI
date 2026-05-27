@@ -1,12 +1,12 @@
 import { App, Modal, Notice } from "obsidian";
 import type XiaoyuanAIPlugin from "./main";
 import { callAIWithCLI, callAIWithAPIJson, getVaultBasePath } from "./ai";
-import { OPERATION_PROMPTS, OPERATION_LABELS, WIKI_SYSTEM_PROMPTS } from "./types";
+import { OPERATION_PROMPTS, OPERATION_LABELS, WIKI_SYSTEM_PROMPTS, getActiveProvider } from "./types";
 import type { ApiProviderConfig } from "./types";
 
-function getActiveProvider(s: { apiProviders: ApiProviderConfig[]; activeApiProviderId: string }): ApiProviderConfig | undefined {
-  if (s.activeApiProviderId) return s.apiProviders.find(p => p.id === s.activeApiProviderId);
-  return s.apiProviders[0];
+function ensureApiUrl(baseUrl: string): string {
+  const trimmed = baseUrl.replace(/\/+$/, "");
+  return trimmed.endsWith("/chat/completions") ? trimmed : trimmed + "/chat/completions";
 }
 
 export class TextOperationModal extends Modal {
@@ -49,12 +49,16 @@ export class TextOperationModal extends Modal {
       if (s.execMode === "cli") {
         this.modeLabel.textContent = "CLI";
         const vaultDir = getVaultBasePath(this.app.vault);
-        result = await callAIWithCLI(prompt, s, vaultDir);
+        result = await callAIWithCLI(prompt, s, vaultDir, undefined, undefined,
+          () => { this.loadingEl.textContent = "已连接，等待响应..."; },
+          (text) => { this.loadingEl.textContent = `思考中... ${text.slice(0, 60)}`; },
+          (text) => { this.loadingEl.textContent = "✓ 已收到响应"; },
+        );
       } else {
         this.modeLabel.textContent = "API";
         const provider = getActiveProvider(s);
         if (!provider || !provider.apiKey) { new Notice("API Key 未配置"); this.close(); return; }
-        result = await callAIWithAPIJson(provider.baseUrl + "/chat/completions", provider.apiKey, provider.model, [
+        result = await callAIWithAPIJson(ensureApiUrl(provider.baseUrl), provider.apiKey, provider.model, [
           { role: "user", content: prompt },
         ], s.maxTokens, s.temperature, s.apiReasoningEffort);
       }
@@ -84,33 +88,6 @@ export class TextOperationModal extends Modal {
   }
 
   onClose() { this.contentEl.empty(); }
-}
-
-export class TextInputModal extends Modal {
-  constructor(
-    app: App,
-    private title: string,
-    private placeholder: string,
-    private defaultValue: string,
-    private onSubmit: (value: string) => void,
-  ) { super(app); }
-
-  onOpen() {
-    const { contentEl } = this;
-    contentEl.createEl("h3", { text: this.title });
-    const input = contentEl.createEl("input", {
-      attr: { type: "text", placeholder: this.placeholder },
-    });
-    input.value = this.defaultValue;
-    input.style.width = "100%";
-    input.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") { this.onSubmit(input.value); this.close(); }
-    });
-    input.focus();
-    input.select();
-    const btn = contentEl.createEl("button", { text: "确定" });
-    btn.onclick = () => { this.onSubmit(input.value); this.close(); };
-  }
 }
 
 export class WikiCommandModal extends Modal {
@@ -154,14 +131,18 @@ export class WikiCommandModal extends Modal {
         if (s.execMode === "cli") {
           const fullPrompt = systemPrompt ? `${systemPrompt}\n\n---\n${text}` : text;
           const vaultDir = getVaultBasePath(this.app.vault);
-          result = await callAIWithCLI(fullPrompt, s, vaultDir);
+          result = await callAIWithCLI(fullPrompt, s, vaultDir, undefined, undefined,
+            () => { submitBtn.textContent = "已连接，等待响应..."; },
+            (t) => { submitBtn.textContent = `思考中... ${t.slice(0, 40)}`; },
+            () => { resultEl.textContent = "✓ 已收到响应"; },
+          );
         } else {
           const provider = getActiveProvider(s);
           if (!provider || !provider.apiKey) { new Notice("请先在设置中配置 API Key"); return; }
           const messages: { role: "system" | "user"; content: string }[] = systemPrompt
             ? [{ role: "system", content: systemPrompt }, { role: "user", content: text }]
             : [{ role: "user", content: text }];
-          result = await callAIWithAPIJson(provider.baseUrl + "/chat/completions", provider.apiKey, provider.model, messages, s.maxTokens, s.temperature, s.apiReasoningEffort);
+          result = await callAIWithAPIJson(ensureApiUrl(provider.baseUrl), provider.apiKey, provider.model, messages, s.maxTokens, s.temperature, s.apiReasoningEffort);
         }
 
         resultEl.classList.add("show");

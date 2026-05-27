@@ -6,6 +6,7 @@ import {
   VIEW_TYPE_XIAOYUAN_AI_CHAT,
   FileDiff,
   Attachment,
+  getActiveProvider,
 } from "./types";
 import type { ApiProviderConfig } from "./types";
 import { renderMarkdown } from "./markdown";
@@ -23,11 +24,6 @@ import {
 } from "./session";
 import { showPopup, addPopupItem } from "./popup";
 import { buildToolbarContent as toolbarBuildToolbarContent } from "./toolbar";
-
-function getActiveProvider(s: { apiProviders: ApiProviderConfig[]; activeApiProviderId: string }): ApiProviderConfig | undefined {
-  if (s.activeApiProviderId) return s.apiProviders.find(p => p.id === s.activeApiProviderId);
-  return s.apiProviders[0];
-}
 
 export class XiaoyuanAIChatView extends ItemView {
   plugin: XiaoyuanAIPlugin;
@@ -103,6 +99,7 @@ export class XiaoyuanAIChatView extends ItemView {
     if (!this.toolbarEl) return;
     this.toolbarEl.empty();
     this.buildToolbarContent(this.toolbarEl);
+    this.updateAgentBorderClass();
     if (this.plugin.settings.execMode === "cli") {
       this.autoSyncCLIModels();
       this.checkConnectionStatus();
@@ -211,9 +208,18 @@ export class XiaoyuanAIChatView extends ItemView {
     this.toolbarEl = container.createDiv({ cls: "xiaoyuan-toolbar" });
     this.buildToolbarContent(this.toolbarEl);
 
+    this.updateAgentBorderClass();
+
     this.inputEl.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); this.sendMessage(); }
     });
+  }
+
+  private updateAgentBorderClass() {
+    const agent = this.plugin.settings.opencode.agent;
+    this.viewContainer.removeClass("xy-agent-plan", "xy-agent-build");
+    if (agent === "plan") this.viewContainer.addClass("xy-agent-plan");
+    else if (agent === "build") this.viewContainer.addClass("xy-agent-build");
   }
 
   private buildToolbarContent(container: HTMLElement) {
@@ -316,7 +322,8 @@ export class XiaoyuanAIChatView extends ItemView {
         });
       }
       setTimeout(() => {
-        (window as any).Prism?.highlightAllUnder(bubbleEl);
+        if (!bubbleEl.isConnected) return;
+        (window as Record<string, any>).Prism?.highlightAllUnder(bubbleEl);
         bubbleEl.querySelectorAll("pre").forEach((pre) => {
           if (pre.querySelector(".xy-copy-btn")) return;
           const btn = document.createElement("button");
@@ -406,13 +413,11 @@ export class XiaoyuanAIChatView extends ItemView {
       if (this.plugin.settings.execMode === "cli") {
         const streamId = this.finalizeStreamingMessage();
         await this.saveCurrentSession();
-        if (this.plugin.settings.showDiffPreview && streamId) {
-          const pending = this.pendingDiffs;
-          const diffs = pending as FileDiff[] | null;
-          if (diffs && diffs.length) {
-            this.renderDiffs(streamId, diffs);
-            await this.saveCurrentSession();
-          }
+        const actualDiffs = this.pendingDiffs as FileDiff[] | null;
+        if (this.plugin.settings.showDiffPreview && streamId && actualDiffs?.length) {
+          const diffs = actualDiffs;
+          this.renderDiffs(streamId, diffs);
+          await this.saveCurrentSession();
         }
       }
     } catch (err: any) {
@@ -452,12 +457,19 @@ export class XiaoyuanAIChatView extends ItemView {
     if (s.execMode === "cli") {
       const vaultDir = getVaultBasePath(this.app.vault);
       if (s.opencode.autoStart) {
-        ensureOpenCodeServer(s.opencode.cliPath, s.opencode.hostname, s.opencode.port, vaultDir, true).catch(() => {});
+        try {
+          await ensureOpenCodeServer(s.opencode.cliPath, s.opencode.hostname, s.opencode.port, vaultDir, true);
+        } catch (err: any) {
+          new Notice(`⚠ 启动 opencode 失败: ${err.message}`);
+          throw new Error(`无法启动 opencode serve: ${err.message}`);
+        }
+      }
+      if (this.messages.length > 0 && this.messages[this.messages.length - 1].role === "user") {
+        this.messages[this.messages.length - 1].content = enrichedMessage;
       }
       const allMessages = [
         { role: "system" as const, content: s.systemPrompt },
         ...this.messages.map((m) => ({ role: m.role, content: m.content })),
-        { role: "user" as const, content: enrichedMessage },
       ];
       const prompt = allMessages
         .map((m) => `${m.role === "system" ? "[系统]" : m.role === "user" ? "[用户]" : "[助手]"}: ${m.content}`)
@@ -837,7 +849,10 @@ export class XiaoyuanAIChatView extends ItemView {
     await this.saveCurrentSession();
 
     const path = getChatHistoryPath(this.plugin.settings.chatHistoryPath);
-    this.sessions = await scanChatHistoryFolder(this.app.vault, path);
+    const diskSessions = await scanChatHistoryFolder(this.app.vault, path);
+    const diskIds = new Set(diskSessions.map((s) => s.id));
+    const unsaved = this.sessions.filter((s) => !diskIds.has(s.id));
+    this.sessions = [...diskSessions, ...unsaved];
 
     if (!this.sessions.find((s) => s.id === this.currentSessionId)) {
       if (this.sessions.length > 0) {

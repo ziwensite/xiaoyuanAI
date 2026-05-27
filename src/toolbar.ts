@@ -1,5 +1,6 @@
 import { Notice, setIcon, setTooltip } from "obsidian";
 import { showPopup, addPopupItem } from "./popup";
+import { getActiveProvider } from "./types";
 import type { ApiProviderConfig } from "./types";
 import type XiaoyuanAIPlugin from "./main";
 
@@ -9,11 +10,6 @@ interface ToolbarHost {
   pickFiles(): void;
   sendMessage(): void;
   syncCLIModels(): Promise<void>;
-}
-
-function getActiveProvider(s: { apiProviders: ApiProviderConfig[]; activeApiProviderId: string }): ApiProviderConfig | undefined {
-  if (s.activeApiProviderId) return s.apiProviders.find(p => p.id === s.activeApiProviderId);
-  return s.apiProviders[0];
 }
 
 export function buildToolbarContent(container: HTMLElement, view: ToolbarHost): HTMLSpanElement {
@@ -41,6 +37,12 @@ export function buildToolbarContent(container: HTMLElement, view: ToolbarHost): 
             s.opencode.agent = m.value;
             view.plugin.saveSettings();
             agentText.textContent = m.value;
+            const chatEl = agentText.closest(".xiaoyuan-chat");
+            if (chatEl) {
+              chatEl.removeClass("xy-agent-plan", "xy-agent-build");
+              if (m.value === "plan") chatEl.addClass("xy-agent-plan");
+              else if (m.value === "build") chatEl.addClass("xy-agent-build");
+            }
             new Notice(`已切换到 agent: ${m.value}`);
           });
         }
@@ -57,7 +59,7 @@ export function buildToolbarContent(container: HTMLElement, view: ToolbarHost): 
   setTooltip(trigger, s.execMode === "cli" ? s.opencode.model || "未选择" : getActiveProvider(s)?.model || "未选择");
   trigger.addEventListener("click", (e) => {
     e.stopPropagation();
-    showPopup(trigger, (popup) => {
+    showPopup(trigger, async (popup) => {
       if (s.execMode === "cli") {
         const syncItem = popup.createDiv({ cls: "xy-popup-item" });
         syncItem.createSpan({ cls: "xy-popup-label" }).textContent = "⟳ 同步模型列表";
@@ -66,11 +68,26 @@ export function buildToolbarContent(container: HTMLElement, view: ToolbarHost): 
           popup.remove();
           view.syncCLIModels();
         });
-        const models = s.opencodeModels || [];
+        let models = s.opencodeModels || [];
         if (models.length === 0) {
           const loadingItem = popup.createDiv({ cls: "xy-popup-item" });
           loadingItem.createSpan({ cls: "xy-popup-label" }).textContent = "正在同步...";
-          view.syncCLIModels().catch(() => {});
+          await view.syncCLIModels().catch(() => {});
+          models = s.opencodeModels || [];
+          popup.empty();
+          // re-add sync button after rebuild
+          const syncItem2 = popup.createDiv({ cls: "xy-popup-item" });
+          syncItem2.createSpan({ cls: "xy-popup-label" }).textContent = "⟳ 同步模型列表";
+          syncItem2.addEventListener("click", (ev) => {
+            ev.stopPropagation();
+            popup.remove();
+            view.syncCLIModels();
+          });
+        }
+        if (models.length === 0) {
+          const emptyItem = popup.createDiv({ cls: "xy-popup-item" });
+          emptyItem.createSpan({ cls: "xy-popup-label" }).textContent = "未获取到模型列表";
+          return;
         }
         const groups = new Map<string, { label: string; value: string }[]>();
         for (const m of models) {
@@ -95,9 +112,10 @@ export function buildToolbarContent(container: HTMLElement, view: ToolbarHost): 
             addPopupItem(children, m.label, m.value === s.opencode.model, () => {
               s.opencode.model = m.value;
               view.plugin.saveSettings();
-              trigger.textContent = m.label;
+              const shortName = m.value.split("/").pop() || m.value;
+              trigger.textContent = shortName;
               setTooltip(trigger, m.value);
-              new Notice(`已切换到模型: ${m.label}`);
+              new Notice(`已切换到模型: ${shortName}`);
             });
           }
           groupTitle.addEventListener("click", (ev) => {

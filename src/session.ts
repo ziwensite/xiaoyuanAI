@@ -25,7 +25,7 @@ export async function ensureChatHistoryFolder(vault: Vault, path: string): Promi
 
 export function parseMarkdownToMessages(content: string): ChatMessage[] {
   const messages: ChatMessage[] = [];
-  const parts = content.split("---");
+  const parts = content.split(/\n---\n+/);
   let idCounter = 0;
 
   for (let i = 1; i < parts.length; i++) {
@@ -35,23 +35,36 @@ export function parseMarkdownToMessages(content: string): ChatMessage[] {
     const lines = part.split("\n");
     let role: "user" | "assistant" | null = null;
     let msgContent = "";
+    let thinkingLines: string[] = [];
+    let inThinking = false;
 
     for (const line of lines) {
       if (line.startsWith("**你**:")) {
         role = "user";
       } else if (line.startsWith("**小元**:")) {
         role = "assistant";
+      } else if (line.trim() === "> [!thinking] 思考过程") {
+        inThinking = true;
+      } else if (inThinking) {
+        if (line.startsWith("> ")) {
+          thinkingLines.push(line.slice(2));
+        } else {
+          inThinking = false;
+          msgContent += line + "\n";
+        }
       } else if (role) {
         msgContent += line + "\n";
       }
     }
 
     if (role && msgContent.trim()) {
-      messages.push({
+      const msg: ChatMessage = {
         id: "msg-" + (++idCounter),
         role,
         content: msgContent.trim(),
-      });
+      };
+      if (thinkingLines.length > 0) msg.thinking = thinkingLines.join("\n").trim();
+      messages.push(msg);
     }
   }
 
@@ -61,7 +74,11 @@ export function parseMarkdownToMessages(content: string): ChatMessage[] {
 export function sessionToMarkdown(session: ChatSession | undefined, messages: ChatMessage[]): string {
   let content = `---\ntitle: ${session?.title || "新对话"}\ncreated: ${session?.createdAt || Date.now()}\nupdated: ${Date.now()}\n---\n\n`;
   messages.forEach((msg) => {
-    content += `**${msg.role === "user" ? "你" : "小元"}**:\n\n${msg.content}\n\n---\n\n`;
+    content += `**${msg.role === "user" ? "你" : "小元"}**:\n\n${msg.content}\n\n`;
+    if (msg.thinking) {
+      content += `> [!thinking] 思考过程\n> ${msg.thinking.replace(/\n/g, "\n> ")}\n\n`;
+    }
+    content += `---\n\n`;
   });
   return content;
 }
