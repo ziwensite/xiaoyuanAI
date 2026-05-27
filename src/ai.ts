@@ -79,7 +79,7 @@ function spawnWithTimeout(bin: string, args: string[], cwd: string, timeoutMs = 
       const proc = spawn(spec.command, spec.args, { cwd, stdio: ["ignore", "pipe", "pipe"], env: { ...process.env } });
 
       if (timeoutMs > 0) {
-        timer = setTimeout(() => { try { proc.kill(); } catch {} reject(new Error("超时")); }, timeoutMs);
+        timer = setTimeout(() => { try { proc.kill(); } catch {} reject(new Error(`操作超时 (${timeoutMs}ms)`)); }, timeoutMs);
       }
 
       proc.stdout.on("data", (d: Buffer) => stdout += d.toString());
@@ -87,7 +87,7 @@ function spawnWithTimeout(bin: string, args: string[], cwd: string, timeoutMs = 
       proc.on("close", (code) => {
         clearTimeout(timer);
         if (code === 0 && stdout) resolve(stdout);
-        else reject(new Error(stderr.trim() || `exit ${code}`));
+        else reject(new Error(stderr.trim() || `进程异常退出 (${code})`));
       });
       proc.on("error", (err) => { clearTimeout(timer); reject(err); });
     } catch (err) {
@@ -111,7 +111,7 @@ export async function checkOpenCodeStatus(
       return { ok: true, version: "", bin: effectiveBin };
     } catch {
       const out = await spawnWithTimeout(effectiveBin, ["--version"], vaultDir, 5000).catch(() => "");
-      return { ok: false, version: out.trim(), bin: effectiveBin, error: "opencode serve 未运行" };
+      return { ok: false, version: out.trim(), bin: effectiveBin, error: "opencode serve 未运行\n请执行 opencode serve 启动服务，或开启设置中的「自动启动」" };
     }
   } catch (err: any) {
     return { ok: false, version: "", bin: opencodePath, error: err.message };
@@ -450,7 +450,7 @@ export async function callAIWithCLI(
       if (!connected) { connected = true; if (onConnected) onConnected(); }
       if (event.sessionID && !currentCLISessionID) currentCLISessionID = event.sessionID;
       if (event.type === "error") {
-        const errMsg = event.error?.data?.message || event.error?.message || "CLI 错误";
+        const errMsg = event.error?.data?.message || event.error?.message || "opencode 返回未知错误";
         done(new Error(errMsg)); return;
       }
       if (event.type === "thinking") {
@@ -490,7 +490,7 @@ export async function callAIWithCLI(
     proc.on("close", (code: number | null) => {
       if (resolved) return;
       if (code !== 0) done(new Error(stderrBuf.trim() || `进程退出码 ${code}`));
-      else if (!connected) done(new Error("未收到数据，请检查 opencode 路径和模型配置"));
+      else if (!connected) done(new Error("未收到数据\n请检查 opencode 路径和模型配置，或重启 opencode serve"));
       else resolve(fullText || "(无响应内容)");
     });
 

@@ -879,3 +879,83 @@
   flex-shrink: 0;
 }
 
+/* ─── Streaming & Tool Log ──────────────────────────── */
+
+.xy-stream-content {
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
+.xy-tool-log {
+  margin-top: 6px;
+  padding-top: 4px;
+  border-top: 1px solid var(--background-modifier-border);
+  font-size: 0.8em;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.xy-tool-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--background-primary-alt);
+  color: var(--text-muted);
+  font-size: 0.9em;
+}
+
+/* ─── Session Popup Search ──────────────────────────── */
+
+.xy-popup-search {
+  width: calc(100% - 16px);
+  margin: 4px 8px 2px;
+  padding: 4px 8px;
+  font-size: var(--font-ui-small, 13px);
+  background: transparent;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  color: var(--text-normal);
+  outline: none;
+  box-sizing: border-box;
+}
+
+.xy-popup-search:focus {
+  border-color: var(--interactive-accent);
+}
+
+.xy-popup-session-list {
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+/* ─── Code Block Copy Button ────────────────────────── */
+
+.xy-copy-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  border-radius: 4px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 1;
+  line-height: 1.4;
+}
+
+pre:hover .xy-copy-btn {
+  opacity: 1;
+}
+
+.xy-copy-btn:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+

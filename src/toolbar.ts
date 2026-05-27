@@ -1,0 +1,204 @@
+import { Notice, setIcon, setTooltip } from "obsidian";
+import { showPopup, addPopupItem } from "./popup";
+import type { ApiProviderConfig } from "./types";
+import type XiaoyuanAIPlugin from "./main";
+
+interface ToolbarHost {
+  plugin: XiaoyuanAIPlugin;
+  abortController: AbortController | null;
+  pickFiles(): void;
+  sendMessage(): void;
+  syncCLIModels(): Promise<void>;
+}
+
+function getActiveProvider(s: { apiProviders: ApiProviderConfig[]; activeApiProviderId: string }): ApiProviderConfig | undefined {
+  if (s.activeApiProviderId) return s.apiProviders.find(p => p.id === s.activeApiProviderId);
+  return s.apiProviders[0];
+}
+
+export function buildToolbarContent(container: HTMLElement, view: ToolbarHost): HTMLSpanElement {
+  const s = view.plugin.settings;
+
+  // Attach file
+  const attachBtn = container.createSpan({ cls: "xiaoyuan-attach-btn" });
+  attachBtn.textContent = "+";
+  setTooltip(attachBtn, "添加附件");
+  attachBtn.addEventListener("click", () => view.pickFiles());
+
+  // Agent (CLI only)
+  if (s.execMode === "cli") {
+    const agentOptions = (s.opencodeAgents || []).length
+      ? (s.opencodeAgents || []).map((a) => ({ value: a.name, label: a.name }))
+      : [{ value: "build", label: "build" }, { value: "plan", label: "plan" }];
+    const agentText = container.createSpan({ cls: "xiaoyuan-level-select" });
+    agentText.textContent = s.opencode.agent;
+    setTooltip(agentText, "点击切换 agent");
+    agentText.addEventListener("click", (e) => {
+      e.stopPropagation();
+      showPopup(agentText, (popup) => {
+        for (const m of agentOptions) {
+          addPopupItem(popup, m.label, m.value === s.opencode.agent, () => {
+            s.opencode.agent = m.value;
+            view.plugin.saveSettings();
+            agentText.textContent = m.value;
+            new Notice(`已切换到 agent: ${m.value}`);
+          });
+        }
+      }, { direction: "up" });
+    });
+    container.appendChild(agentText);
+  }
+
+  // Model trigger
+  const trigger = container.createSpan({ cls: "xiaoyuan-model-select" });
+  trigger.textContent = s.execMode === "cli"
+    ? (s.opencode.model ? s.opencode.model.split("/").pop() || s.opencode.model : "模型")
+    : (getActiveProvider(s)?.model || "模型");
+  setTooltip(trigger, s.execMode === "cli" ? s.opencode.model || "未选择" : getActiveProvider(s)?.model || "未选择");
+  trigger.addEventListener("click", (e) => {
+    e.stopPropagation();
+    showPopup(trigger, (popup) => {
+      if (s.execMode === "cli") {
+        const syncItem = popup.createDiv({ cls: "xy-popup-item" });
+        syncItem.createSpan({ cls: "xy-popup-label" }).textContent = "⟳ 同步模型列表";
+        syncItem.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          popup.remove();
+          view.syncCLIModels();
+        });
+        const models = s.opencodeModels || [];
+        if (models.length === 0) {
+          const loadingItem = popup.createDiv({ cls: "xy-popup-item" });
+          loadingItem.createSpan({ cls: "xy-popup-label" }).textContent = "正在同步...";
+          view.syncCLIModels().catch(() => {});
+        }
+        const groups = new Map<string, { label: string; value: string }[]>();
+        for (const m of models) {
+          const provider = m.value.includes("/") ? m.value.split("/")[0] : "其他";
+          if (!groups.has(provider)) groups.set(provider, []);
+          groups.get(provider)!.push(m);
+        }
+        const sortedGroups = [...groups.entries()].sort(([a], [b]) => {
+          if (a === "opencode") return -1;
+          if (b === "opencode") return 1;
+          return a.localeCompare(b);
+        });
+        for (const [providerName, items] of sortedGroups) {
+          popup.createDiv({ cls: "xy-popup-separator" });
+          const groupTitle = popup.createDiv({ cls: "xy-popup-group-title" });
+          const arrow = groupTitle.createSpan({ cls: "xy-popup-arrow" });
+          arrow.textContent = "▶";
+          groupTitle.createSpan({ cls: "xy-popup-label" }).textContent = providerName;
+          const children = popup.createDiv({ cls: "xy-popup-group-children" });
+          children.classList.add("is-collapsed");
+          for (const m of items) {
+            addPopupItem(children, m.label, m.value === s.opencode.model, () => {
+              s.opencode.model = m.value;
+              view.plugin.saveSettings();
+              trigger.textContent = m.label;
+              setTooltip(trigger, m.value);
+              new Notice(`已切换到模型: ${m.label}`);
+            });
+          }
+          groupTitle.addEventListener("click", (ev) => {
+            ev.stopPropagation();
+            const open = arrow.textContent === "▼";
+            arrow.textContent = open ? "▶" : "▼";
+            children.classList.toggle("is-collapsed", open);
+          });
+        }
+      } else {
+        const provider = getActiveProvider(s);
+        const apiModels = provider?.models || s.apiProviders[0]?.models || [];
+        const currentModel = provider?.model || "";
+        if (currentModel && !apiModels.includes(currentModel)) {
+          addPopupItem(popup, `${currentModel}（当前）`, true, () => {
+            if (provider) provider.model = currentModel;
+            view.plugin.saveSettings();
+            trigger.textContent = currentModel;
+            setTooltip(trigger, currentModel);
+            new Notice(`已切换到模型: ${currentModel}`);
+          });
+        }
+        if (apiModels.length === 0 && !currentModel) {
+          const emptyItem = popup.createDiv({ cls: "xy-popup-item" });
+          emptyItem.createSpan({ cls: "xy-popup-label" }).textContent = "未配置模型列表，请在设置中添加";
+        }
+        for (const m of apiModels) {
+          addPopupItem(popup, m, m === currentModel, () => {
+            if (provider) provider.model = m;
+            view.plugin.saveSettings();
+            trigger.textContent = m;
+            setTooltip(trigger, m);
+            new Notice(`已切换到模型: ${m}`);
+          });
+        }
+      }
+    }, { direction: "up", maxHeight: "50vh" });
+  });
+
+  // Reasoning level
+  const apiLevels = [
+    { value: "none", label: "none" },
+    { value: "low", label: "low" },
+    { value: "medium", label: "medium" },
+    { value: "high", label: "high" },
+  ];
+  if (s.execMode === "cli") {
+    const levels: { value: string; label: string }[] = [
+      { value: "none", label: "none" },
+      { value: "minimal", label: "minimal" },
+      { value: "low", label: "low" },
+      { value: "medium", label: "medium" },
+      { value: "high", label: "high" },
+      { value: "xhigh", label: "xhigh" },
+    ];
+    const levelText = container.createSpan({ cls: "xiaoyuan-level-select" });
+    levelText.textContent = s.defaultReasoning;
+    setTooltip(levelText, "点击切换思考强度");
+    levelText.addEventListener("click", (e) => {
+      e.stopPropagation();
+      showPopup(levelText, (popup) => {
+        for (const m of levels) {
+          addPopupItem(popup, m.label, m.value === s.defaultReasoning, () => {
+            s.defaultReasoning = m.value as any;
+            view.plugin.saveSettings();
+            levelText.textContent = m.label;
+            new Notice(`推理强度: ${m.label}`);
+          });
+        }
+      }, { direction: "up" });
+    });
+    container.appendChild(levelText);
+  } else {
+    const apiLevelText = container.createSpan({ cls: "xiaoyuan-level-select" });
+    apiLevelText.textContent = s.apiReasoningEffort;
+    setTooltip(apiLevelText, "点击切换思考强度");
+    apiLevelText.addEventListener("click", (e) => {
+      e.stopPropagation();
+      showPopup(apiLevelText, (popup) => {
+        for (const m of apiLevels) {
+          addPopupItem(popup, m.label, m.value === s.apiReasoningEffort, () => {
+            s.apiReasoningEffort = m.value as any;
+            view.plugin.saveSettings();
+            apiLevelText.textContent = m.label;
+            new Notice(`推理强度: ${m.label}`);
+          });
+        }
+      }, { direction: "up" });
+    });
+    container.appendChild(apiLevelText);
+  }
+
+  // Send/Stop button
+  const sendBtn = container.createSpan({ cls: "xiaoyuan-attach-btn" });
+  sendBtn.style.marginLeft = "auto";
+  sendBtn.addEventListener("click", () => {
+    if (view.abortController) {
+      view.abortController.abort();
+    } else {
+      view.sendMessage();
+    }
+  });
+  return sendBtn;
+}

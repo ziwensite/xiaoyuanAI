@@ -21,6 +21,8 @@ import {
   loadSessionsMeta,
   migrateOldData,
 } from "./session";
+import { showPopup, addPopupItem } from "./popup";
+import { buildToolbarContent as toolbarBuildToolbarContent } from "./toolbar";
 
 function getActiveProvider(s: { apiProviders: ApiProviderConfig[]; activeApiProviderId: string }): ApiProviderConfig | undefined {
   if (s.activeApiProviderId) return s.apiProviders.find(p => p.id === s.activeApiProviderId);
@@ -39,7 +41,7 @@ export class XiaoyuanAIChatView extends ItemView {
   private sendBtn!: HTMLSpanElement;
   private sessionSelector!: HTMLSpanElement;
   private toolbarEl!: HTMLDivElement;
-  private abortController: AbortController | null = null;
+  abortController: AbortController | null = null;
   private pendingDiffs: FileDiff[] | null = null;
   private connectionStatusEl: HTMLSpanElement | null = null;
   private attachments: Attachment[] = [];
@@ -215,191 +217,11 @@ export class XiaoyuanAIChatView extends ItemView {
   }
 
   private buildToolbarContent(container: HTMLElement) {
-    const s = this.plugin.settings;
-
-    // 📎 Attach file
-    const attachBtn = container.createSpan({ cls: "xiaoyuan-attach-btn" });
-    attachBtn.textContent = "+";
-    setTooltip(attachBtn, "添加附件");
-    attachBtn.addEventListener("click", () => this.pickFiles());
-
-    // Agent▼ (CLI only)
-    if (s.execMode === "cli") {
-      const agentOptions = (s.opencodeAgents || []).length
-        ? (s.opencodeAgents || []).map((a) => ({ value: a.name, label: a.name }))
-        : [{ value: "build", label: "build" }, { value: "plan", label: "plan" }];
-      const agentText = container.createSpan({ cls: "xiaoyuan-level-select" });
-      agentText.textContent = s.opencode.agent;
-      setTooltip(agentText, "点击切换 agent");
-      agentText.addEventListener("click", (e) => {
-        e.stopPropagation();
-        showPopup(agentText, (popup) => {
-          for (const m of agentOptions) {
-            addPopupItem(popup, m.label, m.value === s.opencode.agent, () => {
-              s.opencode.agent = m.value;
-              this.plugin.saveSettings();
-              agentText.textContent = m.value;
-              new Notice(`已切换到 agent: ${m.value}`);
-            });
-          }
-        }, { direction: "up" });
-      });
-      container.appendChild(agentText);
-    }
-
-    // Model trigger
-    const trigger = container.createSpan({ cls: "xiaoyuan-model-select" });
-    trigger.textContent = s.execMode === "cli"
-      ? (s.opencode.model ? s.opencode.model.split("/").pop() || s.opencode.model : "模型")
-      : (getActiveProvider(s)?.model || "模型");
-    setTooltip(trigger, s.execMode === "cli" ? s.opencode.model || "未选择" : getActiveProvider(s)?.model || "未选择");
-    trigger.addEventListener("click", (e) => {
-      e.stopPropagation();
-      showPopup(trigger, (popup) => {
-        if (s.execMode === "cli") {
-          const syncItem = popup.createDiv({ cls: "xy-popup-item" });
-          syncItem.createSpan({ cls: "xy-popup-label" }).textContent = "⟳ 同步模型列表";
-          syncItem.addEventListener("click", (ev) => {
-            ev.stopPropagation();
-            popup.remove();
-            this.syncCLIModels();
-          });
-          const models = s.opencodeModels || [];
-          if (models.length === 0) {
-            const loadingItem = popup.createDiv({ cls: "xy-popup-item" });
-            loadingItem.createSpan({ cls: "xy-popup-label" }).textContent = "正在同步...";
-            this.syncCLIModels().catch(() => {});
-          }
-          const groups = new Map<string, { label: string; value: string }[]>();
-          for (const m of models) {
-            const provider = m.value.includes("/") ? m.value.split("/")[0] : "其他";
-            if (!groups.has(provider)) groups.set(provider, []);
-            groups.get(provider)!.push(m);
-          }
-          const sortedGroups = [...groups.entries()].sort(([a], [b]) => {
-            if (a === "opencode") return -1;
-            if (b === "opencode") return 1;
-            return a.localeCompare(b);
-          });
-          for (const [providerName, items] of sortedGroups) {
-            popup.createDiv({ cls: "xy-popup-separator" });
-            const groupTitle = popup.createDiv({ cls: "xy-popup-group-title" });
-            const arrow = groupTitle.createSpan({ cls: "xy-popup-arrow" });
-            arrow.textContent = "▶";
-            groupTitle.createSpan({ cls: "xy-popup-label" }).textContent = providerName;
-            const children = popup.createDiv({ cls: "xy-popup-group-children" });
-            children.classList.add("is-collapsed");
-            for (const m of items) {
-              addPopupItem(children, m.label, m.value === s.opencode.model, () => {
-                s.opencode.model = m.value;
-                this.plugin.saveSettings();
-                trigger.textContent = m.label;
-                setTooltip(trigger, m.value);
-                new Notice(`已切换到模型: ${m.label}`);
-              });
-            }
-            groupTitle.addEventListener("click", (ev) => {
-              ev.stopPropagation();
-              const open = arrow.textContent === "▼";
-              arrow.textContent = open ? "▶" : "▼";
-              children.classList.toggle("is-collapsed", open);
-            });
-          }
-        } else {
-          const provider = getActiveProvider(s);
-          const apiModels = provider?.models || s.apiProviders[0]?.models || [];
-          const currentModel = provider?.model || "";
-          if (currentModel && !apiModels.includes(currentModel)) {
-            addPopupItem(popup, `${currentModel}（当前）`, true, () => {
-              if (provider) provider.model = currentModel;
-              this.plugin.saveSettings();
-              trigger.textContent = currentModel;
-              setTooltip(trigger, currentModel);
-              new Notice(`已切换到模型: ${currentModel}`);
-            });
-          }
-          if (apiModels.length === 0 && !currentModel) {
-            const emptyItem = popup.createDiv({ cls: "xy-popup-item" });
-            emptyItem.createSpan({ cls: "xy-popup-label" }).textContent = "未配置模型列表，请在设置中添加";
-          }
-          for (const m of apiModels) {
-            addPopupItem(popup, m, m === currentModel, () => {
-              if (provider) provider.model = m;
-              this.plugin.saveSettings();
-              trigger.textContent = m;
-              setTooltip(trigger, m);
-              new Notice(`已切换到模型: ${m}`);
-            });
-          }
-        }
-      }, { direction: "up", maxHeight: "50vh" });
-    });
-    const apiLevels = [
-      { value: "none", label: "none" },
-      { value: "low", label: "low" },
-      { value: "medium", label: "medium" },
-      { value: "high", label: "high" },
-    ];
-    if (s.execMode === "cli") {
-      const levels: { value: string; label: string }[] = [
-        { value: "none", label: "none" },
-        { value: "minimal", label: "minimal" },
-        { value: "low", label: "low" },
-        { value: "medium", label: "medium" },
-        { value: "high", label: "high" },
-        { value: "xhigh", label: "xhigh" },
-      ];
-      const levelText = container.createSpan({ cls: "xiaoyuan-level-select" });
-      levelText.textContent = s.defaultReasoning;
-      setTooltip(levelText, "点击切换思考强度");
-      levelText.addEventListener("click", (e) => {
-        e.stopPropagation();
-        showPopup(levelText, (popup) => {
-          for (const m of levels) {
-            addPopupItem(popup, m.label, m.value === s.defaultReasoning, () => {
-              s.defaultReasoning = m.value as any;
-              this.plugin.saveSettings();
-              levelText.textContent = m.label;
-              new Notice(`推理强度: ${m.label}`);
-            });
-          }
-        }, { direction: "up" });
-      });
-      container.appendChild(levelText);
-    } else {
-      const apiLevelText = container.createSpan({ cls: "xiaoyuan-level-select" });
-      apiLevelText.textContent = s.apiReasoningEffort;
-      setTooltip(apiLevelText, "点击切换思考强度");
-      apiLevelText.addEventListener("click", (e) => {
-        e.stopPropagation();
-        showPopup(apiLevelText, (popup) => {
-          for (const m of apiLevels) {
-            addPopupItem(popup, m.label, m.value === s.apiReasoningEffort, () => {
-              s.apiReasoningEffort = m.value as any;
-              this.plugin.saveSettings();
-              apiLevelText.textContent = m.label;
-              new Notice(`推理强度: ${m.label}`);
-            });
-          }
-        }, { direction: "up" });
-      });
-      container.appendChild(apiLevelText);
-    }
-
-    // Send/Stop button
-    this.sendBtn = container.createSpan({ cls: "xiaoyuan-attach-btn" });
-    this.sendBtn.style.marginLeft = "auto";
-    this.sendBtn.addEventListener("click", () => {
-      if (this.abortController) {
-        this.abortController.abort();
-      } else {
-        this.sendMessage();
-      }
-    });
+    this.sendBtn = toolbarBuildToolbarContent(container, this);
     this.setProcessingState(false);
   }
 
-  private async syncCLIModels() {
+  async syncCLIModels() {
     const s = this.plugin.settings;
     try {
       if (s.opencode.autoStart) {
@@ -493,6 +315,22 @@ export class XiaoyuanAIChatView extends ItemView {
           new Notice("已复制");
         });
       }
+      setTimeout(() => {
+        (window as any).Prism?.highlightAllUnder(bubbleEl);
+        bubbleEl.querySelectorAll("pre").forEach((pre) => {
+          if (pre.querySelector(".xy-copy-btn")) return;
+          const btn = document.createElement("button");
+          btn.className = "xy-copy-btn";
+          btn.textContent = "复制";
+          pre.style.position = "relative";
+          btn.addEventListener("click", () => {
+            navigator.clipboard.writeText(pre.textContent || "");
+            btn.textContent = "已复制";
+            setTimeout(() => { btn.textContent = "复制"; }, 2000);
+          });
+          pre.appendChild(btn);
+        });
+      }, 0);
     }
 
     return msgEl;
@@ -544,7 +382,7 @@ export class XiaoyuanAIChatView extends ItemView {
 
   // ─── Send / AI ───────────────────────────────────────────────────
 
-  private async sendMessage() {
+  async sendMessage() {
     const text = this.inputEl.value.trim();
     if (!text) return;
     this.addMessage("user", text);
@@ -635,24 +473,21 @@ export class XiaoyuanAIChatView extends ItemView {
             if (bubble) bubble.textContent = "已连接，等待响应...";
           }
         },
-        (text) => { thinkingText = text; },
+        (text) => {
+          thinkingText = text;
+          if (streamingId) this.updateStreamingThinking(streamingId, text);
+        },
         (text) => {
           if (statusMsg) { statusMsg.remove(); statusMsg = null; }
           if (!streamingId) {
             streamingId = this.addStreamingMessage(text, thinkingText);
           } else {
-            this.updateStreamingMessage(streamingId, text, thinkingText);
+            this.updateStreamingMessage(streamingId, text);
           }
         },
         (diffs) => { this.pendingDiffs = diffs; },
         (tool, status) => {
-          if (statusMsg) {
-            const bubble = statusMsg.querySelector(".xiaoyuan-msg-bubble");
-            if (bubble) {
-              const toolLabel = tool === "bash" ? "执行命令" : tool === "write" ? "写入文件" : tool === "edit" ? "编辑文件" : tool === "read" ? "读取文件" : tool;
-              bubble.textContent = `\u{1F6E0} ${toolLabel}...`;
-            }
-          }
+          if (streamingId) this.addToolLogEntry(streamingId, tool, status);
         },
       );
     }
@@ -725,32 +560,68 @@ export class XiaoyuanAIChatView extends ItemView {
 
   private addStreamingMessage(content: string, thinking?: string): string {
     const id = "msg-" + (++this.msgIdCounter);
-    this.messages.push({ id, role: "assistant", content });
-    this.messagesEl.appendChild(this.renderMessageEl(id, "assistant", content, true, thinking));
+    this.messages.push({ id, role: "assistant", content, thinking });
+    const msgEl = createDiv({ cls: "xiaoyuan-msg xiaoyuan-msg-assistant" });
+    msgEl.id = id;
+    const bubbleEl = msgEl.createDiv({ cls: "xiaoyuan-msg-bubble" });
+    if (thinking && this.plugin.settings.showThinking) {
+      const detailsEl = bubbleEl.createEl("details", { cls: "xiaoyuan-thinking" });
+      detailsEl.createEl("summary", { text: "\u{1F914} 思考过程" });
+      const tc = detailsEl.createDiv({ cls: "xiaoyuan-thinking-content" });
+      tc.textContent = thinking;
+    }
+    const contentEl = bubbleEl.createDiv({ cls: "xy-stream-content" });
+    contentEl.textContent = content;
+    this.messagesEl.appendChild(msgEl);
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
     return id;
   }
 
-  private updateStreamingMessage(messageId: string, content: string, thinking?: string) {
+  private updateStreamingMessage(messageId: string, content: string) {
     const msgEl = this.messagesEl.querySelector(`#${messageId}`);
     if (!msgEl) return;
-    const bubbleEl = msgEl.querySelector(".xiaoyuan-msg-bubble");
-    if (bubbleEl) {
-      bubbleEl.innerHTML = "";
-      const s = this.plugin.settings;
-      if (thinking && s.showThinking) {
-        const detailsEl = bubbleEl.createEl("details", { cls: "xiaoyuan-thinking" });
-        detailsEl.createEl("summary", { text: "\u{1F914} 思考过程" });
-        const tc = detailsEl.createDiv({ cls: "xiaoyuan-thinking-content" });
-        tc.innerHTML = renderMarkdown(thinking.trim());
-      }
-      bubbleEl.insertAdjacentHTML("beforeend", renderMarkdown(content.trim()));
-    }
-
+    const contentEl = msgEl.querySelector(".xy-stream-content") as HTMLElement;
+    if (contentEl) contentEl.textContent = content;
     const idx = this.messages.findIndex((m) => m.id === messageId);
     if (idx !== -1) this.messages[idx].content = content;
-
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
+  }
+
+  private updateStreamingThinking(messageId: string, thinking: string) {
+    const msgEl = this.messagesEl.querySelector(`#${messageId}`);
+    if (!msgEl || !this.plugin.settings.showThinking) return;
+    let tc = msgEl.querySelector(".xiaoyuan-thinking-content") as HTMLElement;
+    const idx = this.messages.findIndex((m) => m.id === messageId);
+    if (idx !== -1) this.messages[idx].thinking = thinking;
+    if (tc) {
+      tc.textContent = thinking;
+    } else {
+      const bubbleEl = msgEl.querySelector(".xiaoyuan-msg-bubble");
+      if (!bubbleEl) return;
+      const detailsEl = bubbleEl.createEl("details", { cls: "xiaoyuan-thinking" });
+      detailsEl.createEl("summary", { text: "\u{1F914} 思考过程" });
+      tc = detailsEl.createDiv({ cls: "xiaoyuan-thinking-content" });
+      tc.textContent = thinking;
+    }
+  }
+
+  private addToolLogEntry(messageId: string, toolName: string, status: string) {
+    const msgEl = this.messagesEl.querySelector(`#${messageId}`);
+    if (!msgEl) return;
+    let logEl = msgEl.querySelector(".xy-tool-log") as HTMLElement;
+    if (!logEl) {
+      const bubbleEl = msgEl.querySelector(".xiaoyuan-msg-bubble");
+      if (!bubbleEl) return;
+      logEl = bubbleEl.createDiv({ cls: "xy-tool-log" });
+    }
+    const toolLabel = toolName === "bash" ? "执行命令" : toolName === "write" ? "写入文件" : toolName === "edit" ? "编辑文件" : toolName === "read" ? "读取文件" : toolName;
+    const icon = status === "running" ? "\u{23F3}" : "\u{2705}";
+    let entry = logEl.querySelector(`[data-tool="${toolName}"]`) as HTMLElement;
+    if (!entry) {
+      entry = logEl.createDiv({ cls: "xy-tool-entry" });
+      entry.setAttribute("data-tool", toolName);
+    }
+    entry.textContent = `${icon} ${toolLabel}`;
   }
 
   private finalizeStreamingMessage(): string | null {
@@ -759,7 +630,7 @@ export class XiaoyuanAIChatView extends ItemView {
     const msgEl = this.messagesEl.querySelector(`#${lastMsg.id}`);
     if (!msgEl) return null;
     msgEl.remove();
-    const newEl = this.renderMessageEl(lastMsg.id, lastMsg.role, lastMsg.content, false);
+    const newEl = this.renderMessageEl(lastMsg.id, lastMsg.role, lastMsg.content, false, lastMsg.thinking);
     this.messagesEl.appendChild(newEl);
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
     return lastMsg.id;
@@ -825,6 +696,7 @@ export class XiaoyuanAIChatView extends ItemView {
 
       const meta = await loadSessionsMeta(this.plugin);
       this.sessions = await scanChatHistoryFolder(this.app.vault, path);
+      this.sessions.sort((a, b) => b.updatedAt - a.updatedAt);
       this.currentSessionId = meta.currentSessionId;
 
       if (this.sessions.length === 0) {
@@ -874,18 +746,35 @@ export class XiaoyuanAIChatView extends ItemView {
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
   }
 
+  private sessionTitleFromMessages(): string {
+    const firstUser = this.messages.find(m => m.role === "user");
+    const text = firstUser?.content || this.messages[0]?.content || "新对话";
+    const cleaned = text.replace(/^#+\s*/, "").replace(/[*_`~]/g, "").trim();
+    return cleaned.length > 30 ? cleaned.slice(0, 30) + "…" : cleaned;
+  }
+
   private async saveCurrentSession() {
     if (this.messages.length === 0) return;
     const path = getChatHistoryPath(this.plugin.settings.chatHistoryPath);
     const session = this.sessions.find((s) => s.id === this.currentSessionId);
     if (session) {
       session.updatedAt = Date.now();
-      if (session.title === "新对话") {
-        session.title = this.messages[0].content.slice(0, 30) + (this.messages[0].content.length > 30 ? "..." : "");
+      if (session.title === "新对话" || session.title === "") {
+        session.title = this.sessionTitleFromMessages();
+        this.updateSessionSelector();
       }
     }
     await saveSessionToFile(this.app.vault, path, this.currentSessionId, session, this.messages);
     await saveSessionsMeta(this.plugin, this.sessions, this.currentSessionId);
+  }
+
+  private updateSessionTitle() {
+    const session = this.sessions.find((s) => s.id === this.currentSessionId);
+    if (session && (session.title === "新对话" || session.title === "") && this.messages.length > 0) {
+      session.title = this.sessionTitleFromMessages();
+      session.updatedAt = Date.now();
+      this.updateSessionSelector();
+    }
   }
 
   private async createNewSession() {
@@ -962,8 +851,11 @@ export class XiaoyuanAIChatView extends ItemView {
     await saveSessionsMeta(this.plugin, this.sessions, this.currentSessionId);
 
     showPopup(e.target as HTMLElement, (popup) => {
+      const searchInput = popup.createEl("input", { cls: "xy-popup-search", type: "text", placeholder: "搜索会话..." });
+      const listEl = popup.createDiv({ cls: "xy-popup-session-list" });
+
       for (const session of this.sessions) {
-        const item = popup.createDiv({ cls: "xy-popup-item" });
+        const item = listEl.createDiv({ cls: "xy-popup-item" });
 
         const checkEl = item.createSpan({ cls: "xy-popup-check" });
         checkEl.textContent = session.id === this.currentSessionId ? "✓" : "";
@@ -1017,16 +909,19 @@ export class XiaoyuanAIChatView extends ItemView {
 
         item.addEventListener("click", () => { this.switchSession(session.id); popup.remove(); });
       }
-    }, { maxHeight: "300px" });
-  }
 
-  private updateSessionTitle() {
-    const session = this.sessions.find((s) => s.id === this.currentSessionId);
-    if (session && session.title === "新对话" && this.messages.length > 0) {
-      session.title = this.messages[0].content.slice(0, 30) + (this.messages[0].content.length > 30 ? "..." : "");
-      session.updatedAt = Date.now();
-      this.updateSessionSelector();
-    }
+      searchInput.addEventListener("input", () => {
+        const q = searchInput.value.toLowerCase();
+        Array.from(listEl.children).forEach((child) => {
+          const el = child as HTMLElement;
+          const label = el.querySelector(".xy-popup-label");
+          const match = !q || (label?.textContent || "").toLowerCase().includes(q);
+          el.style.display = match ? "" : "none";
+        });
+      });
+
+      setTimeout(() => searchInput.focus(), 50);
+    }, { maxHeight: "300px" });
   }
 
   private updateSessionSelector() {
@@ -1050,7 +945,7 @@ export class XiaoyuanAIChatView extends ItemView {
 
   // ─── Attachments ───────────────────────────────────────────────
 
-  private pickFiles() {
+  pickFiles() {
     const input = document.createElement("input");
     input.type = "file";
     input.multiple = true;
@@ -1117,55 +1012,4 @@ export class XiaoyuanAIChatView extends ItemView {
 
 // ─── Exported popup helpers ───────────────────────────────────────
 
-export function showPopup(
-  trigger: HTMLElement,
-  buildContent: (popup: HTMLDivElement) => void,
-  options?: { maxHeight?: string; direction?: "down" | "up" },
-): HTMLDivElement | null {
-  if (document.querySelector(".xy-popup")) {
-    document.querySelectorAll(".xy-popup").forEach((el) => el.remove());
-    return null;
-  }
-  const popup = document.body.createDiv({ cls: "xy-popup" });
-  const rect = trigger.getBoundingClientRect();
-  popup.style.cssText = `position:fixed;left:${rect.left}px;`;
-  if (options?.maxHeight) popup.style.maxHeight = options.maxHeight;
-  buildContent(popup);
-  if (options?.direction === "up") {
-    document.body.appendChild(popup);
-    popup.style.bottom = `${window.innerHeight - rect.top + 2}px`;
-  } else {
-    popup.style.top = `${rect.bottom}px`;
-    document.body.appendChild(popup);
-  }
-  setTimeout(() => {
-    const handler = (ev: MouseEvent) => {
-      if (!popup.contains(ev.target as Node)) {
-        popup.remove();
-        document.removeEventListener("click", handler);
-      }
-    };
-    document.addEventListener("click", handler);
-  }, 0);
-  return popup;
-}
 
-export function addPopupItem(
-  parent: HTMLElement,
-  label: string,
-  checked: boolean,
-  onClick: () => void,
-): HTMLDivElement {
-  const item = parent.createDiv({ cls: "xy-popup-item" });
-  const check = item.createSpan({ cls: "xy-popup-check" });
-  check.textContent = checked ? "✓" : "";
-  const labelEl = item.createSpan({ cls: "xy-popup-label" });
-  labelEl.textContent = label;
-  item.addEventListener("click", (e) => {
-    e.stopPropagation();
-    onClick();
-    const popup = item.closest(".xy-popup") as HTMLDivElement;
-    if (popup) popup.remove();
-  });
-  return item;
-}

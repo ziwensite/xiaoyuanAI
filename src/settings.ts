@@ -1,7 +1,7 @@
 import { App, PluginSettingTab, Setting, Notice, setIcon } from "obsidian";
 import type XiaoyuanAIPlugin from "./main";
 import type { XiaoyuanAISettings, ApiProviderConfig } from "./types";
-import { showPopup, addPopupItem } from "./view";
+import { showPopup, addPopupItem } from "./popup";
 
 type TabId = "cli" | "api" | "general";
 

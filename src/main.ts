@@ -1,6 +1,6 @@
 import { Plugin, WorkspaceLeaf, Notice } from "obsidian";
 import { XiaoyuanAISettings, DEFAULT_SETTINGS, VIEW_TYPE_XIAOYUAN_AI_CHAT } from "./types";
-import { XiaoyuanAIChatView } from "./view";
+import { XiaoyuanAIChatView } from "./chat-view";
 import { XiaoyuanAISettingTab } from "./settings";
 import { TextOperationModal, WikiCommandModal } from "./modals";
 import { OPERATION_LABELS } from "./types";
