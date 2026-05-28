@@ -1415,10 +1415,20 @@ var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
     if (role === "user") {
       bubbleEl.createSpan().textContent = content;
       if (!streaming) {
-        const undoBtn = msgEl.createSpan({ cls: "xiaoyuan-msg-action xiaoyuan-undo-btn" });
+        const actionsEl = msgEl.createDiv({ cls: "xiaoyuan-msg-actions" });
+        const undoBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
         undoBtn.textContent = "\u21A9";
         (0, import_obsidian2.setTooltip)(undoBtn, "\u64A4\u9500\u6B64\u6D88\u606F");
-        undoBtn.addEventListener("click", () => this.undoMessage(id));
+        undoBtn.addEventListener("click", () => {
+          if (window.confirm("\u786E\u8BA4\u64A4\u9500\u6B64\u6D88\u606F\uFF1F")) this.undoMessage(id);
+        });
+        const copyBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
+        copyBtn.textContent = "\u{1F4CB}";
+        (0, import_obsidian2.setTooltip)(copyBtn, "\u590D\u5236");
+        copyBtn.addEventListener("click", () => {
+          navigator.clipboard.writeText(content);
+          new import_obsidian2.Notice("\u5DF2\u590D\u5236");
+        });
       }
     } else {
       const s = this.plugin.settings;

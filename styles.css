@@ -34,11 +34,11 @@
 }
 
 .xy-agent-build .xiaoyuan-input-container {
-  border: 2px solid #ef4444 !important;
+  border: 1px solid #fca5a5 !important;
 }
 
 .xy-agent-plan .xiaoyuan-input-container {
-  border: 2px solid #22c55e !important;
+  border: 1px solid #86efac !important;
 }
 
 .xiaoyuan-chat-input {
@@ -50,7 +50,7 @@
   min-height: calc(1.4em * 3 + 8px);
   line-height: 1.4;
   padding: 12px 14px 8px;
-  font-size: 0.95em;
+  font-size: 0.8em;
   font-family: inherit;
   outline: none !important;
   box-sizing: border-box;
@@ -164,9 +164,11 @@
 }
 
 .xiaoyuan-msg-user .xiaoyuan-msg-bubble {
-  background-color: var(--interactive-accent);
-  color: var(--text-on-accent);
+  background-color: var(--background-secondary);
+  color: var(--text-normal);
   border-bottom-right-radius: 3px;
+  border: 1px solid var(--background-modifier-border);
+  border-right: 3px solid var(--interactive-accent);
 }
 
 .xiaoyuan-msg-assistant .xiaoyuan-msg-bubble {
@@ -174,6 +176,7 @@
   color: var(--text-normal);
   border-bottom-left-radius: 3px;
   border: 1px solid var(--background-modifier-border);
+  border-left: 3px solid var(--color-cyan);
 }
 
 .xiaoyuan-msg-actions {
@@ -184,7 +187,8 @@
   transition: opacity 0.15s;
 }
 
-.xiaoyuan-msg-assistant:hover .xiaoyuan-msg-actions {
+.xiaoyuan-msg-assistant:hover .xiaoyuan-msg-actions,
+.xiaoyuan-msg-user:hover .xiaoyuan-msg-actions {
   opacity: 1;
 }
 
@@ -203,18 +207,6 @@
 .xiaoyuan-msg-action:hover {
   background-color: var(--background-modifier-hover);
   color: var(--text-normal);
-}
-
-.xiaoyuan-undo-btn {
-  align-self: flex-start;
-  margin-top: 2px;
-  opacity: 0;
-  transition: opacity 0.15s;
-}
-
-.xiaoyuan-msg-user:hover .xiaoyuan-undo-btn {
-  opacity: 1;
-  background-color: rgba(255, 255, 255, 0.15);
 }
 
 .xiaoyuan-attach-preview {
@@ -252,7 +244,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 12px;
+  padding: 0px 0px;
   border-bottom: 1px solid var(--background-modifier-border);
   flex-shrink: 0;
 }
@@ -265,7 +257,7 @@
 
 .xiaoyuan-new-chat-icon {
   color: var(--text-muted);
-  font-size: 16px;
+  font-size: 0.8em;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -281,13 +273,12 @@
 
 .xiaoyuan-session-selector {
   color: var(--text-normal);
-  font-size: 0.9em;
+  font-size: 0.8em;
   cursor: pointer;
   border-radius: 4px;
   padding: 4px 18px 4px 8px;
   background-color: var(--background-secondary);
   position: relative;
-  min-width: 80px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

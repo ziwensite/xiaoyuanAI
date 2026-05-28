@@ -297,10 +297,20 @@ export class XiaoyuanAIChatView extends ItemView {
     if (role === "user") {
       bubbleEl.createSpan().textContent = content;
       if (!streaming) {
-        const undoBtn = msgEl.createSpan({ cls: "xiaoyuan-msg-action xiaoyuan-undo-btn" });
+        const actionsEl = msgEl.createDiv({ cls: "xiaoyuan-msg-actions" });
+        const undoBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
         undoBtn.textContent = "\u21A9";
         setTooltip(undoBtn, "撤销此消息");
-        undoBtn.addEventListener("click", () => this.undoMessage(id));
+        undoBtn.addEventListener("click", () => {
+          if (window.confirm("确认撤销此消息？")) this.undoMessage(id);
+        });
+        const copyBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
+        copyBtn.textContent = "\uD83D\uDCCB";
+        setTooltip(copyBtn, "复制");
+        copyBtn.addEventListener("click", () => {
+          navigator.clipboard.writeText(content);
+          new Notice("已复制");
+        });
       }
     } else {
       const s = this.plugin.settings;

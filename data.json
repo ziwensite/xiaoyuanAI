@@ -8,7 +8,7 @@
     "model": "opencode/deepseek-v4-flash-free",
     "providerId": "",
     "modelId": "",
-    "agent": "plan",
+    "agent": "build",
     "textEnabled": true,
     "imageEnabled": false,
     "pdfEnabled": false
@@ -100,6 +100,6 @@
       "description": "Plan mode. Disallows all edit tools."
     }
   ],
-  "xiaoyuan-chat-sessions": "[{\"id\":\"session-1779327052779\",\"title\":\"今天天气怎么样？\",\"createdAt\":1779327052779,\"updatedAt\":1779923500601},{\"id\":\"session-1779847703815\",\"title\":\"你好测试\",\"createdAt\":1779847703815,\"updatedAt\":1779868539908},{\"id\":\"session-1779335072230\",\"title\":\"测试1111\",\"createdAt\":1779335072230,\"updatedAt\":1779807220020},{\"id\":\"session-1779325178957\",\"title\":\"介绍一下自己\",\"createdAt\":1779325178957,\"updatedAt\":1779326826793}]",
-  "xiaoyuan-current-session": "session-1779327052779"
+  "xiaoyuan-chat-sessions": "[{\"id\":\"session-1779847703815\",\"title\":\"你好测试\",\"createdAt\":1779847703815,\"updatedAt\":1779929554211},{\"id\":\"session-1779335072230\",\"title\":\"测试\",\"createdAt\":1779335072230,\"updatedAt\":1779928499813},{\"id\":\"session-1779327052779\",\"title\":\"今天天气怎么样？\",\"createdAt\":1779327052779,\"updatedAt\":1779928273012},{\"id\":\"session-1779325178957\",\"title\":\"介绍一下自己\",\"createdAt\":1779325178957,\"updatedAt\":1779326826793}]",
+  "xiaoyuan-current-session": "session-1779847703815"
 }
