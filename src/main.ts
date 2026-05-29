@@ -14,7 +14,7 @@ export default class XiaoyuanAIPlugin extends Plugin {
     await this.loadSettings();
 
     this.registerView(VIEW_TYPE_XIAOYUAN_AI_CHAT, (leaf) => new XiaoyuanAIChatView(leaf, this));
-    this.addRibbonIcon("message-circle", "小元", () => this.activateChatView());
+    this.addRibbonIcon("message-circle", "小元AI", () => this.activateChatView());
 
     this.registerEvent(
       this.app.workspace.on("editor-menu", (menu, editor) => {
@@ -32,7 +32,7 @@ export default class XiaoyuanAIPlugin extends Plugin {
 
     this.addCommand({
       id: "xiaoyuanAI-toggle-chat",
-      name: "切换小元聊天面板",
+      name: "切换小元AI聊天面板",
       callback: () => this.activateChatView(),
       hotkeys: [{ modifiers: ["Ctrl", "Shift"], key: "C" }],
     });

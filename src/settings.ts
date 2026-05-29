@@ -137,12 +137,9 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
     refreshBtn.addEventListener("click", async () => {
       await this.refreshStatusCard();
       if (s.execMode === "cli") {
-        const { fetchOpenCodeModelsFromCLI, ensureOpenCodeServer, stopOpenCodeServer } = await import("./ai");
+        const { fetchOpenCodeModelsFromCLI, fetchOpenCodeAgents } = await import("./ai");
         const { getVaultBasePath } = await import("./server");
         const vaultDir = getVaultBasePath(this.app.vault);
-        if (s.opencode.autoStart) {
-          ensureOpenCodeServer(s.opencode.cliPath, s.opencode.hostname, s.opencode.port, vaultDir, true).catch(() => {});
-        }
         try {
           const result = await fetchOpenCodeModelsFromCLI(s.opencode.cliPath, vaultDir, s.opencode.port);
           s.opencodeModels = result.models.map((m) => ({ label: m.displayName, value: m.id }));
@@ -150,7 +147,6 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
           if (result.defaultModel && !s.opencode.model) {
             s.opencode.model = result.defaultModel;
           }
-          const { fetchOpenCodeAgents } = await import("./ai");
           s.opencodeAgents = await fetchOpenCodeAgents(s.opencode.cliPath, vaultDir, s.opencode.port);
           await this.plugin.saveSettings();
         } catch {}

@@ -49,7 +49,7 @@ export class XiaoyuanAIChatView extends ItemView {
   }
 
   getViewType(): string { return VIEW_TYPE_XIAOYUAN_AI_CHAT; }
-  getDisplayText(): string { return "小元"; }
+  getDisplayText(): string { return "小元AI"; }
   getIcon(): string { return "message-circle"; }
 
   async onOpen() {
@@ -61,7 +61,8 @@ export class XiaoyuanAIChatView extends ItemView {
     this.messagesEl = this.viewContainer.createDiv({ cls: "xiaoyuan-chat-messages" });
     this.buildInputArea();
     if (this.plugin.settings.execMode === "cli") {
-      this.autoSyncCLIModels();
+      this.syncCLIModels();
+    } else {
       this.checkConnectionStatus();
     }
     await this.loadSessions();
@@ -101,15 +102,10 @@ export class XiaoyuanAIChatView extends ItemView {
     this.buildToolbarContent(this.toolbarEl);
     this.updateAgentBorderClass();
     if (this.plugin.settings.execMode === "cli") {
-      this.autoSyncCLIModels();
+      this.syncCLIModels();
+    } else {
       this.checkConnectionStatus();
     }
-  }
-
-  private async autoSyncCLIModels() {
-    const s = this.plugin.settings;
-    if (s.opencode.model && s.opencodeModels?.some(m => m.value === s.opencode.model)) return;
-    await this.syncCLIModels();
   }
 
   // ─── Header ──────────────────────────────────────────────────────
@@ -150,14 +146,15 @@ export class XiaoyuanAIChatView extends ItemView {
 
   private buildHeaderContent(right: HTMLSpanElement) {
     const s = this.plugin.settings;
-    if (s.execMode === "cli") {
-      this.connectionStatusEl = right.createSpan({ cls: "xy-status-dot" });
-      this.updateConnectionStatusUI(false);
-      this.connectionStatusEl.addEventListener("click", () => {
-        this.checkConnectionStatus();
+    this.connectionStatusEl = right.createSpan({ cls: "xy-status-dot" });
+    this.updateConnectionStatusUI(false);
+    this.connectionStatusEl.addEventListener("click", () => {
+      if (s.execMode === "cli") {
         this.syncCLIModels();
-      });
-    }
+      } else {
+        this.checkConnectionStatus();
+      }
+    });
 
     const modeText = right.createSpan({ cls: "xiaoyuan-mode-selector" });
     modeText.textContent = s.execMode === "cli" ? "CLI" : "API";
@@ -231,7 +228,7 @@ export class XiaoyuanAIChatView extends ItemView {
     const s = this.plugin.settings;
     try {
       if (s.opencode.autoStart) {
-        ensureOpenCodeServer(s.opencode.cliPath, s.opencode.hostname, s.opencode.port, getVaultBasePath(this.app.vault), true).catch(() => {});
+        await ensureOpenCodeServer(s.opencode.cliPath, s.opencode.hostname, s.opencode.port, getVaultBasePath(this.app.vault), true).catch(() => {});
       }
       const result = await fetchOpenCodeModelsFromCLI(s.opencode.cliPath, getVaultBasePath(this.app.vault), s.opencode.port);
       s.opencodeModels = result.models.map((m) => ({ label: m.displayName, value: m.id }));
@@ -251,36 +248,60 @@ export class XiaoyuanAIChatView extends ItemView {
       } else {
         new Notice(`已同步 ${result.models.length} 个模型`);
       }
-      this.rebuildToolbar();
+      this.updateConnectionStatusUI(true);
     } catch (err: any) {
+      this.updateConnectionStatusUI(false);
       new Notice(`同步模型失败：${err.message}`);
     }
   }
 
   private async checkConnectionStatus() {
     const s = this.plugin.settings;
-    if (s.execMode !== "cli") return;
-    const vaultDir = getVaultBasePath(this.app.vault);
 
-    let ok = false;
-    const status = await checkOpenCodeStatus(s.opencode.cliPath, vaultDir, s.opencode.port, s.opencode.hostname);
-    if (status.ok) {
-      ok = true;
-    } else if (s.opencode.autoStart) {
-      try {
-        await ensureOpenCodeServer(s.opencode.cliPath, s.opencode.hostname, s.opencode.port, vaultDir, true);
+    if (s.execMode === "cli") {
+      const vaultDir = getVaultBasePath(this.app.vault);
+      let ok = false;
+      const status = await checkOpenCodeStatus(s.opencode.cliPath, vaultDir, s.opencode.port, s.opencode.hostname);
+      if (status.ok) {
         ok = true;
-      } catch {}
+      } else if (s.opencode.autoStart) {
+        try {
+          await ensureOpenCodeServer(s.opencode.cliPath, s.opencode.hostname, s.opencode.port, vaultDir, true);
+          ok = true;
+        } catch {}
+      }
+      this.updateConnectionStatusUI(ok);
+      return;
     }
-    this.updateConnectionStatusUI(ok);
-    if (ok) this.autoSyncCLIModels();
+
+    const provider = getActiveProvider(s);
+    if (!provider || !provider.baseUrl || !provider.apiKey) {
+      this.updateConnectionStatusUI(false);
+      return;
+    }
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 8000);
+      const modelsUrl = provider.baseUrl.replace(/\/+$/, "") + "/models";
+      const resp = await fetch(modelsUrl, {
+        headers: { Authorization: `Bearer ${provider.apiKey}` },
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+      this.updateConnectionStatusUI(resp.ok);
+    } catch {
+      this.updateConnectionStatusUI(false);
+    }
   }
 
   private updateConnectionStatusUI(ok: boolean) {
-    if (this.connectionStatusEl) {
-      this.connectionStatusEl.style.cssText = `display:inline-block;width:8px;height:8px;border-radius:50%;cursor:pointer;background:${ok ? "var(--color-green)" : "var(--color-red)"};`;
-      setTooltip(this.connectionStatusEl, ok ? "opencode 可用" : "opencode 不可用");
-    }
+    if (!this.connectionStatusEl) return;
+    const mode = this.plugin.settings.execMode;
+    this.connectionStatusEl.style.cssText = `display:inline-block;width:8px;height:8px;border-radius:50%;cursor:pointer;background:${ok ? "var(--color-green)" : "var(--color-red)"};`;
+    const tip = mode === "cli"
+      ? (ok ? "opencode 可用" : "opencode 不可用")
+      : (ok ? "API 连接正常" : "API 未连接");
+    setTooltip(this.connectionStatusEl, tip);
   }
 
   // ─── Message rendering ───────────────────────────────────────────

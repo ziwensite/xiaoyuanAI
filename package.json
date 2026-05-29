@@ -1,7 +1,7 @@
 {
   "name": "xiaoyuanAI",
   "version": "1.0.0",
-  "description": "AI Xiaoyuan plugin for Obsidian",
+  "description": "小元AI - 在 Obsidian 中集成 AI 聊天、文本润色与维基管理",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",
