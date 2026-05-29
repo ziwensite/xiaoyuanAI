@@ -2933,7 +2933,9 @@ var XiaoyuanAIPlugin = class extends import_obsidian5.Plugin {
           ["polish", "summarize", "complete", "expand", "continue", "translate"].forEach((op) => {
             submenu.addItem((subItem) => {
               subItem.setTitle(OPERATION_LABELS[op]);
-              subItem.setIcon(op === "polish" ? "pencil" : "plus");
+              subItem.setIcon(
+                op === "polish" ? "pencil" : op === "summarize" ? "file-text" : op === "complete" ? "check" : op === "expand" ? "maximize" : op === "continue" ? "arrow-right" : "globe"
+              );
               subItem.onClick(() => new TextOperationModal(this.app, this, op, sel).open());
             });
           });
