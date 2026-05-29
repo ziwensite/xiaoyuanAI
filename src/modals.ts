@@ -9,6 +9,29 @@ function ensureApiUrl(baseUrl: string): string {
   return trimmed.endsWith("/chat/completions") ? trimmed : trimmed + "/chat/completions";
 }
 
+function makeDraggable(handle: HTMLElement, modalEl: HTMLElement) {
+  handle.addEventListener("mousedown", (e) => {
+    e.preventDefault();
+    const rect = modalEl.getBoundingClientRect();
+    const dx = e.clientX - rect.left;
+    const dy = e.clientY - rect.top;
+    modalEl.style.position = "fixed";
+    modalEl.style.top = `${e.clientY - dy}px`;
+    modalEl.style.left = `${e.clientX - dx}px`;
+    modalEl.style.margin = "0";
+    const move = (ev: MouseEvent) => {
+      modalEl.style.top = `${ev.clientY - dy}px`;
+      modalEl.style.left = `${ev.clientX - dx}px`;
+    };
+    const up = () => {
+      document.removeEventListener("mousemove", move);
+      document.removeEventListener("mouseup", up);
+    };
+    document.addEventListener("mousemove", move);
+    document.addEventListener("mouseup", up);
+  });
+}
+
 export class TextOperationModal extends Modal {
   plugin: XiaoyuanAIPlugin;
   operation: string;
@@ -25,7 +48,7 @@ export class TextOperationModal extends Modal {
   }
 
   onOpen() {
-    const { contentEl } = this;
+    const { contentEl, modalEl } = this;
     contentEl.empty();
     contentEl.classList.add("xiaoyuan-modal-container");
 
@@ -33,6 +56,8 @@ export class TextOperationModal extends Modal {
     headerRow.createEl("h3", { text: `AI ${OPERATION_LABELS[this.operation] || this.operation}` });
     this.modeLabel = headerRow.createSpan({ cls: "xiaoyuan-modal-mode-label" });
     this.modeLabel.textContent = this.plugin.settings.execMode === "cli" ? "CLI" : "API";
+    headerRow.style.cursor = "move";
+    makeDraggable(headerRow, modalEl);
 
     this.loadingEl = contentEl.createDiv({ cls: "xiaoyuan-modal-loading", text: "\u23F3 处理中..." });
     this.resultEl = contentEl.createDiv({ cls: "xiaoyuan-modal-result" });
@@ -66,19 +91,20 @@ export class TextOperationModal extends Modal {
       this.loadingEl.classList.add("hidden");
       this.resultEl.classList.add("show");
       this.resultEl.textContent = result;
+      this.resultEl.contentEditable = "true";
 
       const btnRow = this.contentEl.createDiv({ cls: "xiaoyuan-modal-btn-row" });
 
       const replaceBtn = btnRow.createEl("button", { text: "替换原文", cls: "xiaoyuan-btn-primary" });
       replaceBtn.addEventListener("click", () => {
         const editor = this.plugin.getActiveEditor();
-        if (editor) { editor.replaceSelection(result); new Notice("已替换"); }
+        if (editor) { editor.replaceSelection(this.resultEl.textContent || ""); new Notice("已替换"); }
         else new Notice("未找到活动编辑器");
         this.close();
       });
 
       const copyBtn = btnRow.createEl("button", { text: "复制结果", cls: "xiaoyuan-btn-secondary" });
-      copyBtn.addEventListener("click", () => { navigator.clipboard.writeText(result); new Notice("已复制"); });
+      copyBtn.addEventListener("click", () => { navigator.clipboard.writeText(this.resultEl.textContent || ""); new Notice("已复制"); });
 
       const closeBtn = btnRow.createEl("button", { text: "关闭", cls: "xiaoyuan-btn-secondary" });
       closeBtn.addEventListener("click", () => this.close());
@@ -101,11 +127,13 @@ export class WikiCommandModal extends Modal {
   }
 
   onOpen() {
-    const { contentEl } = this;
+    const { contentEl, modalEl } = this;
     contentEl.empty();
     contentEl.classList.add("xiaoyuan-wiki-modal-container");
 
-    contentEl.createEl("h3", { text: `\u{1F9E0} Wiki 命令：/${this.command}` });
+    const h3El = contentEl.createEl("h3", { text: `\u{1F9E0} Wiki 命令：/${this.command}` });
+    h3El.style.cursor = "move";
+    makeDraggable(h3El, modalEl);
 
     const inputEl = contentEl.createEl("textarea", {
       cls: "xiaoyuan-wiki-input",
@@ -147,6 +175,7 @@ export class WikiCommandModal extends Modal {
 
         resultEl.classList.add("show");
         resultEl.textContent = result;
+        resultEl.contentEditable = "true";
       } catch (err: any) {
         resultEl.classList.add("show");
         resultEl.textContent = `\u274C 错误：${err.message}`;

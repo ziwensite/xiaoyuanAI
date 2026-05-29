@@ -2755,6 +2755,28 @@ function ensureApiUrl(baseUrl) {
   const trimmed = baseUrl.replace(/\/+$/, "");
   return trimmed.endsWith("/chat/completions") ? trimmed : trimmed + "/chat/completions";
 }
+function makeDraggable(handle, modalEl) {
+  handle.addEventListener("mousedown", (e) => {
+    e.preventDefault();
+    const rect = modalEl.getBoundingClientRect();
+    const dx = e.clientX - rect.left;
+    const dy = e.clientY - rect.top;
+    modalEl.style.position = "fixed";
+    modalEl.style.top = `${e.clientY - dy}px`;
+    modalEl.style.left = `${e.clientX - dx}px`;
+    modalEl.style.margin = "0";
+    const move = (ev) => {
+      modalEl.style.top = `${ev.clientY - dy}px`;
+      modalEl.style.left = `${ev.clientX - dx}px`;
+    };
+    const up = () => {
+      document.removeEventListener("mousemove", move);
+      document.removeEventListener("mouseup", up);
+    };
+    document.addEventListener("mousemove", move);
+    document.addEventListener("mouseup", up);
+  });
+}
 var TextOperationModal = class extends import_obsidian4.Modal {
   constructor(app, plugin, operation, inputText) {
     super(app);
@@ -2763,13 +2785,15 @@ var TextOperationModal = class extends import_obsidian4.Modal {
     this.inputText = inputText;
   }
   onOpen() {
-    const { contentEl } = this;
+    const { contentEl, modalEl } = this;
     contentEl.empty();
     contentEl.classList.add("xiaoyuan-modal-container");
     const headerRow = contentEl.createDiv({ cls: "xiaoyuan-modal-header" });
     headerRow.createEl("h3", { text: `AI ${OPERATION_LABELS[this.operation] || this.operation}` });
     this.modeLabel = headerRow.createSpan({ cls: "xiaoyuan-modal-mode-label" });
     this.modeLabel.textContent = this.plugin.settings.execMode === "cli" ? "CLI" : "API";
+    headerRow.style.cursor = "move";
+    makeDraggable(headerRow, modalEl);
     this.loadingEl = contentEl.createDiv({ cls: "xiaoyuan-modal-loading", text: "\u23F3 \u5904\u7406\u4E2D..." });
     this.resultEl = contentEl.createDiv({ cls: "xiaoyuan-modal-result" });
     this.processOperation();
@@ -2813,19 +2837,20 @@ var TextOperationModal = class extends import_obsidian4.Modal {
       this.loadingEl.classList.add("hidden");
       this.resultEl.classList.add("show");
       this.resultEl.textContent = result;
+      this.resultEl.contentEditable = "true";
       const btnRow = this.contentEl.createDiv({ cls: "xiaoyuan-modal-btn-row" });
       const replaceBtn = btnRow.createEl("button", { text: "\u66FF\u6362\u539F\u6587", cls: "xiaoyuan-btn-primary" });
       replaceBtn.addEventListener("click", () => {
         const editor = this.plugin.getActiveEditor();
         if (editor) {
-          editor.replaceSelection(result);
+          editor.replaceSelection(this.resultEl.textContent || "");
           new import_obsidian4.Notice("\u5DF2\u66FF\u6362");
         } else new import_obsidian4.Notice("\u672A\u627E\u5230\u6D3B\u52A8\u7F16\u8F91\u5668");
         this.close();
       });
       const copyBtn = btnRow.createEl("button", { text: "\u590D\u5236\u7ED3\u679C", cls: "xiaoyuan-btn-secondary" });
       copyBtn.addEventListener("click", () => {
-        navigator.clipboard.writeText(result);
+        navigator.clipboard.writeText(this.resultEl.textContent || "");
         new import_obsidian4.Notice("\u5DF2\u590D\u5236");
       });
       const closeBtn = btnRow.createEl("button", { text: "\u5173\u95ED", cls: "xiaoyuan-btn-secondary" });
@@ -2845,10 +2870,12 @@ var WikiCommandModal = class extends import_obsidian4.Modal {
     this.command = command;
   }
   onOpen() {
-    const { contentEl } = this;
+    const { contentEl, modalEl } = this;
     contentEl.empty();
     contentEl.classList.add("xiaoyuan-wiki-modal-container");
-    contentEl.createEl("h3", { text: `\u{1F9E0} Wiki \u547D\u4EE4\uFF1A/${this.command}` });
+    const h3El = contentEl.createEl("h3", { text: `\u{1F9E0} Wiki \u547D\u4EE4\uFF1A/${this.command}` });
+    h3El.style.cursor = "move";
+    makeDraggable(h3El, modalEl);
     const inputEl = contentEl.createEl("textarea", {
       cls: "xiaoyuan-wiki-input",
       attr: { placeholder: this.command === "query" ? "\u8F93\u5165\u67E5\u8BE2\u5185\u5BB9..." : "\u8F93\u5165\u8981\u4FDD\u5B58\u7684\u5185\u5BB9..." }
@@ -2901,6 +2928,7 @@ ${text}` : text;
         }
         resultEl.classList.add("show");
         resultEl.textContent = result;
+        resultEl.contentEditable = "true";
       } catch (err) {
         resultEl.classList.add("show");
         resultEl.textContent = `\u274C \u9519\u8BEF\uFF1A${err.message}`;
