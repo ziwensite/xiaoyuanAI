@@ -2137,7 +2137,7 @@ var import_obsidian3 = require("obsidian");
 var XiaoyuanAISettingTab = class extends import_obsidian3.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
-    this.activeTab = "cli";
+    this.activeTab = "general";
     this.plugin = plugin;
   }
   display() {
@@ -2271,9 +2271,9 @@ var XiaoyuanAISettingTab = class extends import_obsidian3.PluginSettingTab {
   // ─── ③ Tab Bar ───────────────────────────────────────────────────
   buildTabBar(container) {
     const tabs = [
+      { id: "general", icon: "settings", label: "\u901A\u7528" },
       { id: "cli", icon: "terminal-square", label: "CLI \u8BBE\u7F6E" },
-      { id: "api", icon: "key-round", label: "API \u8BBE\u7F6E" },
-      { id: "general", icon: "settings", label: "\u901A\u7528" }
+      { id: "api", icon: "key-round", label: "API \u8BBE\u7F6E" }
     ];
     const bar = container.createDiv({ cls: "xy-settings-tabs" });
     for (const t of tabs) {
@@ -2469,14 +2469,17 @@ var XiaoyuanAISettingTab = class extends import_obsidian3.PluginSettingTab {
     const s = this.s();
     const providers = s.apiProviders;
     const activeId = s.activeApiProviderId || ((_a = providers[0]) == null ? void 0 : _a.id) || "";
-    container.createEl("h3", { text: "API \u6A21\u578B\u5217\u8868" });
     for (const provider of providers) {
       const isActive = provider.id === activeId;
       const card = container.createDiv({ cls: `xy-api-provider-row${isActive ? " is-active" : ""}` });
       const head = card.createDiv({ cls: "xy-api-provider-head" });
       const title = head.createDiv({ cls: "xy-api-provider-title" });
-      title.createSpan({ text: provider.name || "\u672A\u547D\u540D" });
-      title.createEl("small", { text: ` \xB7 ${provider.model || "\u672A\u9009\u62E9\u6A21\u578B"}` });
+      const nameSpan = title.createSpan({ text: provider.name || "\u672A\u547D\u540D" });
+      const modelSmall = title.createEl("small", { text: ` \xB7 ${provider.model || "\u672A\u9009\u62E9\u6A21\u578B"}` });
+      const updateHeader = () => {
+        nameSpan.textContent = provider.name || "\u672A\u547D\u540D";
+        modelSmall.textContent = ` \xB7 ${provider.model || "\u672A\u9009\u62E9\u6A21\u578B"}`;
+      };
       const headActions = head.createDiv({ cls: "xy-api-provider-actions" });
       if (!isActive) {
         const activateBtn = headActions.createEl("button", { cls: "xy-status-btn", text: "\u542F\u7528" });
@@ -2514,11 +2517,12 @@ var XiaoyuanAISettingTab = class extends import_obsidian3.PluginSettingTab {
       head.addEventListener("click", (e) => {
         if (e.target.closest("button")) return;
         collapsed = !collapsed;
-        content.style.display = collapsed ? "none" : "block";
+        content.style.display = collapsed ? "none" : "";
       });
       this.addProviderText(content, "\u540D\u79F0", provider.name, "\u4F8B\u5982 OpenAI API", async (val) => {
         provider.name = val;
         await this.plugin.saveSettings();
+        updateHeader();
       });
       this.addProviderText(content, "Base URL", provider.baseUrl, "https://api.openai.com/v1", async (val) => {
         provider.baseUrl = val;
@@ -2527,6 +2531,7 @@ var XiaoyuanAISettingTab = class extends import_obsidian3.PluginSettingTab {
       this.addProviderText(content, "\u6A21\u578B", provider.model, "gpt-4o", async (val) => {
         provider.model = val;
         await this.plugin.saveSettings();
+        updateHeader();
       });
       this.addProviderText(content, "API Key", provider.apiKey, "sk-...", async (val) => {
         provider.apiKey = val;

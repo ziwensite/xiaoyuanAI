@@ -7,7 +7,7 @@ type TabId = "cli" | "api" | "general";
 
 export class XiaoyuanAISettingTab extends PluginSettingTab {
   plugin: XiaoyuanAIPlugin;
-  private activeTab: TabId = "cli";
+  private activeTab: TabId = "general";
 
   constructor(app: App, plugin: XiaoyuanAIPlugin) { super(app, plugin); this.plugin = plugin; }
 
@@ -161,9 +161,9 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
 
   private buildTabBar(container: HTMLElement) {
     const tabs: { id: TabId; icon: string; label: string }[] = [
+      { id: "general", icon: "settings", label: "通用" },
       { id: "cli", icon: "terminal-square", label: "CLI 设置" },
       { id: "api", icon: "key-round", label: "API 设置" },
-      { id: "general", icon: "settings", label: "通用" },
     ];
     const bar = container.createDiv({ cls: "xy-settings-tabs" });
     for (const t of tabs) {
@@ -374,16 +374,18 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
     const providers = s.apiProviders;
     const activeId = s.activeApiProviderId || providers[0]?.id || "";
 
-    container.createEl("h3", { text: "API 模型列表" });
-
     for (const provider of providers) {
       const isActive = provider.id === activeId;
       const card = container.createDiv({ cls: `xy-api-provider-row${isActive ? " is-active" : ""}` });
 
       const head = card.createDiv({ cls: "xy-api-provider-head" });
       const title = head.createDiv({ cls: "xy-api-provider-title" });
-      title.createSpan({ text: provider.name || "未命名" });
-      title.createEl("small", { text: ` · ${provider.model || "未选择模型"}` });
+      const nameSpan = title.createSpan({ text: provider.name || "未命名" });
+      const modelSmall = title.createEl("small", { text: ` · ${provider.model || "未选择模型"}` });
+      const updateHeader = () => {
+        nameSpan.textContent = provider.name || "未命名";
+        modelSmall.textContent = ` · ${provider.model || "未选择模型"}`;
+      };
 
       const headActions = head.createDiv({ cls: "xy-api-provider-actions" });
 
@@ -422,12 +424,13 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
       head.addEventListener("click", (e) => {
         if ((e.target as HTMLElement).closest("button")) return;
         collapsed = !collapsed;
-        content.style.display = collapsed ? "none" : "block";
+        content.style.display = collapsed ? "none" : "";
       });
 
       this.addProviderText(content, "名称", provider.name, "例如 OpenAI API", async (val) => {
         provider.name = val;
         await this.plugin.saveSettings();
+        updateHeader();
       });
 
       this.addProviderText(content, "Base URL", provider.baseUrl, "https://api.openai.com/v1", async (val) => {
@@ -438,6 +441,7 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
       this.addProviderText(content, "模型", provider.model, "gpt-4o", async (val) => {
         provider.model = val;
         await this.plugin.saveSettings();
+        updateHeader();
       });
 
       this.addProviderText(content, "API Key", provider.apiKey, "sk-...", async (val) => {

@@ -1,5 +1,5 @@
 {
-  "execMode": "cli",
+  "execMode": "api",
   "opencode": {
     "cliPath": "opencode",
     "autoStart": true,
@@ -17,12 +17,20 @@
   "apiProviders": [
     {
       "id": "default",
-      "name": "默认 API",
-      "baseUrl": "https://api.openai.com/v1",
-      "model": "gpt-4o",
+      "name": "硅基流动",
+      "baseUrl": "https://api.siliconflow.cn/v1",
+      "model": "Qwen/Qwen3-8B",
       "models": [
         "gpt-4o"
       ],
+      "apiKey": "sk-qplvgjwenrkphyurizblfwsobtbrmzcqvglqqoornyzevkjl"
+    },
+    {
+      "id": "provider_1780017941709",
+      "name": "新 API",
+      "baseUrl": "",
+      "model": "",
+      "models": [],
       "apiKey": ""
     }
   ],
@@ -51,11 +59,26 @@
       "value": "opencode/deepseek-v4-flash-free"
     },
     {
+      "label": "OpenCode Zen · MiMo V2.5 Free",
+      "value": "opencode/mimo-v2.5-free"
+    },
+    {
       "label": "OpenCode Zen · Nemotron 3 Super Free",
       "value": "opencode/nemotron-3-super-free"
     }
   ],
   "opencodeModelCaps": {
+    "opencode/mimo-v2.5-free": {
+      "text": true,
+      "image": true,
+      "pdf": false,
+      "audio": true,
+      "video": true,
+      "reasoning": true,
+      "toolcall": true,
+      "attachment": true,
+      "temperature": true
+    },
     "opencode/deepseek-v4-flash-free": {
       "text": true,
       "image": false,
@@ -67,7 +90,7 @@
       "attachment": false,
       "temperature": true
     },
-    "opencode/big-pickle": {
+    "opencode/nemotron-3-super-free": {
       "text": true,
       "image": false,
       "pdf": false,
@@ -78,7 +101,7 @@
       "attachment": false,
       "temperature": true
     },
-    "opencode/nemotron-3-super-free": {
+    "opencode/big-pickle": {
       "text": true,
       "image": false,
       "pdf": false,
@@ -100,6 +123,6 @@
       "description": "Plan mode. Disallows all edit tools."
     }
   ],
-  "xiaoyuan-chat-sessions": "[{\"id\":\"session-1779847703815\",\"title\":\"你好测试\",\"createdAt\":1779847703815,\"updatedAt\":1779929554211},{\"id\":\"session-1779335072230\",\"title\":\"测试\",\"createdAt\":1779335072230,\"updatedAt\":1779928499813},{\"id\":\"session-1779327052779\",\"title\":\"今天天气怎么样？\",\"createdAt\":1779327052779,\"updatedAt\":1779928273012},{\"id\":\"session-1779325178957\",\"title\":\"介绍一下自己\",\"createdAt\":1779325178957,\"updatedAt\":1779326826793}]",
+  "xiaoyuan-chat-sessions": "[{\"id\":\"session-1779847703815\",\"title\":\"你好测试\",\"createdAt\":1779847703815,\"updatedAt\":1780019710839},{\"id\":\"session-1779335072230\",\"title\":\"测试\",\"createdAt\":1779335072230,\"updatedAt\":1779928499813},{\"id\":\"session-1779327052779\",\"title\":\"今天天气怎么样？\",\"createdAt\":1779327052779,\"updatedAt\":1779928273012},{\"id\":\"session-1779325178957\",\"title\":\"介绍一下自己\",\"createdAt\":1779325178957,\"updatedAt\":1779326826793}]",
   "xiaoyuan-current-session": "session-1779847703815"
 }
