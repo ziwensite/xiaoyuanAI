@@ -2926,11 +2926,16 @@ var XiaoyuanAIPlugin = class extends import_obsidian5.Plugin {
       this.app.workspace.on("editor-menu", (menu, editor) => {
         const sel = editor.getSelection();
         if (!sel) return;
-        ["polish", "summarize", "complete", "expand", "translate", "continue"].forEach((op) => {
-          menu.addItem((item) => {
-            item.setTitle(`AI ${OPERATION_LABELS[op]}`);
-            item.setIcon(op === "polish" ? "pencil" : op === "summarize" ? "align-justify" : "plus");
-            item.onClick(() => new TextOperationModal(this.app, this, op, sel).open());
+        menu.addItem((item) => {
+          item.setTitle("\u5C0F\u5143AI");
+          item.setIcon("message-circle");
+          const submenu = item.setSubmenu();
+          ["polish", "summarize", "complete", "expand", "continue", "translate"].forEach((op) => {
+            submenu.addItem((subItem) => {
+              subItem.setTitle(OPERATION_LABELS[op]);
+              subItem.setIcon(op === "polish" ? "pencil" : "plus");
+              subItem.onClick(() => new TextOperationModal(this.app, this, op, sel).open());
+            });
           });
         });
       })

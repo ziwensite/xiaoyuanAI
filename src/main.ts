@@ -1,4 +1,4 @@
-import { Plugin, WorkspaceLeaf, Notice } from "obsidian";
+import { Plugin, WorkspaceLeaf, Notice, Menu } from "obsidian";
 import { XiaoyuanAISettings, DEFAULT_SETTINGS, VIEW_TYPE_XIAOYUAN_AI_CHAT } from "./types";
 import { XiaoyuanAIChatView } from "./chat-view";
 import { XiaoyuanAISettingTab } from "./settings";
@@ -20,11 +20,16 @@ export default class XiaoyuanAIPlugin extends Plugin {
       this.app.workspace.on("editor-menu", (menu, editor) => {
         const sel = editor.getSelection();
         if (!sel) return;
-        ["polish", "summarize", "complete", "expand", "translate", "continue"].forEach((op) => {
-          menu.addItem((item) => {
-            item.setTitle(`AI ${OPERATION_LABELS[op]}`);
-            item.setIcon(op === "polish" ? "pencil" : op === "summarize" ? "align-justify" : "plus");
-            item.onClick(() => new TextOperationModal(this.app, this, op, sel).open());
+        menu.addItem((item) => {
+          item.setTitle("小元AI");
+          item.setIcon("message-circle");
+          const submenu = (item as any).setSubmenu() as Menu;
+          ["polish", "summarize", "complete", "expand", "continue", "translate"].forEach((op) => {
+            submenu.addItem((subItem) => {
+              subItem.setTitle(OPERATION_LABELS[op]);
+              subItem.setIcon(op === "polish" ? "pencil" : "plus");
+              subItem.onClick(() => new TextOperationModal(this.app, this, op, sel).open());
+            });
           });
         });
       }),
