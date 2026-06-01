@@ -136,7 +136,6 @@ export async function scanChatHistoryFolder(
         loaded.push({
           id: sessionId,
           title,
-          messages: [],
           createdAt,
           updatedAt,
         });
@@ -239,7 +238,7 @@ export async function saveSessionsMeta(
   currentSessionId: string,
 ): Promise<void> {
   const data = (await plugin.loadData()) || {};
-  data[CHAT_SESSIONS_KEY] = JSON.stringify(sessions.map(({ messages, ...rest }) => rest));
+  data[CHAT_SESSIONS_KEY] = JSON.stringify(sessions.map((s: any) => { const { messages, ...rest } = s; return rest; }));
   data[CURRENT_SESSION_KEY] = currentSessionId;
   await plugin.saveData(data);
 }

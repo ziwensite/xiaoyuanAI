@@ -8,9 +8,13 @@ export interface ChatMessage {
 export interface ChatSession {
   id: string;
   title: string;
-  messages: ChatMessage[];
   createdAt: number;
   updatedAt: number;
+}
+
+export interface UserDraft {
+  text: string;
+  attachments: Attachment[];
 }
 
 export interface Attachment {
@@ -51,8 +55,6 @@ export interface OpenCodeSettings {
   hostname: string;
   port: number;
   model: string;
-  providerId: string;
-  modelId: string;
   agent: string;
   textEnabled: boolean;
   imageEnabled: boolean;
@@ -64,7 +66,6 @@ export interface ApiProviderConfig {
   name: string;
   baseUrl: string;
   model: string;
-  models: string[];
   apiKey: string;
 }
 
@@ -107,8 +108,6 @@ export const DEFAULT_OPENCODE_SETTINGS: OpenCodeSettings = {
   hostname: "127.0.0.1",
   port: 16226,
   model: "",
-  providerId: "",
-  modelId: "",
   agent: "build",
   textEnabled: true,
   imageEnabled: false,
@@ -122,7 +121,7 @@ export const DEFAULT_SETTINGS: XiaoyuanAISettings = {
 
   activeApiProviderId: "",
   apiProviders: [
-    { id: "default", name: "默认 API", baseUrl: "https://api.openai.com/v1", model: "gpt-4o", models: ["gpt-4o"], apiKey: "" },
+    { id: "default", name: "默认 API", baseUrl: "https://api.openai.com/v1", model: "gpt-4o", apiKey: "" },
   ],
 
   proxyEnabled: false,

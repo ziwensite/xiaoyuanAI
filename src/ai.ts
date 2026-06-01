@@ -409,7 +409,7 @@ export async function callAIWithCLI(
   if (settings.defaultReasoning) args.push("--variant", settings.defaultReasoning);
   const agent = settings.opencode.agent;
   if (agent) args.push("--agent", agent);
-  if (settings.defaultPermission === "danger-full-access") args.push("--dangerously-skip-permissions");
+  if (settings.defaultPermission !== "read-only") args.push("--dangerously-skip-permissions");
   if (settings.opencode.model) args.push("--model", settings.opencode.model);
   if (settings.mcpEnabled) args.push("--mcp");
 
@@ -500,8 +500,14 @@ export async function callAIWithCLI(
     });
 
     if (signal) {
+      if (signal.aborted) {
+        try { stopTempServer(proc); } catch {}
+        clearCLISessionID();
+        done(new DOMException("已中断", "AbortError"));
+        return;
+      }
       signal.addEventListener("abort", () => {
-        try { proc.kill(); } catch {}
+        try { stopTempServer(proc); } catch {}
         clearCLISessionID();
         done(new DOMException("已中断", "AbortError"));
       }, { once: true });

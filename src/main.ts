@@ -19,7 +19,6 @@ export default class XiaoyuanAIPlugin extends Plugin {
     this.registerEvent(
       this.app.workspace.on("editor-menu", (menu, editor) => {
         const sel = editor.getSelection();
-        if (!sel) return;
         menu.addItem((item) => {
           item.setTitle("小元AI");
           item.setIcon("message-circle");

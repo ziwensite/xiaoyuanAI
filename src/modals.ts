@@ -1,4 +1,4 @@
-import { App, Modal, Notice } from "obsidian";
+import { App, Modal, Notice, Menu } from "obsidian";
 import type XiaoyuanAIPlugin from "./main";
 import { callAIWithCLI, callAIWithAPIJson, getVaultBasePath } from "./ai";
 import { OPERATION_PROMPTS, OPERATION_LABELS, WIKI_SYSTEM_PROMPTS, getActiveProvider } from "./types";
@@ -39,6 +39,7 @@ export class TextOperationModal extends Modal {
   resultEl!: HTMLDivElement;
   loadingEl!: HTMLDivElement;
   modeLabel!: HTMLSpanElement;
+  titleEl!: HTMLHeadingElement;
 
   constructor(app: App, plugin: XiaoyuanAIPlugin, operation: string, inputText: string) {
     super(app);
@@ -53,7 +54,7 @@ export class TextOperationModal extends Modal {
     contentEl.classList.add("xiaoyuan-modal-container");
 
     const headerRow = contentEl.createDiv({ cls: "xiaoyuan-modal-header" });
-    headerRow.createEl("h3", { text: `AI ${OPERATION_LABELS[this.operation] || this.operation}` });
+    this.titleEl = headerRow.createEl("h3", { text: `AI ${OPERATION_LABELS[this.operation] || this.operation}` });
     this.modeLabel = headerRow.createSpan({ cls: "xiaoyuan-modal-mode-label" });
     this.modeLabel.textContent = this.plugin.settings.execMode === "cli" ? "CLI" : "API";
     headerRow.style.cursor = "move";
@@ -62,7 +63,99 @@ export class TextOperationModal extends Modal {
     this.loadingEl = contentEl.createDiv({ cls: "xiaoyuan-modal-loading", text: "\u23F3 处理中..." });
     this.resultEl = contentEl.createDiv({ cls: "xiaoyuan-modal-result" });
 
-    this.processOperation();
+    const btnRow = contentEl.createDiv({ cls: "xiaoyuan-modal-btn-row" });
+
+    const toolsBtn = btnRow.createEl("button", { text: "AI工具", cls: "xiaoyuan-btn-secondary" });
+    toolsBtn.addEventListener("click", (e) => this.showAIToolsMenu(e));
+
+    const replaceBtn = btnRow.createEl("button", { text: "替换原文", cls: "xiaoyuan-btn-primary" });
+    replaceBtn.addEventListener("click", () => {
+      const editor = this.plugin.getActiveEditor();
+      if (editor) { editor.replaceSelection(this.resultEl.textContent || ""); new Notice("已替换"); }
+      else new Notice("未找到活动编辑器");
+      this.close();
+    });
+
+    const copyBtn = btnRow.createEl("button", { text: "复制结果", cls: "xiaoyuan-btn-secondary" });
+    copyBtn.addEventListener("click", () => { navigator.clipboard.writeText(this.resultEl.textContent || ""); new Notice("已复制"); });
+
+    const closeBtn = btnRow.createEl("button", { text: "关闭", cls: "xiaoyuan-btn-secondary" });
+    closeBtn.addEventListener("click", () => this.close());
+
+    if (this.inputText) {
+      this.processOperation();
+    } else {
+      this.loadingEl.style.display = "none";
+      this.resultEl.classList.add("show");
+      this.resultEl.contentEditable = "true";
+    }
+  }
+
+  private showAIToolsMenu(e: MouseEvent) {
+    const menu = new Menu();
+    ["polish", "summarize", "complete", "expand", "continue", "translate"].forEach((op) => {
+      menu.addItem((item) => {
+        item.setTitle(OPERATION_LABELS[op]);
+        item.setIcon(
+          op === "polish" ? "pencil" :
+          op === "summarize" ? "file-text" :
+          op === "complete" ? "check" :
+          op === "expand" ? "maximize" :
+          op === "continue" ? "arrow-right" :
+          "globe"
+        );
+        item.onClick(() => this.reprocessWith(op));
+      });
+    });
+    menu.showAtMouseEvent(e);
+  }
+
+  private async reprocessWith(operation: string) {
+    const fullText = this.resultEl.textContent || "";
+    if (!fullText.trim()) { new Notice("内容为空，请先输入内容"); return; }
+
+    const sel = window.getSelection();
+    let textToProcess = "";
+    if (sel && sel.rangeCount > 0 && this.resultEl.contains(sel.anchorNode)) {
+      textToProcess = sel.toString().trim();
+    }
+    if (!textToProcess) textToProcess = fullText;
+
+    this.titleEl.textContent = `AI ${OPERATION_LABELS[operation] || operation}`;
+    this.loadingEl.style.display = "";
+    this.loadingEl.textContent = "\u23F3 处理中...";
+    this.resultEl.classList.remove("show");
+
+    try {
+      const s = this.plugin.settings;
+      const prompt = (OPERATION_PROMPTS[operation] || OPERATION_PROMPTS.polish) + textToProcess;
+      let result: string;
+
+      if (s.execMode === "cli") {
+        this.modeLabel.textContent = "CLI";
+        const vaultDir = getVaultBasePath(this.app.vault);
+        result = await callAIWithCLI(prompt, s, vaultDir, undefined, undefined,
+          () => { this.loadingEl.textContent = "已连接，等待响应..."; },
+          (text) => { this.loadingEl.textContent = `思考中... ${text.slice(0, 60)}`; },
+          () => { this.loadingEl.textContent = "✓ 已收到响应"; },
+        );
+      } else {
+        this.modeLabel.textContent = "API";
+        const provider = getActiveProvider(s);
+        if (!provider || !provider.apiKey) { new Notice("API Key 未配置"); this.close(); return; }
+        result = await callAIWithAPIJson(ensureApiUrl(provider.baseUrl), provider.apiKey, provider.model, [
+          { role: "system", content: s.systemPrompt },
+          { role: "user", content: prompt },
+        ], s.maxTokens, s.temperature, s.apiReasoningEffort);
+      }
+
+      this.loadingEl.style.display = "none";
+      this.resultEl.classList.add("show");
+      this.resultEl.textContent = result;
+      this.resultEl.contentEditable = "true";
+    } catch (err: any) {
+      this.loadingEl.textContent = `\u274C 错误：${err.message}`;
+    }
   }
 
   private async processOperation() {
@@ -77,37 +170,22 @@ export class TextOperationModal extends Modal {
         result = await callAIWithCLI(prompt, s, vaultDir, undefined, undefined,
           () => { this.loadingEl.textContent = "已连接，等待响应..."; },
           (text) => { this.loadingEl.textContent = `思考中... ${text.slice(0, 60)}`; },
-          (text) => { this.loadingEl.textContent = "✓ 已收到响应"; },
+          () => { this.loadingEl.textContent = "✓ 已收到响应"; },
         );
       } else {
         this.modeLabel.textContent = "API";
         const provider = getActiveProvider(s);
         if (!provider || !provider.apiKey) { new Notice("API Key 未配置"); this.close(); return; }
         result = await callAIWithAPIJson(ensureApiUrl(provider.baseUrl), provider.apiKey, provider.model, [
+          { role: "system", content: s.systemPrompt },
           { role: "user", content: prompt },
         ], s.maxTokens, s.temperature, s.apiReasoningEffort);
       }
 
-      this.loadingEl.classList.add("hidden");
+      this.loadingEl.style.display = "none";
       this.resultEl.classList.add("show");
       this.resultEl.textContent = result;
       this.resultEl.contentEditable = "true";
-
-      const btnRow = this.contentEl.createDiv({ cls: "xiaoyuan-modal-btn-row" });
-
-      const replaceBtn = btnRow.createEl("button", { text: "替换原文", cls: "xiaoyuan-btn-primary" });
-      replaceBtn.addEventListener("click", () => {
-        const editor = this.plugin.getActiveEditor();
-        if (editor) { editor.replaceSelection(this.resultEl.textContent || ""); new Notice("已替换"); }
-        else new Notice("未找到活动编辑器");
-        this.close();
-      });
-
-      const copyBtn = btnRow.createEl("button", { text: "复制结果", cls: "xiaoyuan-btn-secondary" });
-      copyBtn.addEventListener("click", () => { navigator.clipboard.writeText(this.resultEl.textContent || ""); new Notice("已复制"); });
-
-      const closeBtn = btnRow.createEl("button", { text: "关闭", cls: "xiaoyuan-btn-secondary" });
-      closeBtn.addEventListener("click", () => this.close());
     } catch (err: any) {
       this.loadingEl.textContent = `\u274C 错误：${err.message}`;
     }

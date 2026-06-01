@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, Notice, setIcon, setTooltip } from "obsidian";
+﻿import { ItemView, WorkspaceLeaf, Notice, setIcon, setTooltip } from "obsidian";
 import type XiaoyuanAIPlugin from "./main";
 import {
   ChatMessage,
@@ -8,7 +8,6 @@ import {
   Attachment,
   getActiveProvider,
 } from "./types";
-import type { ApiProviderConfig } from "./types";
 import { renderMarkdown } from "./markdown";
 import { callAIWithCLI, callAIWithAPI, getVaultBasePath, fetchOpenCodeModelsFromCLI, estimateTokens, clearCLISessionID, getCLISessionID, checkOpenCodeStatus, ensureOpenCodeServer } from "./ai";
 import {
@@ -421,6 +420,7 @@ export class XiaoyuanAIChatView extends ItemView {
   // ─── Send / AI ───────────────────────────────────────────────────
 
   async sendMessage() {
+    if (this.abortController) return;
     const text = this.inputEl.value.trim();
     if (!text) return;
     this.addMessage("user", text);
@@ -450,6 +450,12 @@ export class XiaoyuanAIChatView extends ItemView {
           this.renderDiffs(streamId, diffs);
           await this.saveCurrentSession();
         }
+      } else {
+        const finalized = this.finalizeStreamingMessage();
+        if (!finalized && response) {
+          this.addMessage("assistant", response);
+        }
+        await this.saveCurrentSession();
       }
     } catch (err: any) {
       if (statusMsg) statusMsg.remove();
@@ -485,23 +491,24 @@ export class XiaoyuanAIChatView extends ItemView {
       enrichedMessage = attachBlocks.join("\n\n") + "\n\n" + userMessage;
     }
 
-    if (s.execMode === "cli") {
-      const vaultDir = getVaultBasePath(this.app.vault);
-      if (s.opencode.autoStart) {
-        try {
-          await ensureOpenCodeServer(s.opencode.cliPath, s.opencode.hostname, s.opencode.port, vaultDir, true);
-        } catch (err: any) {
-          new Notice(`⚠ 启动 opencode 失败: ${err.message}`);
-          throw new Error(`无法启动 opencode serve: ${err.message}`);
+      if (s.execMode === "cli") {
+        const vaultDir = getVaultBasePath(this.app.vault);
+        if (s.opencode.autoStart) {
+          try {
+            await ensureOpenCodeServer(s.opencode.cliPath, s.opencode.hostname, s.opencode.port, vaultDir, true);
+          } catch (err: any) {
+            new Notice(`⚠ 启动 opencode 失败: ${err.message}`);
+            throw new Error(`无法启动 opencode serve: ${err.message}`);
+          }
         }
-      }
-      if (this.messages.length > 0 && this.messages[this.messages.length - 1].role === "user") {
-        this.messages[this.messages.length - 1].content = enrichedMessage;
-      }
-      const allMessages = [
-        { role: "system" as const, content: s.systemPrompt },
-        ...this.messages.map((m) => ({ role: m.role, content: m.content })),
-      ];
+        if (this.messages.length > 0 && this.messages[this.messages.length - 1].role === "user") {
+          this.messages[this.messages.length - 1].content = enrichedMessage;
+        }
+        const modeIdentity = "\n\n当前模式：CLI（opencode run）";
+        const allMessages = [
+          { role: "system" as const, content: s.systemPrompt + modeIdentity },
+          ...this.messages.map((m) => ({ role: m.role, content: m.content })),
+        ];
       const prompt = allMessages
         .map((m) => `${m.role === "system" ? "[系统]" : m.role === "user" ? "[用户]" : "[助手]"}: ${m.content}`)
         .join("\n\n");
@@ -517,8 +524,8 @@ export class XiaoyuanAIChatView extends ItemView {
           }
         },
         (text) => {
-          thinkingText = text;
-          if (streamingId) this.updateStreamingThinking(streamingId, text);
+          thinkingText += text;
+          if (streamingId) this.updateStreamingThinking(streamingId, thinkingText);
         },
         (text) => {
           if (statusMsg) { statusMsg.remove(); statusMsg = null; }
@@ -540,8 +547,9 @@ export class XiaoyuanAIChatView extends ItemView {
 
     const apiUrl = provider.baseUrl.includes("/chat/completions") ? provider.baseUrl : provider.baseUrl + "/chat/completions";
 
+    const modeIdentity = "\n\n当前模式：API | 模型：" + provider.model + " | 提供商：" + provider.name;
     const resp = await callAIWithAPI(apiUrl, provider.apiKey, provider.model, [
-      { role: "system", content: s.systemPrompt },
+      { role: "system", content: s.systemPrompt + modeIdentity },
       ...this.messages.map((m) => ({ role: m.role, content: m.content })),
       { role: "user", content: enrichedMessage },
     ], s.maxTokens, s.temperature, true, signal, s.apiReasoningEffort);
@@ -556,6 +564,7 @@ export class XiaoyuanAIChatView extends ItemView {
 
       const decoder = new TextDecoder("utf-8");
       let fullContent = "";
+      let fullThinking = "";
       let messageId = "";
       let closed = false;
 
@@ -564,7 +573,7 @@ export class XiaoyuanAIChatView extends ItemView {
         closed = true;
         try { reader.releaseLock(); } catch {}
         if (err) reject(err);
-        else resolve(fullContent || "（无响应）");
+        else resolve(fullContent || fullThinking || "（无响应）");
       };
 
       const readChunk = async () => {
@@ -580,13 +589,17 @@ export class XiaoyuanAIChatView extends ItemView {
             if (dataStr === "[DONE]") { finish(); return; }
             try {
               const data = JSON.parse(dataStr);
-              const content = data.choices?.[0]?.delta?.content;
-              if (content) {
-                fullContent += content;
+              const delta = data.choices?.[0]?.delta;
+              const content = delta?.content;
+              const reasoning = delta?.reasoning_content;
+              if (reasoning) fullThinking += reasoning;
+              if (content) fullContent += content;
+              if (reasoning || content) {
                 if (!messageId) {
-                  messageId = this.addStreamingMessage(fullContent);
+                  messageId = this.addStreamingMessage(fullContent, fullThinking);
                 } else {
-                  this.updateStreamingMessage(messageId, fullContent);
+                  if (content) this.updateStreamingMessage(messageId, fullContent);
+                  if (reasoning) this.updateStreamingThinking(messageId, fullThinking);
                 }
               }
             } catch {}
@@ -672,9 +685,60 @@ export class XiaoyuanAIChatView extends ItemView {
     if (!lastMsg || lastMsg.role !== "assistant") return null;
     const msgEl = this.messagesEl.querySelector(`#${lastMsg.id}`);
     if (!msgEl) return null;
-    msgEl.remove();
-    const newEl = this.renderMessageEl(lastMsg.id, lastMsg.role, lastMsg.content, false, lastMsg.thinking);
-    this.messagesEl.appendChild(newEl);
+
+    const bubbleEl = msgEl.querySelector(".xiaoyuan-msg-bubble") as HTMLElement;
+    if (!bubbleEl) return null;
+
+    const streamContent = bubbleEl.querySelector(".xy-stream-content");
+    const toolLog = bubbleEl.querySelector(".xy-tool-log") as HTMLElement | null;
+    const existingThinking = bubbleEl.querySelector(".xiaoyuan-thinking");
+
+    if (streamContent) streamContent.remove();
+    if (existingThinking) existingThinking.remove();
+
+    if (lastMsg.thinking && this.plugin.settings.showThinking) {
+      const detailsEl = bubbleEl.createEl("details", { cls: "xiaoyuan-thinking" });
+      detailsEl.createEl("summary", { text: "\u{1F914} 思考过程" });
+      const tc = detailsEl.createDiv({ cls: "xiaoyuan-thinking-content" });
+      tc.innerHTML = renderMarkdown(lastMsg.thinking.trim());
+    }
+
+    const renderedHTML = renderMarkdown(lastMsg.content.trim());
+    if (toolLog) {
+      toolLog.insertAdjacentHTML("beforebegin", renderedHTML);
+    } else {
+      bubbleEl.insertAdjacentHTML("beforeend", renderedHTML);
+    }
+
+    if (!msgEl.querySelector(".xiaoyuan-msg-actions")) {
+      const actionsEl = msgEl.createDiv({ cls: "xiaoyuan-msg-actions" });
+      const copyBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
+      copyBtn.textContent = "\uD83D\uDCCB";
+      setTooltip(copyBtn, "复制");
+      copyBtn.addEventListener("click", () => {
+        navigator.clipboard.writeText(lastMsg.content);
+        new Notice("已复制");
+      });
+    }
+
+    setTimeout(() => {
+      if (!bubbleEl.isConnected) return;
+      (window as Record<string, any>).Prism?.highlightAllUnder(bubbleEl);
+      bubbleEl.querySelectorAll("pre").forEach((pre) => {
+        if (pre.querySelector(".xy-copy-btn")) return;
+        const btn = document.createElement("button");
+        btn.className = "xy-copy-btn";
+        btn.textContent = "复制";
+        pre.style.position = "relative";
+        btn.addEventListener("click", () => {
+          navigator.clipboard.writeText(pre.textContent || "");
+          btn.textContent = "已复制";
+          setTimeout(() => { btn.textContent = "复制"; }, 2000);
+        });
+        pre.appendChild(btn);
+      });
+    }, 0);
+
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
     return lastMsg.id;
   }
@@ -748,7 +812,6 @@ export class XiaoyuanAIChatView extends ItemView {
           const newSession: ChatSession = {
             id: "session-" + Date.now(),
             title: oldMessages[0]?.content?.slice(0, 30) || "历史对话",
-            messages: [],
             createdAt: Date.now(),
             updatedAt: Date.now(),
           };
@@ -797,13 +860,12 @@ export class XiaoyuanAIChatView extends ItemView {
   }
 
   private async saveCurrentSession() {
-    if (this.messages.length === 0) return;
     const path = getChatHistoryPath(this.plugin.settings.chatHistoryPath);
     const session = this.sessions.find((s) => s.id === this.currentSessionId);
     if (session) {
       session.updatedAt = Date.now();
       if (session.title === "新对话" || session.title === "") {
-        session.title = this.sessionTitleFromMessages();
+        session.title = this.messages.length > 0 ? this.sessionTitleFromMessages() : "新对话";
         this.updateSessionSelector();
       }
     }
@@ -824,7 +886,6 @@ export class XiaoyuanAIChatView extends ItemView {
     const newSession: ChatSession = {
       id: "session-" + Date.now(),
       title: "新对话",
-      messages: [],
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
@@ -896,7 +957,8 @@ export class XiaoyuanAIChatView extends ItemView {
     }
     await saveSessionsMeta(this.plugin, this.sessions, this.currentSessionId);
 
-    showPopup(e.target as HTMLElement, (popup) => {
+    const headerEl = this.viewContainer.querySelector(".xiaoyuan-chat-header") as HTMLElement;
+    showPopup(headerEl, (popup) => {
       const searchInput = popup.createEl("input", { cls: "xy-popup-search", type: "text", placeholder: "搜索会话..." });
       const listEl = popup.createDiv({ cls: "xy-popup-session-list" });
 
@@ -911,11 +973,15 @@ export class XiaoyuanAIChatView extends ItemView {
 
         const startRename = (ev: Event) => {
           ev.stopPropagation();
+          const popupEl = titleEl.closest(".xy-popup") as HTMLElement;
+          const origWidth = popupEl ? popupEl.style.width : "";
+          if (popupEl) popupEl.style.width = "auto";
           const input = document.createElement("input");
           input.type = "text";
           input.value = session.title;
-          input.style.cssText = "flex:1;min-width:0;padding:2px 4px;font-size:inherit;background:transparent;border:1px solid var(--background-modifier-border);border-radius:4px;color:var(--text-normal);";
+          input.style.cssText = "flex:1;padding:2px 4px;font-size:inherit;background:transparent;border:1px solid var(--background-modifier-border);border-radius:4px;color:var(--text-normal);";
           const finish = (save: boolean) => {
+            if (popupEl) popupEl.style.width = origWidth;
             if (save) {
               const newTitle = input.value.trim() || session.title;
               if (newTitle !== session.title) {
@@ -967,7 +1033,7 @@ export class XiaoyuanAIChatView extends ItemView {
       });
 
       setTimeout(() => searchInput.focus(), 50);
-    }, { maxHeight: "300px" });
+    }, { fullWidth: true, maxHeight: "300px" });
   }
 
   private updateSessionSelector() {
@@ -992,6 +1058,7 @@ export class XiaoyuanAIChatView extends ItemView {
   // ─── Attachments ───────────────────────────────────────────────
 
   pickFiles() {
+    const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024;
     const input = document.createElement("input");
     input.type = "file";
     input.multiple = true;
@@ -999,6 +1066,10 @@ export class XiaoyuanAIChatView extends ItemView {
     input.addEventListener("change", async () => {
       const files = Array.from(input.files || []);
       for (const file of files) {
+        if (file.size > MAX_ATTACHMENT_SIZE) {
+          new Notice(`文件过大: ${file.name} (最大 10MB)`);
+          continue;
+        }
         try {
           const data = await this.readFileAsBase64(file);
           this.attachments.push({ name: file.name, type: file.type || "application/octet-stream", data, size: file.size });

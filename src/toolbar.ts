@@ -1,7 +1,6 @@
-import { Notice, setIcon, setTooltip } from "obsidian";
+﻿import { Notice, setIcon, setTooltip } from "obsidian";
 import { showPopup, addPopupItem } from "./popup";
 import { getActiveProvider } from "./types";
-import type { ApiProviderConfig } from "./types";
 import type XiaoyuanAIPlugin from "./main";
 
 interface ToolbarHost {
@@ -126,30 +125,25 @@ export function buildToolbarContent(container: HTMLElement, view: ToolbarHost): 
           });
         }
       } else {
-        const provider = getActiveProvider(s);
-        const apiModels = provider?.models || s.apiProviders[0]?.models || [];
-        const currentModel = provider?.model || "";
-        if (currentModel && !apiModels.includes(currentModel)) {
-          addPopupItem(popup, `${currentModel}（当前）`, true, () => {
-            if (provider) provider.model = currentModel;
+        const providers = s.apiProviders;
+        const activeProvider = getActiveProvider(s);
+        let hasItem = false;
+        for (const p of providers) {
+          if (!p.model) continue;
+          hasItem = true;
+          const label = p.name ? `${p.name}: ${p.model}` : p.model;
+          const isActive = p.id === activeProvider?.id;
+          addPopupItem(popup, label, isActive, () => {
+            s.activeApiProviderId = p.id;
             view.plugin.saveSettings();
-            trigger.textContent = currentModel;
-            setTooltip(trigger, currentModel);
-            new Notice(`已切换到模型: ${currentModel}`);
+            trigger.textContent = p.model;
+            setTooltip(trigger, p.name ? `${p.name}: ${p.model}` : p.model);
+            new Notice(`已切换到 ${label}`);
           });
         }
-        if (apiModels.length === 0 && !currentModel) {
+        if (!hasItem) {
           const emptyItem = popup.createDiv({ cls: "xy-popup-item" });
-          emptyItem.createSpan({ cls: "xy-popup-label" }).textContent = "未配置模型列表，请在设置中添加";
-        }
-        for (const m of apiModels) {
-          addPopupItem(popup, m, m === currentModel, () => {
-            if (provider) provider.model = m;
-            view.plugin.saveSettings();
-            trigger.textContent = m;
-            setTooltip(trigger, m);
-            new Notice(`已切换到模型: ${m}`);
-          });
+          emptyItem.createSpan({ cls: "xy-popup-label" }).textContent = "未配置 API 模型，请在设置中添加";
         }
       }
     }, { direction: "up", maxHeight: "50vh" });

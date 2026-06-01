@@ -454,7 +454,7 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
     const newBtn = addBtn.createEl("button", { cls: "xy-status-btn", text: "+ 新增 API 提供者" });
     newBtn.addEventListener("click", async () => {
       const newId = `provider_${Date.now()}`;
-      s.apiProviders.push({ id: newId, name: "新 API", baseUrl: "", model: "", models: [], apiKey: "" });
+      s.apiProviders.push({ id: newId, name: "新 API", baseUrl: "", model: "", apiKey: "" });
       await this.plugin.saveSettings();
       this.display();
     });
@@ -518,17 +518,6 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
     } catch {
       return false;
     }
-  }
-
-  private addProviderTextArea(
-    container: HTMLElement, label: string, value: string,
-    placeholder: string, onChange: (val: string) => Promise<void>,
-  ) {
-    const field = container.createDiv({ cls: "xy-api-provider-field" });
-    field.createSpan({ cls: "xy-api-provider-label", text: label });
-    const textarea = field.createEl("textarea", { cls: "xy-api-provider-textarea", attr: { placeholder, rows: "4" } });
-    textarea.value = value;
-    textarea.addEventListener("change", () => { void onChange(textarea.value); });
   }
 
   // ─── 通用设置 ─────────────────────────────────────────────────────

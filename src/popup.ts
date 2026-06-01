@@ -1,7 +1,7 @@
 export function showPopup(
   trigger: HTMLElement,
   buildContent: (popup: HTMLDivElement) => void,
-  options?: { maxHeight?: string; direction?: "down" | "up" },
+  options?: { maxHeight?: string; direction?: "down" | "up"; fullWidth?: boolean },
 ): HTMLDivElement | null {
   if (document.querySelector(".xy-popup")) {
     document.querySelectorAll(".xy-popup").forEach((el) => el.remove());
@@ -9,7 +9,17 @@ export function showPopup(
   }
   const popup = document.body.createDiv({ cls: "xy-popup" });
   const rect = trigger.getBoundingClientRect();
-  popup.style.cssText = `position:fixed;left:${rect.left}px;`;
+  if (options?.fullWidth) {
+    const container = trigger.closest(".xiaoyuan-chat") as HTMLElement | null;
+    if (container) {
+      const cr = container.getBoundingClientRect();
+      popup.style.cssText = `position:fixed;left:${cr.left}px;width:${cr.width}px;`;
+    } else {
+      popup.style.cssText = `position:fixed;left:${rect.left}px;`;
+    }
+  } else {
+    popup.style.cssText = `position:fixed;left:${rect.left}px;`;
+  }
   if (options?.maxHeight) popup.style.maxHeight = options.maxHeight;
   buildContent(popup);
   if (options?.direction === "up") {
