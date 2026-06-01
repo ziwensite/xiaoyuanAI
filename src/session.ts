@@ -37,6 +37,7 @@ export function parseMarkdownToMessages(content: string): ChatMessage[] {
     let msgContent = "";
     let thinkingLines: string[] = [];
     let inThinking = false;
+    let ts: number | undefined;
 
     for (const line of lines) {
       if (line.startsWith("**你**:")) {
@@ -53,7 +54,12 @@ export function parseMarkdownToMessages(content: string): ChatMessage[] {
           msgContent += line + "\n";
         }
       } else if (role) {
-        msgContent += line + "\n";
+        const tsMatch = line.match(/<!-- ts:(\d+) -->/);
+        if (tsMatch) {
+          ts = parseInt(tsMatch[1]);
+        } else {
+          msgContent += line + "\n";
+        }
       }
     }
 
@@ -64,6 +70,7 @@ export function parseMarkdownToMessages(content: string): ChatMessage[] {
         content: msgContent.trim(),
       };
       if (thinkingLines.length > 0) msg.thinking = thinkingLines.join("\n").trim();
+      if (ts) msg.timestamp = ts;
       messages.push(msg);
     }
   }
@@ -75,6 +82,7 @@ export function sessionToMarkdown(session: ChatSession | undefined, messages: Ch
   let content = `---\ntitle: ${session?.title || "新对话"}\ncreated: ${session?.createdAt || Date.now()}\nupdated: ${Date.now()}\n---\n\n`;
   messages.forEach((msg) => {
     content += `**${msg.role === "user" ? "你" : "小元"}**:\n\n${msg.content}\n\n`;
+    if (msg.timestamp) content += `<!-- ts:${msg.timestamp} -->\n\n`;
     if (msg.thinking) {
       content += `> [!thinking] 思考过程\n> ${msg.thinking.replace(/\n/g, "\n> ")}\n\n`;
     }

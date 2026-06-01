@@ -456,7 +456,7 @@ export async function callAIWithCLI(
         const errMsg = event.error?.data?.message || event.error?.message || "opencode 返回未知错误";
         done(new Error(errMsg)); return;
       }
-      if (event.type === "thinking") {
+      if (event.type === "thinking" || event.type === "reasoning") {
         const t = event.part?.text ?? event.text ?? event.content ?? "";
         if (t && onThinking) onThinking(t); return;
       }

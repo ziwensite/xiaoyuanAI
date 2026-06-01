@@ -179,17 +179,12 @@
   border-left: 3px solid var(--color-cyan);
 }
 
+/* opacity 已移除 → actions 行常显 */
+
 .xiaoyuan-msg-actions {
   display: flex;
   gap: 4px;
   margin-top: 3px;
-  opacity: 0;
-  transition: opacity 0.15s;
-}
-
-.xiaoyuan-msg-assistant:hover .xiaoyuan-msg-actions,
-.xiaoyuan-msg-user:hover .xiaoyuan-msg-actions {
-  opacity: 1;
 }
 
 .xiaoyuan-msg-action {
@@ -962,5 +957,15 @@ pre:hover .xy-copy-btn {
 .xy-copy-btn:hover {
   background: var(--background-modifier-hover);
   color: var(--text-normal);
+}
+
+/* ─── Message timestamp ──────────────────────────── */
+
+.xiaoyuan-msg-time {
+  margin-left: auto;
+  font-size: 0.7em;
+  color: var(--text-faint);
+  user-select: none;
+  white-space: nowrap;
 }
 
