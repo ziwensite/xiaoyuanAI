@@ -9,7 +9,7 @@ import {
   getActiveProvider,
 } from "./types";
 import { renderMarkdown } from "./markdown";
-import { callAIWithCLI, callAIWithAPI, getVaultBasePath, fetchOpenCodeModelsFromCLI, estimateTokens, clearCLISessionID, getCLISessionID, checkOpenCodeStatus, ensureOpenCodeServer } from "./ai";
+import { callAIWithHTTPStreaming, callAIWithAPI, getVaultBasePath, fetchOpenCodeModelsFromCLI, estimateTokens, clearCLISessionID, getCLISessionID, checkOpenCodeStatus, ensureOpenCodeServer } from "./ai";
 import {
   getChatHistoryPath,
   ensureChatHistoryFolder,
@@ -526,27 +526,26 @@ export class XiaoyuanAIChatView extends ItemView {
         .join("\n\n");
 
       let streamingId = "";
-      let thinkingText = "";
-      return callAIWithCLI(
-        prompt, s, vaultDir, undefined, signal,
+      const updateThinking = (text: string) => {
+        if (streamingId) {
+          this.updateStreamingThinking(streamingId, text);
+        } else {
+          streamingId = this.addStreamingMessage("", text);
+        }
+      };
+      return callAIWithHTTPStreaming(
+        prompt, s, vaultDir, signal,
         () => {
           if (statusMsg) {
             const bubble = statusMsg.querySelector(".xiaoyuan-msg-bubble");
             if (bubble) bubble.textContent = "已连接，等待响应...";
           }
         },
-        (text) => {
-          thinkingText += text;
-          if (streamingId) {
-            this.updateStreamingThinking(streamingId, thinkingText);
-          } else {
-            streamingId = this.addStreamingMessage("", thinkingText);
-          }
-        },
+        (text) => { updateThinking(text); },
         (text) => {
           if (statusMsg) { statusMsg.remove(); statusMsg = null; }
           if (!streamingId) {
-            streamingId = this.addStreamingMessage(text, thinkingText);
+            streamingId = this.addStreamingMessage(text, "");
           } else {
             this.updateStreamingMessage(streamingId, text);
           }
@@ -670,10 +669,12 @@ export class XiaoyuanAIChatView extends ItemView {
     } else {
       const bubbleEl = msgEl.querySelector(".xiaoyuan-msg-bubble");
       if (!bubbleEl) return;
-      const detailsEl = bubbleEl.createEl("details", { cls: "xiaoyuan-thinking" });
+      const detailsEl = document.createElement("details");
+      detailsEl.className = "xiaoyuan-thinking";
       detailsEl.createEl("summary", { text: "\u{1F914} 思考过程" });
       tc = detailsEl.createDiv({ cls: "xiaoyuan-thinking-content" });
       tc.textContent = thinking;
+      bubbleEl.prepend(detailsEl);
     }
   }
 
@@ -712,14 +713,20 @@ export class XiaoyuanAIChatView extends ItemView {
     if (streamContent) streamContent.remove();
     if (existingThinking) existingThinking.remove();
 
-    const renderedHTML = renderMarkdown(lastMsg.content.trim());
+    const hasContent = lastMsg.content.trim().length > 0;
+    const displayContent = hasContent
+      ? lastMsg.content.trim()
+      : (lastMsg.thinking || "").trim();
+    if (!displayContent) return lastMsg.id;
+
+    const renderedHTML = renderMarkdown(displayContent);
     if (toolLog) {
       toolLog.insertAdjacentHTML("beforebegin", renderedHTML);
     } else {
       bubbleEl.insertAdjacentHTML("beforeend", renderedHTML);
     }
 
-    if (lastMsg.thinking && this.plugin.settings.showThinking) {
+    if (hasContent && lastMsg.thinking && this.plugin.settings.showThinking) {
       const thinkingHTML = `<details class="xiaoyuan-thinking"><summary>\u{1F914} 思考过程</summary><div class="xiaoyuan-thinking-content">${renderMarkdown(lastMsg.thinking.trim())}</div></details>`;
       bubbleEl.insertAdjacentHTML("afterbegin", thinkingHTML);
     }

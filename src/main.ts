@@ -1,10 +1,11 @@
+import * as fs from "fs";
 import { Plugin, WorkspaceLeaf, Notice, Menu } from "obsidian";
 import { XiaoyuanAISettings, DEFAULT_SETTINGS, VIEW_TYPE_XIAOYUAN_AI_CHAT } from "./types";
 import { XiaoyuanAIChatView } from "./chat-view";
 import { XiaoyuanAISettingTab } from "./settings";
 import { TextOperationModal, WikiCommandModal } from "./modals";
 import { OPERATION_LABELS } from "./types";
-import { ensureOpenCodeServer, stopOpenCodeServer } from "./ai";
+import { ensureOpenCodeServer, stopOpenCodeServer, resolveOpenCodePath } from "./ai";
 import { getVaultBasePath } from "./server";
 
 export default class XiaoyuanAIPlugin extends Plugin {
@@ -12,6 +13,15 @@ export default class XiaoyuanAIPlugin extends Plugin {
 
   async onload() {
     await this.loadSettings();
+
+    if (this.settings.execMode === "cli") {
+      const resolved = await resolveOpenCodePath(this.settings.opencode.cliPath);
+      if (!fs.existsSync(resolved)) {
+        this.settings.execMode = "api";
+        await this.saveSettings();
+        new Notice("未检测到 opencode 程序，已自动切换为 API 模式");
+      }
+    }
 
     this.registerView(VIEW_TYPE_XIAOYUAN_AI_CHAT, (leaf) => new XiaoyuanAIChatView(leaf, this));
     this.addRibbonIcon("message-circle", "小元AI", () => this.activateChatView());

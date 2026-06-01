@@ -446,8 +446,11 @@
 }
 
 .xiaoyuan-modal-container {
-  max-width: 800px;
+  max-width: 700px;
   overflow-x: auto;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 
@@ -455,6 +458,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  margin-top: -8px;
 }
 
 .xiaoyuan-modal-mode-label {
@@ -465,13 +469,7 @@
   color: var(--tag-color);
 }
 
-.xiaoyuan-modal-loading {
-  margin: 20px 0;
-  color: var(--text-muted);
-}
-
-.xiaoyuan-modal-result {
-  display: none;
+.xiaoyuan-modal-content-area {
   white-space: pre-wrap;
   word-break: break-word;
   overflow-wrap: break-word;
@@ -479,18 +477,17 @@
   padding: 16px;
   border-radius: 8px;
   background-color: var(--background-secondary);
-  max-height: 50vh;
   overflow-y: auto;
-}
-
-.xiaoyuan-modal-result.show {
-  display: block;
+  flex: 1;
+  min-height: 0;
 }
 
 .xiaoyuan-modal-btn-row {
-  margin-top: 12px;
+  margin-top: auto;
+  justify-content: center;
   display: flex;
   gap: 8px;
+  padding: 12px 0 0;
 }
 
 .xiaoyuan-wiki-modal-container {
@@ -542,6 +539,11 @@
   border: 1px solid var(--background-modifier-border);
   background-color: var(--background-primary);
   cursor: pointer;
+}
+
+.xiaoyuan-btn-secondary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 /* ─── Thinking Block ──────────────────────────────── */

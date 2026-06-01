@@ -1,6 +1,6 @@
 import { App, Modal, Notice, Menu } from "obsidian";
 import type XiaoyuanAIPlugin from "./main";
-import { callAIWithCLI, callAIWithAPIJson, getVaultBasePath } from "./ai";
+import { callAIWithHTTPStreaming, callAIWithAPIJson, getVaultBasePath } from "./ai";
 import { OPERATION_PROMPTS, OPERATION_LABELS, WIKI_SYSTEM_PROMPTS, getActiveProvider } from "./types";
 import type { ApiProviderConfig } from "./types";
 
@@ -36,8 +36,8 @@ export class TextOperationModal extends Modal {
   plugin: XiaoyuanAIPlugin;
   operation: string;
   inputText: string;
-  resultEl!: HTMLDivElement;
-  loadingEl!: HTMLDivElement;
+  contentAreaEl!: HTMLDivElement;
+  toolsBtn!: HTMLButtonElement;
   modeLabel!: HTMLSpanElement;
   titleEl!: HTMLHeadingElement;
 
@@ -52,6 +52,7 @@ export class TextOperationModal extends Modal {
     const { contentEl, modalEl } = this;
     contentEl.empty();
     contentEl.classList.add("xiaoyuan-modal-container");
+    modalEl.style.height = Math.round(window.innerHeight * 0.75) + 'px';
 
     const headerRow = contentEl.createDiv({ cls: "xiaoyuan-modal-header" });
     this.titleEl = headerRow.createEl("h3", { text: `AI ${OPERATION_LABELS[this.operation] || this.operation}` });
@@ -60,24 +61,23 @@ export class TextOperationModal extends Modal {
     headerRow.style.cursor = "move";
     makeDraggable(headerRow, modalEl);
 
-    this.loadingEl = contentEl.createDiv({ cls: "xiaoyuan-modal-loading", text: "\u23F3 处理中..." });
-    this.resultEl = contentEl.createDiv({ cls: "xiaoyuan-modal-result" });
+    this.contentAreaEl = contentEl.createDiv({ cls: "xiaoyuan-modal-content-area", text: "已连接，等待响应..." });
 
     const btnRow = contentEl.createDiv({ cls: "xiaoyuan-modal-btn-row" });
 
-    const toolsBtn = btnRow.createEl("button", { text: "AI工具", cls: "xiaoyuan-btn-secondary" });
-    toolsBtn.addEventListener("click", (e) => this.showAIToolsMenu(e));
+    this.toolsBtn = btnRow.createEl("button", { text: "AI工具", cls: "xiaoyuan-btn-secondary" });
+    this.toolsBtn.addEventListener("click", (e) => this.showAIToolsMenu(e));
 
     const replaceBtn = btnRow.createEl("button", { text: "替换原文", cls: "xiaoyuan-btn-primary" });
     replaceBtn.addEventListener("click", () => {
       const editor = this.plugin.getActiveEditor();
-      if (editor) { editor.replaceSelection(this.resultEl.textContent || ""); new Notice("已替换"); }
+      if (editor) { editor.replaceSelection(this.contentAreaEl.textContent || ""); new Notice("已替换"); }
       else new Notice("未找到活动编辑器");
       this.close();
     });
 
     const copyBtn = btnRow.createEl("button", { text: "复制结果", cls: "xiaoyuan-btn-secondary" });
-    copyBtn.addEventListener("click", () => { navigator.clipboard.writeText(this.resultEl.textContent || ""); new Notice("已复制"); });
+    copyBtn.addEventListener("click", () => { navigator.clipboard.writeText(this.contentAreaEl.textContent || ""); new Notice("已复制"); });
 
     const closeBtn = btnRow.createEl("button", { text: "关闭", cls: "xiaoyuan-btn-secondary" });
     closeBtn.addEventListener("click", () => this.close());
@@ -85,9 +85,7 @@ export class TextOperationModal extends Modal {
     if (this.inputText) {
       this.processOperation();
     } else {
-      this.loadingEl.style.display = "none";
-      this.resultEl.classList.add("show");
-      this.resultEl.contentEditable = "true";
+      this.contentAreaEl.contentEditable = "true";
     }
   }
 
@@ -111,21 +109,21 @@ export class TextOperationModal extends Modal {
   }
 
   private async reprocessWith(operation: string) {
-    const fullText = this.resultEl.textContent || "";
+    const fullText = this.contentAreaEl.textContent || "";
     if (!fullText.trim()) { new Notice("内容为空，请先输入内容"); return; }
 
     const sel = window.getSelection();
     let textToProcess = "";
-    if (sel && sel.rangeCount > 0 && this.resultEl.contains(sel.anchorNode)) {
+    if (sel && sel.rangeCount > 0 && this.contentAreaEl.contains(sel.anchorNode)) {
       textToProcess = sel.toString().trim();
     }
     if (!textToProcess) textToProcess = fullText;
 
     this.titleEl.textContent = `AI ${OPERATION_LABELS[operation] || operation}`;
-    this.loadingEl.style.display = "";
-    this.loadingEl.textContent = "\u23F3 处理中...";
-    this.resultEl.classList.remove("show");
+    this.contentAreaEl.textContent = "已连接，等待响应...";
+    this.contentAreaEl.contentEditable = "false";
 
+    this.toolsBtn.disabled = true;
     try {
       const s = this.plugin.settings;
       const prompt = (OPERATION_PROMPTS[operation] || OPERATION_PROMPTS.polish) + textToProcess;
@@ -134,10 +132,9 @@ export class TextOperationModal extends Modal {
       if (s.execMode === "cli") {
         this.modeLabel.textContent = "CLI";
         const vaultDir = getVaultBasePath(this.app.vault);
-        result = await callAIWithCLI(prompt, s, vaultDir, undefined, undefined,
-          () => { this.loadingEl.textContent = "已连接，等待响应..."; },
-          (text) => { this.loadingEl.textContent = `思考中... ${text.slice(0, 60)}`; },
-          () => { this.loadingEl.textContent = "✓ 已收到响应"; },
+        result = await callAIWithHTTPStreaming(prompt, s, vaultDir, undefined, undefined,
+          (text) => { this.contentAreaEl.textContent = `思考中... ${text}`; },
+          (text) => { this.contentAreaEl.textContent = text; },
         );
       } else {
         this.modeLabel.textContent = "API";
@@ -149,16 +146,17 @@ export class TextOperationModal extends Modal {
         ], s.maxTokens, s.temperature, s.apiReasoningEffort);
       }
 
-      this.loadingEl.style.display = "none";
-      this.resultEl.classList.add("show");
-      this.resultEl.textContent = result;
-      this.resultEl.contentEditable = "true";
+      this.contentAreaEl.textContent = result;
+      this.contentAreaEl.contentEditable = "true";
     } catch (err: any) {
-      this.loadingEl.textContent = `\u274C 错误：${err.message}`;
+      this.contentAreaEl.textContent = `\u274C 错误：${err.message}`;
+    } finally {
+      this.toolsBtn.disabled = false;
     }
   }
 
   private async processOperation() {
+    this.toolsBtn.disabled = true;
     try {
       const s = this.plugin.settings;
       const prompt = (OPERATION_PROMPTS[this.operation] || OPERATION_PROMPTS.polish) + this.inputText;
@@ -167,10 +165,9 @@ export class TextOperationModal extends Modal {
       if (s.execMode === "cli") {
         this.modeLabel.textContent = "CLI";
         const vaultDir = getVaultBasePath(this.app.vault);
-        result = await callAIWithCLI(prompt, s, vaultDir, undefined, undefined,
-          () => { this.loadingEl.textContent = "已连接，等待响应..."; },
-          (text) => { this.loadingEl.textContent = `思考中... ${text.slice(0, 60)}`; },
-          () => { this.loadingEl.textContent = "✓ 已收到响应"; },
+        result = await callAIWithHTTPStreaming(prompt, s, vaultDir, undefined, undefined,
+          (text) => { this.contentAreaEl.textContent = `思考中... ${text}`; },
+          (text) => { this.contentAreaEl.textContent = text; },
         );
       } else {
         this.modeLabel.textContent = "API";
@@ -182,12 +179,12 @@ export class TextOperationModal extends Modal {
         ], s.maxTokens, s.temperature, s.apiReasoningEffort);
       }
 
-      this.loadingEl.style.display = "none";
-      this.resultEl.classList.add("show");
-      this.resultEl.textContent = result;
-      this.resultEl.contentEditable = "true";
+      this.contentAreaEl.textContent = result;
+      this.contentAreaEl.contentEditable = "true";
     } catch (err: any) {
-      this.loadingEl.textContent = `\u274C 错误：${err.message}`;
+      this.contentAreaEl.textContent = `\u274C 错误：${err.message}`;
+    } finally {
+      this.toolsBtn.disabled = false;
     }
   }
 
@@ -227,7 +224,7 @@ export class WikiCommandModal extends Modal {
       if (!text) { new Notice("请输入内容"); return; }
 
       submitBtn.disabled = true;
-      submitBtn.textContent = "处理中...";
+      submitBtn.textContent = "已连接，等待响应...";
 
       try {
         const s = this.plugin.settings;
@@ -237,10 +234,9 @@ export class WikiCommandModal extends Modal {
         if (s.execMode === "cli") {
           const fullPrompt = systemPrompt ? `${systemPrompt}\n\n---\n${text}` : text;
           const vaultDir = getVaultBasePath(this.app.vault);
-          result = await callAIWithCLI(fullPrompt, s, vaultDir, undefined, undefined,
-            () => { submitBtn.textContent = "已连接，等待响应..."; },
-            (t) => { submitBtn.textContent = `思考中... ${t.slice(0, 40)}`; },
-            () => { resultEl.textContent = "✓ 已收到响应"; },
+          result = await callAIWithHTTPStreaming(fullPrompt, s, vaultDir, undefined, undefined,
+            (t) => { submitBtn.textContent = `思考中... ${t}`; },
+            (t) => { submitBtn.textContent = t; },
           );
         } else {
           const provider = getActiveProvider(s);

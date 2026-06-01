@@ -391,6 +391,335 @@ export function envWithProxy(settings: XiaoyuanAISettings): Record<string, strin
   return { HTTP_PROXY: url, HTTPS_PROXY: url, http_proxy: url, https_proxy: url };
 }
 
+// ─── HTTP API for opencode serve ─────────────────────────────────
+
+type ServerConn = { url: string; authHeader: string };
+
+function readServerConn(vaultDir: string, configuredPort: number): ServerConn | null {
+  try {
+    const lockPath = path.join(vaultDir, ".opencode", "server.lock.json");
+    if (fs.existsSync(lockPath)) {
+      const lock = JSON.parse(fs.readFileSync(lockPath, "utf-8"));
+      const authHeader = lock.password
+        ? `Basic ${Buffer.from(`opencode:${lock.password}`).toString("base64")}`
+        : "";
+      return { url: `http://127.0.0.1:${lock.port}`, authHeader };
+    }
+  } catch {}
+  return null;
+}
+
+function requestOpenCode<T>(
+  base: string, apiPath: string, method: string, body?: any, authHeader?: string,
+): Promise<T> {
+  const u = new URL(apiPath, base.replace(/\/+$/, ""));
+  return new Promise((resolve, reject) => {
+    const opts: http.RequestOptions = {
+      hostname: u.hostname,
+      port: Number(u.port) || 16226,
+      path: u.pathname + u.search,
+      method,
+      headers: { "Content-Type": "application/json" } as Record<string, string>,
+    };
+    if (authHeader) (opts.headers as Record<string, string>)["Authorization"] = authHeader;
+    const req = http.request(opts, (res) => {
+      const chunks: Buffer[] = [];
+      res.on("data", (ch: Buffer) => chunks.push(ch));
+      res.on("end", () => {
+        const raw = Buffer.concat(chunks).toString();
+        if (!res.statusCode || res.statusCode >= 300) {
+          reject(new Error(`OpenCode ${method} ${apiPath}: ${res.statusCode} ${raw.slice(0, 200)}`));
+          return;
+        }
+        if (res.statusCode === 204) { resolve({} as T); return; }
+        try { resolve(JSON.parse(raw) as T); }
+        catch (e) { reject(new Error(`OpenCode ${method} ${apiPath}: JSON parse error — ${(e as Error).message}`)); }
+      });
+    });
+    req.on("error", reject);
+    req.setTimeout(10000, () => { req.destroy(); reject(new Error(`OpenCode ${method} ${apiPath}: timeout`)); });
+    if (body !== undefined) req.write(JSON.stringify(body));
+    req.end();
+  });
+}
+
+export async function callAIWithHTTP(
+  prompt: string,
+  settings: XiaoyuanAISettings,
+  vaultDir: string,
+  signal?: AbortSignal,
+  onConnected?: () => void,
+  onThinking?: (text: string) => void,
+  onTextUpdate?: (text: string) => void,
+): Promise<string> {
+  let conn = readServerConn(vaultDir, settings.opencode.port || 16226);
+  if (conn) {
+    try { await requestOpenCode(conn.url, "/global/health", "GET", undefined, conn.authHeader); }
+    catch { conn = null; }
+  }
+  if (!conn) {
+    const base = await ensureOpenCodeServer(
+      settings.opencode.cliPath, settings.opencode.hostname,
+      settings.opencode.port, vaultDir, true,
+    );
+    conn = { url: base, authHeader: readServerConn(vaultDir, settings.opencode.port || 16226)?.authHeader || "" };
+  }
+  onConnected?.();
+
+  const session = await requestOpenCode<{ id: string }>(conn.url, "/session", "POST", {}, conn.authHeader);
+  const sessionId = session.id;
+  if (!sessionId) throw new Error("创建会话失败");
+
+  try {
+    const payload: any = { parts: [{ type: "text", text: prompt }] };
+    if (settings.opencode.agent) payload.agent = settings.opencode.agent;
+    if (settings.defaultReasoning) payload.variant = settings.defaultReasoning;
+    if (settings.opencode.model) {
+      const parts = settings.opencode.model.split("/");
+      if (parts.length >= 2) {
+        payload.model = { providerID: parts[0], modelID: parts.slice(1).join("/") };
+      }
+    }
+
+    await requestOpenCode(conn.url, `/session/${sessionId}/prompt_async`, "POST", payload, conn.authHeader);
+
+    const timeout = 120000;
+    const start = Date.now();
+    while (Date.now() - start < timeout) {
+      if (signal?.aborted) throw new DOMException("已中断", "AbortError");
+      try {
+        const statusMap = await requestOpenCode<Record<string, { type?: string }>>(
+          conn.url, "/session/status", "GET", undefined, conn.authHeader,
+        );
+        if (statusMap?.[sessionId]?.type === "idle") break;
+      } catch {}
+      await new Promise(r => setTimeout(r, 500));
+    }
+
+    if (Date.now() - start >= timeout) throw new Error("等待回复超时");
+
+    const messages = await requestOpenCode<any[]>(conn.url, `/session/${sessionId}/message?limit=50`, "GET", undefined, conn.authHeader);
+    const lastAssistant = [...(messages || [])].reverse().find((m: any) => m.info?.role === "assistant");
+    const result = lastAssistant?.parts?.find((p: any) => p.type === "text")?.text ?? "";
+    if (result) {
+      onTextUpdate?.(result);
+      return result;
+    }
+    throw new Error("未找到 assistant 回复");
+  } finally {
+    try { await requestOpenCode(conn.url, `/session/${sessionId}`, "DELETE", undefined, conn.authHeader); } catch {}
+  }
+}
+
+// ─── SSE streaming for opencode serve ───────────────────────────
+
+function parseDiffText(text: string): FileDiff[] {
+  const result: FileDiff[] = [];
+  const blocks = text.split(/(?=^diff --git )/m);
+  for (const block of blocks) {
+    if (!block.trim()) continue;
+    const file = block.match(/^\+\+\+ b\/(.+)$/m)?.[1] || "";
+    if (!file) continue;
+    const lines = block.split("\n");
+    const startIdx = lines.findIndex(l => l.startsWith("@@"));
+    const beforeLines: string[] = [];
+    const afterLines: string[] = [];
+    for (let i = startIdx + 1; i < lines.length; i++) {
+      const l = lines[i];
+      if (l.startsWith("-")) beforeLines.push(l.slice(1));
+      else if (l.startsWith("+")) afterLines.push(l.slice(1));
+      else { beforeLines.push(l); afterLines.push(l); }
+    }
+    const addCount = lines.filter(l => l.startsWith("+") && !l.startsWith("+++")).length;
+    const delCount = lines.filter(l => l.startsWith("-") && !l.startsWith("---")).length;
+    result.push({ file, before: beforeLines.join("\n"), after: afterLines.join("\n"), additions: addCount, deletions: delCount });
+  }
+  return result;
+}
+
+function combineSignals(...sigs: (AbortSignal | undefined)[]): AbortSignal {
+  const ctrl = new AbortController();
+  for (const s of sigs) {
+    if (!s) continue;
+    if (s.aborted) { ctrl.abort(s.reason); return ctrl.signal; }
+    s.addEventListener("abort", () => ctrl.abort(s.reason), { once: true });
+  }
+  return ctrl.signal;
+}
+
+type SSEEvent = { type: string; properties?: any };
+
+function connectSSE(
+  base: string, authHeader: string, sessionId: string, signal: AbortSignal,
+  onEvent: (evt: SSEEvent) => void,
+  onDone?: () => void,
+): void {
+  const noop = onDone || (() => {});
+  const u = new URL("/event", base.replace(/\/+$/, ""));
+  const opts: http.RequestOptions = {
+    hostname: u.hostname,
+    port: Number(u.port) || 16226,
+    path: u.pathname + u.search,
+    method: "GET",
+    headers: {} as Record<string, string>,
+  };
+  if (authHeader) (opts.headers as Record<string, string>)["Authorization"] = authHeader;
+  const req = http.request(opts, (res) => {
+    const dec = new TextDecoder();
+    let buf = "";
+    res.on("data", (chunk: Buffer) => {
+      if (signal.aborted) { res.destroy(); return; }
+      buf += dec.decode(chunk, { stream: true });
+      const lines = buf.split(/\r?\n/);
+      buf = lines.pop() || "";
+      for (const line of lines) {
+        if (!line.startsWith("data:")) continue;
+        const payload = line.slice(5).trim();
+        if (!payload) continue;
+        try { onEvent(JSON.parse(payload)); } catch {}
+      }
+    });
+    res.on("end", noop);
+    res.on("error", noop);
+  });
+  req.on("error", noop);
+  req.setTimeout(15000, () => { req.destroy(); noop(); });
+  signal.addEventListener("abort", () => req.destroy(), { once: true });
+  req.end();
+}
+
+export async function callAIWithHTTPStreaming(
+  prompt: string,
+  settings: XiaoyuanAISettings,
+  vaultDir: string,
+  signal?: AbortSignal,
+  onConnected?: () => void,
+  onThinking?: (text: string) => void,
+  onTextUpdate?: (text: string, thinkingText?: string) => void,
+  onDiffs?: (diffs: FileDiff[]) => void,
+  onToolProgress?: (tool: string, status: string) => void,
+): Promise<string> {
+  let conn = readServerConn(vaultDir, settings.opencode.port || 16226);
+  if (conn) {
+    try { await requestOpenCode(conn.url, "/global/health", "GET", undefined, conn.authHeader); }
+    catch { conn = null; }
+  }
+  if (!conn) {
+    const base = await ensureOpenCodeServer(
+      settings.opencode.cliPath, settings.opencode.hostname,
+      settings.opencode.port, vaultDir, true,
+    );
+    conn = { url: base, authHeader: readServerConn(vaultDir, settings.opencode.port || 16226)?.authHeader || "" };
+  }
+  onConnected?.();
+
+  const session = await requestOpenCode<{ id: string }>(conn.url, "/session", "POST", {}, conn.authHeader);
+  const sessionId = session.id;
+  if (!sessionId) throw new Error("创建会话失败");
+
+  try {
+    const payload: any = { parts: [{ type: "text", text: prompt }] };
+    if (settings.opencode.agent) payload.agent = settings.opencode.agent;
+    if (settings.defaultReasoning) payload.variant = settings.defaultReasoning;
+    if (settings.opencode.model) {
+      const parts = settings.opencode.model.split("/");
+      if (parts.length >= 2) {
+        payload.model = { providerID: parts[0], modelID: parts.slice(1).join("/") };
+      }
+    }
+    await requestOpenCode(conn.url, `/session/${sessionId}/prompt_async`, "POST", payload, conn.authHeader);
+
+    let accumulatedText = "";
+    let accumulatedThinking = "";
+    const sseAbort = new AbortController();
+    const combinedSig = combineSignals(signal, sseAbort.signal);
+
+    const partTypes = new Map<string, string>();
+    const partTexts = new Map<string, string>();
+    connectSSE(
+      conn.url, conn.authHeader, sessionId, combinedSig,
+      (evt) => {
+        const props = evt.properties || {};
+        if (props.sessionID !== sessionId) return;
+        if (evt.type === "message.part.updated") {
+          const part = props.part || {};
+          const partId = part.id;
+          if (partId) partTypes.set(partId, part.type || "");
+          if (part.type === "text") {
+            accumulatedText = part.text || "";
+            partTexts.set(partId, accumulatedText);
+            onTextUpdate?.(accumulatedText, accumulatedThinking);
+          } else if (part.type === "thinking" || part.type === "reasoning") {
+            accumulatedThinking = part.text || "";
+            partTexts.set(partId, accumulatedThinking);
+            onThinking?.(accumulatedThinking);
+          } else if (part.type === "tool") {
+            const toolName = part.tool || part.name || "";
+            const st = part.state?.status || "running";
+            if (toolName) onToolProgress?.(toolName, st);
+          } else if (part.type === "diff" || part.type === "patch") {
+            const diffText = part.text ?? part.diff ?? "";
+            if (diffText) {
+              const diffs = parseDiffText(diffText);
+              if (diffs.length) onDiffs?.(diffs);
+            }
+          }
+        } else if (evt.type === "message.part.delta") {
+          const partId = props.partID;
+          const pType = partTypes.get(partId);
+          if (props.field === "text" && props.delta) {
+            const prev = partTexts.get(partId) || "";
+            const updated = prev + props.delta;
+            partTexts.set(partId, updated);
+            if (pType === "text") {
+              accumulatedText = updated;
+              onTextUpdate?.(accumulatedText, accumulatedThinking);
+            } else if (pType === "thinking" || pType === "reasoning") {
+              accumulatedThinking = updated;
+              onThinking?.(accumulatedThinking);
+            }
+          }
+        } else if (evt.type === "session.status") {
+          if (props.status?.type === "idle") {
+            idleDetected = true;
+            sseAbort.abort();
+          }
+        }
+      },
+    );
+
+    const pollTimeout = 120000;
+    const pollStart = Date.now();
+    let idleDetected = false;
+
+    while (!idleDetected && Date.now() - pollStart < pollTimeout) {
+      if (signal?.aborted) throw new DOMException("已中断", "AbortError");
+      await new Promise(r => setTimeout(r, 1000));
+      try {
+        const statusMap = await requestOpenCode<Record<string, { type?: string }>>(
+          conn.url, "/session/status", "GET", undefined, conn.authHeader,
+        );
+        if (statusMap?.[sessionId]?.type === "idle") { idleDetected = true; break; }
+      } catch {}
+    }
+
+    if (!idleDetected) throw new Error("等待回复超时");
+
+    sseAbort.abort();
+
+    const messages = await requestOpenCode<any[]>(conn.url, `/session/${sessionId}/message?limit=50`, "GET", undefined, conn.authHeader);
+    const lastAssistant = [...(messages || [])].reverse().find((m: any) => m.info?.role === "assistant");
+    const result = lastAssistant?.parts?.find((p: any) => p.type === "text")?.text ?? "";
+    if (result) {
+      onTextUpdate?.(result, accumulatedThinking);
+      return result;
+    }
+    throw new Error("未找到 assistant 回复");
+  } finally {
+    try { await requestOpenCode(conn.url, `/session/${sessionId}`, "DELETE", undefined, conn.authHeader); } catch {}
+  }
+}
+
 export async function callAIWithCLI(
   prompt: string,
   settings: XiaoyuanAISettings,
@@ -402,9 +731,11 @@ export async function callAIWithCLI(
   onTextUpdate?: (text: string) => void,
   onDiffs?: (diffs: FileDiff[]) => void,
   onToolProgress?: (tool: string, status: string) => void,
+  skipThinking?: boolean,
 ): Promise<string> {
   const effectiveBin = await resolveOpenCodePath(settings.opencode.cliPath);
-  const args: string[] = ["run", "--format", "json", "--thinking"];
+  const args: string[] = ["run", "--format", "json"];
+  if (!skipThinking) args.push("--thinking");
 
   if (settings.defaultReasoning) args.push("--variant", settings.defaultReasoning);
   const agent = settings.opencode.agent;
@@ -419,8 +750,10 @@ export async function callAIWithCLI(
     let stdoutBuf = "";
     let stderrBuf = "";
     let fullText = "";
+    let fullThinking = "";
     let resolved = false;
     let proc: any;
+    let fullRaw = "";
 
     const cleanup = () => { cliCallInProgress = false; };
 
@@ -444,7 +777,7 @@ export async function callAIWithCLI(
       resolved = true;
       cleanup();
       if (err) reject(err);
-      else resolve(fullText || "(无响应内容)");
+      else resolve(fullText || fullThinking || "(无响应内容)");
     };
 
     const parseEvent = (raw: string) => {
@@ -458,10 +791,10 @@ export async function callAIWithCLI(
       }
       if (event.type === "thinking" || event.type === "reasoning") {
         const t = event.part?.text ?? event.text ?? event.content ?? "";
-        if (t && onThinking) onThinking(t); return;
+        if (t) { fullThinking += t; if (onThinking) onThinking(t); } return;
       }
       if (event.type === "text") {
-        const t = event.part?.text ?? event.text ?? event.content ?? "";
+        const t = typeof event.part === "string" ? event.part : (event.part?.text ?? event.part?.content ?? event.text ?? event.content ?? "");
         if (t) { fullText = t; if (onTextUpdate) onTextUpdate(t); } return;
       }
       if (event.type === "tool_use") {
@@ -486,7 +819,9 @@ export async function callAIWithCLI(
       stdoutBuf = lines.pop() || "";
       for (const line of lines) {
         const trimmed = stripAnsi(line).trim();
-        if (trimmed) parseEvent(trimmed);
+        if (!trimmed) continue;
+        if (trimmed[0] === "{") { parseEvent(trimmed); }
+        else { fullRaw += trimmed + "\n"; }
       }
     });
 
@@ -494,9 +829,16 @@ export async function callAIWithCLI(
     proc.on("error", (err: Error) => done(err));
     proc.on("close", (code: number | null) => {
       if (resolved) return;
+      const remaining = stripAnsi(stdoutBuf).trim();
+      if (remaining) {
+        if (remaining[0] === "{") { parseEvent(remaining); }
+        else { fullRaw += remaining + "\n"; }
+      }
       if (code !== 0) done(new Error(stderrBuf.trim() || `进程退出码 ${code}`));
       else if (!connected) done(new Error("未收到数据\n请检查 opencode 路径和模型配置，或重启 opencode serve"));
-      else resolve(fullText || "(无响应内容)");
+      else {
+        resolve(fullText || fullThinking || fullRaw.trim() || "(无响应内容)");
+      }
     });
 
     if (signal) {

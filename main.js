@@ -54,6 +54,8 @@ __export(ai_exports, {
   callAIWithAPI: () => callAIWithAPI,
   callAIWithAPIJson: () => callAIWithAPIJson,
   callAIWithCLI: () => callAIWithCLI,
+  callAIWithHTTP: () => callAIWithHTTP,
+  callAIWithHTTPStreaming: () => callAIWithHTTPStreaming,
   checkOpenCodeStatus: () => checkOpenCodeStatus,
   clearCLISessionID: () => clearCLISessionID,
   ensureOpenCodeServer: () => ensureOpenCodeServer,
@@ -417,9 +419,353 @@ function envWithProxy(settings) {
   const url = settings.proxyUrl;
   return { HTTP_PROXY: url, HTTPS_PROXY: url, http_proxy: url, https_proxy: url };
 }
-async function callAIWithCLI(prompt, settings, vaultDir, attachments, signal, onConnected, onThinking, onTextUpdate, onDiffs, onToolProgress) {
+function readServerConn(vaultDir, configuredPort) {
+  try {
+    const lockPath = path.join(vaultDir, ".opencode", "server.lock.json");
+    if (fs.existsSync(lockPath)) {
+      const lock = JSON.parse(fs.readFileSync(lockPath, "utf-8"));
+      const authHeader = lock.password ? `Basic ${Buffer.from(`opencode:${lock.password}`).toString("base64")}` : "";
+      return { url: `http://127.0.0.1:${lock.port}`, authHeader };
+    }
+  } catch (e) {
+  }
+  return null;
+}
+function requestOpenCode(base, apiPath, method, body, authHeader) {
+  const u = new URL(apiPath, base.replace(/\/+$/, ""));
+  return new Promise((resolve, reject) => {
+    const opts = {
+      hostname: u.hostname,
+      port: Number(u.port) || 16226,
+      path: u.pathname + u.search,
+      method,
+      headers: { "Content-Type": "application/json" }
+    };
+    if (authHeader) opts.headers["Authorization"] = authHeader;
+    const req = http.request(opts, (res) => {
+      const chunks = [];
+      res.on("data", (ch) => chunks.push(ch));
+      res.on("end", () => {
+        const raw = Buffer.concat(chunks).toString();
+        if (!res.statusCode || res.statusCode >= 300) {
+          reject(new Error(`OpenCode ${method} ${apiPath}: ${res.statusCode} ${raw.slice(0, 200)}`));
+          return;
+        }
+        if (res.statusCode === 204) {
+          resolve({});
+          return;
+        }
+        try {
+          resolve(JSON.parse(raw));
+        } catch (e) {
+          reject(new Error(`OpenCode ${method} ${apiPath}: JSON parse error \u2014 ${e.message}`));
+        }
+      });
+    });
+    req.on("error", reject);
+    req.setTimeout(1e4, () => {
+      req.destroy();
+      reject(new Error(`OpenCode ${method} ${apiPath}: timeout`));
+    });
+    if (body !== void 0) req.write(JSON.stringify(body));
+    req.end();
+  });
+}
+async function callAIWithHTTP(prompt, settings, vaultDir, signal, onConnected, onThinking, onTextUpdate) {
+  var _a, _b, _c, _d, _e;
+  let conn = readServerConn(vaultDir, settings.opencode.port || 16226);
+  if (conn) {
+    try {
+      await requestOpenCode(conn.url, "/global/health", "GET", void 0, conn.authHeader);
+    } catch (e) {
+      conn = null;
+    }
+  }
+  if (!conn) {
+    const base = await ensureOpenCodeServer(
+      settings.opencode.cliPath,
+      settings.opencode.hostname,
+      settings.opencode.port,
+      vaultDir,
+      true
+    );
+    conn = { url: base, authHeader: ((_a = readServerConn(vaultDir, settings.opencode.port || 16226)) == null ? void 0 : _a.authHeader) || "" };
+  }
+  onConnected == null ? void 0 : onConnected();
+  const session = await requestOpenCode(conn.url, "/session", "POST", {}, conn.authHeader);
+  const sessionId = session.id;
+  if (!sessionId) throw new Error("\u521B\u5EFA\u4F1A\u8BDD\u5931\u8D25");
+  try {
+    const payload = { parts: [{ type: "text", text: prompt }] };
+    if (settings.opencode.agent) payload.agent = settings.opencode.agent;
+    if (settings.defaultReasoning) payload.variant = settings.defaultReasoning;
+    if (settings.opencode.model) {
+      const parts = settings.opencode.model.split("/");
+      if (parts.length >= 2) {
+        payload.model = { providerID: parts[0], modelID: parts.slice(1).join("/") };
+      }
+    }
+    await requestOpenCode(conn.url, `/session/${sessionId}/prompt_async`, "POST", payload, conn.authHeader);
+    const timeout = 12e4;
+    const start = Date.now();
+    while (Date.now() - start < timeout) {
+      if (signal == null ? void 0 : signal.aborted) throw new DOMException("\u5DF2\u4E2D\u65AD", "AbortError");
+      try {
+        const statusMap = await requestOpenCode(
+          conn.url,
+          "/session/status",
+          "GET",
+          void 0,
+          conn.authHeader
+        );
+        if (((_b = statusMap == null ? void 0 : statusMap[sessionId]) == null ? void 0 : _b.type) === "idle") break;
+      } catch (e) {
+      }
+      await new Promise((r) => setTimeout(r, 500));
+    }
+    if (Date.now() - start >= timeout) throw new Error("\u7B49\u5F85\u56DE\u590D\u8D85\u65F6");
+    const messages = await requestOpenCode(conn.url, `/session/${sessionId}/message?limit=50`, "GET", void 0, conn.authHeader);
+    const lastAssistant = [...messages || []].reverse().find((m) => {
+      var _a2;
+      return ((_a2 = m.info) == null ? void 0 : _a2.role) === "assistant";
+    });
+    const result = (_e = (_d = (_c = lastAssistant == null ? void 0 : lastAssistant.parts) == null ? void 0 : _c.find((p) => p.type === "text")) == null ? void 0 : _d.text) != null ? _e : "";
+    if (result) {
+      onTextUpdate == null ? void 0 : onTextUpdate(result);
+      return result;
+    }
+    throw new Error("\u672A\u627E\u5230 assistant \u56DE\u590D");
+  } finally {
+    try {
+      await requestOpenCode(conn.url, `/session/${sessionId}`, "DELETE", void 0, conn.authHeader);
+    } catch (e) {
+    }
+  }
+}
+function parseDiffText(text) {
+  var _a;
+  const result = [];
+  const blocks = text.split(/(?=^diff --git )/m);
+  for (const block of blocks) {
+    if (!block.trim()) continue;
+    const file = ((_a = block.match(/^\+\+\+ b\/(.+)$/m)) == null ? void 0 : _a[1]) || "";
+    if (!file) continue;
+    const lines = block.split("\n");
+    const startIdx = lines.findIndex((l) => l.startsWith("@@"));
+    const beforeLines = [];
+    const afterLines = [];
+    for (let i = startIdx + 1; i < lines.length; i++) {
+      const l = lines[i];
+      if (l.startsWith("-")) beforeLines.push(l.slice(1));
+      else if (l.startsWith("+")) afterLines.push(l.slice(1));
+      else {
+        beforeLines.push(l);
+        afterLines.push(l);
+      }
+    }
+    const addCount = lines.filter((l) => l.startsWith("+") && !l.startsWith("+++")).length;
+    const delCount = lines.filter((l) => l.startsWith("-") && !l.startsWith("---")).length;
+    result.push({ file, before: beforeLines.join("\n"), after: afterLines.join("\n"), additions: addCount, deletions: delCount });
+  }
+  return result;
+}
+function combineSignals(...sigs) {
+  const ctrl = new AbortController();
+  for (const s of sigs) {
+    if (!s) continue;
+    if (s.aborted) {
+      ctrl.abort(s.reason);
+      return ctrl.signal;
+    }
+    s.addEventListener("abort", () => ctrl.abort(s.reason), { once: true });
+  }
+  return ctrl.signal;
+}
+function connectSSE(base, authHeader, sessionId, signal, onEvent, onDone) {
+  const noop = onDone || (() => {
+  });
+  const u = new URL("/event", base.replace(/\/+$/, ""));
+  const opts = {
+    hostname: u.hostname,
+    port: Number(u.port) || 16226,
+    path: u.pathname + u.search,
+    method: "GET",
+    headers: {}
+  };
+  if (authHeader) opts.headers["Authorization"] = authHeader;
+  const req = http.request(opts, (res) => {
+    const dec = new TextDecoder();
+    let buf = "";
+    res.on("data", (chunk) => {
+      if (signal.aborted) {
+        res.destroy();
+        return;
+      }
+      buf += dec.decode(chunk, { stream: true });
+      const lines = buf.split(/\r?\n/);
+      buf = lines.pop() || "";
+      for (const line of lines) {
+        if (!line.startsWith("data:")) continue;
+        const payload = line.slice(5).trim();
+        if (!payload) continue;
+        try {
+          onEvent(JSON.parse(payload));
+        } catch (e) {
+        }
+      }
+    });
+    res.on("end", noop);
+    res.on("error", noop);
+  });
+  req.on("error", noop);
+  req.setTimeout(15e3, () => {
+    req.destroy();
+    noop();
+  });
+  signal.addEventListener("abort", () => req.destroy(), { once: true });
+  req.end();
+}
+async function callAIWithHTTPStreaming(prompt, settings, vaultDir, signal, onConnected, onThinking, onTextUpdate, onDiffs, onToolProgress) {
+  var _a, _b, _c, _d, _e;
+  let conn = readServerConn(vaultDir, settings.opencode.port || 16226);
+  if (conn) {
+    try {
+      await requestOpenCode(conn.url, "/global/health", "GET", void 0, conn.authHeader);
+    } catch (e) {
+      conn = null;
+    }
+  }
+  if (!conn) {
+    const base = await ensureOpenCodeServer(
+      settings.opencode.cliPath,
+      settings.opencode.hostname,
+      settings.opencode.port,
+      vaultDir,
+      true
+    );
+    conn = { url: base, authHeader: ((_a = readServerConn(vaultDir, settings.opencode.port || 16226)) == null ? void 0 : _a.authHeader) || "" };
+  }
+  onConnected == null ? void 0 : onConnected();
+  const session = await requestOpenCode(conn.url, "/session", "POST", {}, conn.authHeader);
+  const sessionId = session.id;
+  if (!sessionId) throw new Error("\u521B\u5EFA\u4F1A\u8BDD\u5931\u8D25");
+  try {
+    const payload = { parts: [{ type: "text", text: prompt }] };
+    if (settings.opencode.agent) payload.agent = settings.opencode.agent;
+    if (settings.defaultReasoning) payload.variant = settings.defaultReasoning;
+    if (settings.opencode.model) {
+      const parts = settings.opencode.model.split("/");
+      if (parts.length >= 2) {
+        payload.model = { providerID: parts[0], modelID: parts.slice(1).join("/") };
+      }
+    }
+    await requestOpenCode(conn.url, `/session/${sessionId}/prompt_async`, "POST", payload, conn.authHeader);
+    let accumulatedText = "";
+    let accumulatedThinking = "";
+    const sseAbort = new AbortController();
+    const combinedSig = combineSignals(signal, sseAbort.signal);
+    const partTypes = /* @__PURE__ */ new Map();
+    const partTexts = /* @__PURE__ */ new Map();
+    connectSSE(
+      conn.url,
+      conn.authHeader,
+      sessionId,
+      combinedSig,
+      (evt) => {
+        var _a2, _b2, _c2, _d2;
+        const props = evt.properties || {};
+        if (props.sessionID !== sessionId) return;
+        if (evt.type === "message.part.updated") {
+          const part = props.part || {};
+          const partId = part.id;
+          if (partId) partTypes.set(partId, part.type || "");
+          if (part.type === "text") {
+            accumulatedText = part.text || "";
+            partTexts.set(partId, accumulatedText);
+            onTextUpdate == null ? void 0 : onTextUpdate(accumulatedText, accumulatedThinking);
+          } else if (part.type === "thinking" || part.type === "reasoning") {
+            accumulatedThinking = part.text || "";
+            partTexts.set(partId, accumulatedThinking);
+            onThinking == null ? void 0 : onThinking(accumulatedThinking);
+          } else if (part.type === "tool") {
+            const toolName = part.tool || part.name || "";
+            const st = ((_a2 = part.state) == null ? void 0 : _a2.status) || "running";
+            if (toolName) onToolProgress == null ? void 0 : onToolProgress(toolName, st);
+          } else if (part.type === "diff" || part.type === "patch") {
+            const diffText = (_c2 = (_b2 = part.text) != null ? _b2 : part.diff) != null ? _c2 : "";
+            if (diffText) {
+              const diffs = parseDiffText(diffText);
+              if (diffs.length) onDiffs == null ? void 0 : onDiffs(diffs);
+            }
+          }
+        } else if (evt.type === "message.part.delta") {
+          const partId = props.partID;
+          const pType = partTypes.get(partId);
+          if (props.field === "text" && props.delta) {
+            const prev = partTexts.get(partId) || "";
+            const updated = prev + props.delta;
+            partTexts.set(partId, updated);
+            if (pType === "text") {
+              accumulatedText = updated;
+              onTextUpdate == null ? void 0 : onTextUpdate(accumulatedText, accumulatedThinking);
+            } else if (pType === "thinking" || pType === "reasoning") {
+              accumulatedThinking = updated;
+              onThinking == null ? void 0 : onThinking(accumulatedThinking);
+            }
+          }
+        } else if (evt.type === "session.status") {
+          if (((_d2 = props.status) == null ? void 0 : _d2.type) === "idle") {
+            idleDetected = true;
+            sseAbort.abort();
+          }
+        }
+      }
+    );
+    const pollTimeout = 12e4;
+    const pollStart = Date.now();
+    let idleDetected = false;
+    while (!idleDetected && Date.now() - pollStart < pollTimeout) {
+      if (signal == null ? void 0 : signal.aborted) throw new DOMException("\u5DF2\u4E2D\u65AD", "AbortError");
+      await new Promise((r) => setTimeout(r, 1e3));
+      try {
+        const statusMap = await requestOpenCode(
+          conn.url,
+          "/session/status",
+          "GET",
+          void 0,
+          conn.authHeader
+        );
+        if (((_b = statusMap == null ? void 0 : statusMap[sessionId]) == null ? void 0 : _b.type) === "idle") {
+          idleDetected = true;
+          break;
+        }
+      } catch (e) {
+      }
+    }
+    if (!idleDetected) throw new Error("\u7B49\u5F85\u56DE\u590D\u8D85\u65F6");
+    sseAbort.abort();
+    const messages = await requestOpenCode(conn.url, `/session/${sessionId}/message?limit=50`, "GET", void 0, conn.authHeader);
+    const lastAssistant = [...messages || []].reverse().find((m) => {
+      var _a2;
+      return ((_a2 = m.info) == null ? void 0 : _a2.role) === "assistant";
+    });
+    const result = (_e = (_d = (_c = lastAssistant == null ? void 0 : lastAssistant.parts) == null ? void 0 : _c.find((p) => p.type === "text")) == null ? void 0 : _d.text) != null ? _e : "";
+    if (result) {
+      onTextUpdate == null ? void 0 : onTextUpdate(result, accumulatedThinking);
+      return result;
+    }
+    throw new Error("\u672A\u627E\u5230 assistant \u56DE\u590D");
+  } finally {
+    try {
+      await requestOpenCode(conn.url, `/session/${sessionId}`, "DELETE", void 0, conn.authHeader);
+    } catch (e) {
+    }
+  }
+}
+async function callAIWithCLI(prompt, settings, vaultDir, attachments, signal, onConnected, onThinking, onTextUpdate, onDiffs, onToolProgress, skipThinking) {
   const effectiveBin = await resolveOpenCodePath(settings.opencode.cliPath);
-  const args = ["run", "--format", "json", "--thinking"];
+  const args = ["run", "--format", "json"];
+  if (!skipThinking) args.push("--thinking");
   if (settings.defaultReasoning) args.push("--variant", settings.defaultReasoning);
   const agent = settings.opencode.agent;
   if (agent) args.push("--agent", agent);
@@ -432,8 +778,10 @@ async function callAIWithCLI(prompt, settings, vaultDir, attachments, signal, on
     let stdoutBuf = "";
     let stderrBuf = "";
     let fullText = "";
+    let fullThinking = "";
     let resolved = false;
     let proc;
+    let fullRaw = "";
     const cleanup = () => {
       cliCallInProgress = false;
     };
@@ -455,10 +803,10 @@ async function callAIWithCLI(prompt, settings, vaultDir, attachments, signal, on
       resolved = true;
       cleanup();
       if (err) reject(err);
-      else resolve(fullText || "(\u65E0\u54CD\u5E94\u5185\u5BB9)");
+      else resolve(fullText || fullThinking || "(\u65E0\u54CD\u5E94\u5185\u5BB9)");
     };
     const parseEvent = (raw) => {
-      var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n;
+      var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p;
       let event;
       try {
         event = JSON.parse(raw);
@@ -477,11 +825,14 @@ async function callAIWithCLI(prompt, settings, vaultDir, attachments, signal, on
       }
       if (event.type === "thinking" || event.type === "reasoning") {
         const t = (_g = (_f = (_e = (_d = event.part) == null ? void 0 : _d.text) != null ? _e : event.text) != null ? _f : event.content) != null ? _g : "";
-        if (t && onThinking) onThinking(t);
+        if (t) {
+          fullThinking += t;
+          if (onThinking) onThinking(t);
+        }
         return;
       }
       if (event.type === "text") {
-        const t = (_k = (_j = (_i = (_h = event.part) == null ? void 0 : _h.text) != null ? _i : event.text) != null ? _j : event.content) != null ? _k : "";
+        const t = typeof event.part === "string" ? event.part : (_m = (_l = (_k = (_j = (_h = event.part) == null ? void 0 : _h.text) != null ? _j : (_i = event.part) == null ? void 0 : _i.content) != null ? _k : event.text) != null ? _l : event.content) != null ? _m : "";
         if (t) {
           fullText = t;
           if (onTextUpdate) onTextUpdate(t);
@@ -489,8 +840,8 @@ async function callAIWithCLI(prompt, settings, vaultDir, attachments, signal, on
         return;
       }
       if (event.type === "tool_use") {
-        const tool = ((_l = event.part) == null ? void 0 : _l.tool) || event.tool || "";
-        const status = ((_n = (_m = event.part) == null ? void 0 : _m.state) == null ? void 0 : _n.status) || "running";
+        const tool = ((_n = event.part) == null ? void 0 : _n.tool) || event.tool || "";
+        const status = ((_p = (_o = event.part) == null ? void 0 : _o.state) == null ? void 0 : _p.status) || "running";
         if (tool && onToolProgress) onToolProgress(tool, status);
         return;
       }
@@ -512,7 +863,12 @@ async function callAIWithCLI(prompt, settings, vaultDir, attachments, signal, on
       stdoutBuf = lines.pop() || "";
       for (const line of lines) {
         const trimmed = stripAnsi(line).trim();
-        if (trimmed) parseEvent(trimmed);
+        if (!trimmed) continue;
+        if (trimmed[0] === "{") {
+          parseEvent(trimmed);
+        } else {
+          fullRaw += trimmed + "\n";
+        }
       }
     });
     proc.stderr.on("data", (chunk) => {
@@ -521,9 +877,19 @@ async function callAIWithCLI(prompt, settings, vaultDir, attachments, signal, on
     proc.on("error", (err) => done(err));
     proc.on("close", (code) => {
       if (resolved) return;
+      const remaining = stripAnsi(stdoutBuf).trim();
+      if (remaining) {
+        if (remaining[0] === "{") {
+          parseEvent(remaining);
+        } else {
+          fullRaw += remaining + "\n";
+        }
+      }
       if (code !== 0) done(new Error(stderrBuf.trim() || `\u8FDB\u7A0B\u9000\u51FA\u7801 ${code}`));
       else if (!connected) done(new Error("\u672A\u6536\u5230\u6570\u636E\n\u8BF7\u68C0\u67E5 opencode \u8DEF\u5F84\u548C\u6A21\u578B\u914D\u7F6E\uFF0C\u6216\u91CD\u542F opencode serve"));
-      else resolve(fullText || "(\u65E0\u54CD\u5E94\u5185\u5BB9)");
+      else {
+        resolve(fullText || fullThinking || fullRaw.trim() || "(\u65E0\u54CD\u5E94\u5185\u5BB9)");
+      }
     });
     if (signal) {
       if (signal.aborted) {
@@ -642,6 +1008,7 @@ __export(main_exports, {
   default: () => XiaoyuanAIPlugin
 });
 module.exports = __toCommonJS(main_exports);
+var fs2 = __toESM(require("fs"));
 var import_obsidian5 = require("obsidian");
 
 // src/types.ts
@@ -1648,12 +2015,17 @@ ${att.data}
       ];
       const prompt = allMessages.map((m) => `${m.role === "system" ? "[\u7CFB\u7EDF]" : m.role === "user" ? "[\u7528\u6237]" : "[\u52A9\u624B]"}: ${m.content}`).join("\n\n");
       let streamingId = "";
-      let thinkingText = "";
-      return callAIWithCLI(
+      const updateThinking = (text) => {
+        if (streamingId) {
+          this.updateStreamingThinking(streamingId, text);
+        } else {
+          streamingId = this.addStreamingMessage("", text);
+        }
+      };
+      return callAIWithHTTPStreaming(
         prompt,
         s,
         vaultDir,
-        void 0,
         signal,
         () => {
           if (statusMsg) {
@@ -1662,12 +2034,7 @@ ${att.data}
           }
         },
         (text) => {
-          thinkingText += text;
-          if (streamingId) {
-            this.updateStreamingThinking(streamingId, thinkingText);
-          } else {
-            streamingId = this.addStreamingMessage("", thinkingText);
-          }
+          updateThinking(text);
         },
         (text) => {
           if (statusMsg) {
@@ -1675,7 +2042,7 @@ ${att.data}
             statusMsg = null;
           }
           if (!streamingId) {
-            streamingId = this.addStreamingMessage(text, thinkingText);
+            streamingId = this.addStreamingMessage(text, "");
           } else {
             this.updateStreamingMessage(streamingId, text);
           }
@@ -1803,10 +2170,12 @@ ${att.data}
     } else {
       const bubbleEl = msgEl.querySelector(".xiaoyuan-msg-bubble");
       if (!bubbleEl) return;
-      const detailsEl = bubbleEl.createEl("details", { cls: "xiaoyuan-thinking" });
+      const detailsEl = document.createElement("details");
+      detailsEl.className = "xiaoyuan-thinking";
       detailsEl.createEl("summary", { text: "\u{1F914} \u601D\u8003\u8FC7\u7A0B" });
       tc = detailsEl.createDiv({ cls: "xiaoyuan-thinking-content" });
       tc.textContent = thinking;
+      bubbleEl.prepend(detailsEl);
     }
   }
   addToolLogEntry(messageId, toolName, status) {
@@ -1839,13 +2208,16 @@ ${att.data}
     const existingThinking = bubbleEl.querySelector(".xiaoyuan-thinking");
     if (streamContent) streamContent.remove();
     if (existingThinking) existingThinking.remove();
-    const renderedHTML = renderMarkdown(lastMsg.content.trim());
+    const hasContent = lastMsg.content.trim().length > 0;
+    const displayContent = hasContent ? lastMsg.content.trim() : (lastMsg.thinking || "").trim();
+    if (!displayContent) return lastMsg.id;
+    const renderedHTML = renderMarkdown(displayContent);
     if (toolLog) {
       toolLog.insertAdjacentHTML("beforebegin", renderedHTML);
     } else {
       bubbleEl.insertAdjacentHTML("beforeend", renderedHTML);
     }
-    if (lastMsg.thinking && this.plugin.settings.showThinking) {
+    if (hasContent && lastMsg.thinking && this.plugin.settings.showThinking) {
       const thinkingHTML = `<details class="xiaoyuan-thinking"><summary>\u{1F914} \u601D\u8003\u8FC7\u7A0B</summary><div class="xiaoyuan-thinking-content">${renderMarkdown(lastMsg.thinking.trim())}</div></details>`;
       bubbleEl.insertAdjacentHTML("afterbegin", thinkingHTML);
     }
@@ -2898,29 +3270,29 @@ var TextOperationModal = class extends import_obsidian4.Modal {
     const { contentEl, modalEl } = this;
     contentEl.empty();
     contentEl.classList.add("xiaoyuan-modal-container");
+    modalEl.style.height = Math.round(window.innerHeight * 0.75) + "px";
     const headerRow = contentEl.createDiv({ cls: "xiaoyuan-modal-header" });
     this.titleEl = headerRow.createEl("h3", { text: `AI ${OPERATION_LABELS[this.operation] || this.operation}` });
     this.modeLabel = headerRow.createSpan({ cls: "xiaoyuan-modal-mode-label" });
     this.modeLabel.textContent = this.plugin.settings.execMode === "cli" ? "CLI" : "API";
     headerRow.style.cursor = "move";
     makeDraggable(headerRow, modalEl);
-    this.loadingEl = contentEl.createDiv({ cls: "xiaoyuan-modal-loading", text: "\u23F3 \u5904\u7406\u4E2D..." });
-    this.resultEl = contentEl.createDiv({ cls: "xiaoyuan-modal-result" });
+    this.contentAreaEl = contentEl.createDiv({ cls: "xiaoyuan-modal-content-area", text: "\u5DF2\u8FDE\u63A5\uFF0C\u7B49\u5F85\u54CD\u5E94..." });
     const btnRow = contentEl.createDiv({ cls: "xiaoyuan-modal-btn-row" });
-    const toolsBtn = btnRow.createEl("button", { text: "AI\u5DE5\u5177", cls: "xiaoyuan-btn-secondary" });
-    toolsBtn.addEventListener("click", (e) => this.showAIToolsMenu(e));
+    this.toolsBtn = btnRow.createEl("button", { text: "AI\u5DE5\u5177", cls: "xiaoyuan-btn-secondary" });
+    this.toolsBtn.addEventListener("click", (e) => this.showAIToolsMenu(e));
     const replaceBtn = btnRow.createEl("button", { text: "\u66FF\u6362\u539F\u6587", cls: "xiaoyuan-btn-primary" });
     replaceBtn.addEventListener("click", () => {
       const editor = this.plugin.getActiveEditor();
       if (editor) {
-        editor.replaceSelection(this.resultEl.textContent || "");
+        editor.replaceSelection(this.contentAreaEl.textContent || "");
         new import_obsidian4.Notice("\u5DF2\u66FF\u6362");
       } else new import_obsidian4.Notice("\u672A\u627E\u5230\u6D3B\u52A8\u7F16\u8F91\u5668");
       this.close();
     });
     const copyBtn = btnRow.createEl("button", { text: "\u590D\u5236\u7ED3\u679C", cls: "xiaoyuan-btn-secondary" });
     copyBtn.addEventListener("click", () => {
-      navigator.clipboard.writeText(this.resultEl.textContent || "");
+      navigator.clipboard.writeText(this.contentAreaEl.textContent || "");
       new import_obsidian4.Notice("\u5DF2\u590D\u5236");
     });
     const closeBtn = btnRow.createEl("button", { text: "\u5173\u95ED", cls: "xiaoyuan-btn-secondary" });
@@ -2928,9 +3300,7 @@ var TextOperationModal = class extends import_obsidian4.Modal {
     if (this.inputText) {
       this.processOperation();
     } else {
-      this.loadingEl.style.display = "none";
-      this.resultEl.classList.add("show");
-      this.resultEl.contentEditable = "true";
+      this.contentAreaEl.contentEditable = "true";
     }
   }
   showAIToolsMenu(e) {
@@ -2947,21 +3317,21 @@ var TextOperationModal = class extends import_obsidian4.Modal {
     menu.showAtMouseEvent(e);
   }
   async reprocessWith(operation) {
-    const fullText = this.resultEl.textContent || "";
+    const fullText = this.contentAreaEl.textContent || "";
     if (!fullText.trim()) {
       new import_obsidian4.Notice("\u5185\u5BB9\u4E3A\u7A7A\uFF0C\u8BF7\u5148\u8F93\u5165\u5185\u5BB9");
       return;
     }
     const sel = window.getSelection();
     let textToProcess = "";
-    if (sel && sel.rangeCount > 0 && this.resultEl.contains(sel.anchorNode)) {
+    if (sel && sel.rangeCount > 0 && this.contentAreaEl.contains(sel.anchorNode)) {
       textToProcess = sel.toString().trim();
     }
     if (!textToProcess) textToProcess = fullText;
     this.titleEl.textContent = `AI ${OPERATION_LABELS[operation] || operation}`;
-    this.loadingEl.style.display = "";
-    this.loadingEl.textContent = "\u23F3 \u5904\u7406\u4E2D...";
-    this.resultEl.classList.remove("show");
+    this.contentAreaEl.textContent = "\u5DF2\u8FDE\u63A5\uFF0C\u7B49\u5F85\u54CD\u5E94...";
+    this.contentAreaEl.contentEditable = "false";
+    this.toolsBtn.disabled = true;
     try {
       const s = this.plugin.settings;
       const prompt = (OPERATION_PROMPTS[operation] || OPERATION_PROMPTS.polish) + textToProcess;
@@ -2969,20 +3339,17 @@ var TextOperationModal = class extends import_obsidian4.Modal {
       if (s.execMode === "cli") {
         this.modeLabel.textContent = "CLI";
         const vaultDir = getVaultBasePath(this.app.vault);
-        result = await callAIWithCLI(
+        result = await callAIWithHTTPStreaming(
           prompt,
           s,
           vaultDir,
           void 0,
           void 0,
-          () => {
-            this.loadingEl.textContent = "\u5DF2\u8FDE\u63A5\uFF0C\u7B49\u5F85\u54CD\u5E94...";
+          (text) => {
+            this.contentAreaEl.textContent = `\u601D\u8003\u4E2D... ${text}`;
           },
           (text) => {
-            this.loadingEl.textContent = `\u601D\u8003\u4E2D... ${text.slice(0, 60)}`;
-          },
-          () => {
-            this.loadingEl.textContent = "\u2713 \u5DF2\u6536\u5230\u54CD\u5E94";
+            this.contentAreaEl.textContent = text;
           }
         );
       } else {
@@ -2998,15 +3365,16 @@ var TextOperationModal = class extends import_obsidian4.Modal {
           { role: "user", content: prompt }
         ], s.maxTokens, s.temperature, s.apiReasoningEffort);
       }
-      this.loadingEl.style.display = "none";
-      this.resultEl.classList.add("show");
-      this.resultEl.textContent = result;
-      this.resultEl.contentEditable = "true";
+      this.contentAreaEl.textContent = result;
+      this.contentAreaEl.contentEditable = "true";
     } catch (err) {
-      this.loadingEl.textContent = `\u274C \u9519\u8BEF\uFF1A${err.message}`;
+      this.contentAreaEl.textContent = `\u274C \u9519\u8BEF\uFF1A${err.message}`;
+    } finally {
+      this.toolsBtn.disabled = false;
     }
   }
   async processOperation() {
+    this.toolsBtn.disabled = true;
     try {
       const s = this.plugin.settings;
       const prompt = (OPERATION_PROMPTS[this.operation] || OPERATION_PROMPTS.polish) + this.inputText;
@@ -3014,20 +3382,17 @@ var TextOperationModal = class extends import_obsidian4.Modal {
       if (s.execMode === "cli") {
         this.modeLabel.textContent = "CLI";
         const vaultDir = getVaultBasePath(this.app.vault);
-        result = await callAIWithCLI(
+        result = await callAIWithHTTPStreaming(
           prompt,
           s,
           vaultDir,
           void 0,
           void 0,
-          () => {
-            this.loadingEl.textContent = "\u5DF2\u8FDE\u63A5\uFF0C\u7B49\u5F85\u54CD\u5E94...";
+          (text) => {
+            this.contentAreaEl.textContent = `\u601D\u8003\u4E2D... ${text}`;
           },
           (text) => {
-            this.loadingEl.textContent = `\u601D\u8003\u4E2D... ${text.slice(0, 60)}`;
-          },
-          () => {
-            this.loadingEl.textContent = "\u2713 \u5DF2\u6536\u5230\u54CD\u5E94";
+            this.contentAreaEl.textContent = text;
           }
         );
       } else {
@@ -3043,12 +3408,12 @@ var TextOperationModal = class extends import_obsidian4.Modal {
           { role: "user", content: prompt }
         ], s.maxTokens, s.temperature, s.apiReasoningEffort);
       }
-      this.loadingEl.style.display = "none";
-      this.resultEl.classList.add("show");
-      this.resultEl.textContent = result;
-      this.resultEl.contentEditable = "true";
+      this.contentAreaEl.textContent = result;
+      this.contentAreaEl.contentEditable = "true";
     } catch (err) {
-      this.loadingEl.textContent = `\u274C \u9519\u8BEF\uFF1A${err.message}`;
+      this.contentAreaEl.textContent = `\u274C \u9519\u8BEF\uFF1A${err.message}`;
+    } finally {
+      this.toolsBtn.disabled = false;
     }
   }
   onClose() {
@@ -3082,7 +3447,7 @@ var WikiCommandModal = class extends import_obsidian4.Modal {
         return;
       }
       submitBtn.disabled = true;
-      submitBtn.textContent = "\u5904\u7406\u4E2D...";
+      submitBtn.textContent = "\u5DF2\u8FDE\u63A5\uFF0C\u7B49\u5F85\u54CD\u5E94...";
       try {
         const s = this.plugin.settings;
         const systemPrompt = WIKI_SYSTEM_PROMPTS[this.command] || "";
@@ -3093,20 +3458,17 @@ var WikiCommandModal = class extends import_obsidian4.Modal {
 ---
 ${text}` : text;
           const vaultDir = getVaultBasePath(this.app.vault);
-          result = await callAIWithCLI(
+          result = await callAIWithHTTPStreaming(
             fullPrompt,
             s,
             vaultDir,
             void 0,
             void 0,
-            () => {
-              submitBtn.textContent = "\u5DF2\u8FDE\u63A5\uFF0C\u7B49\u5F85\u54CD\u5E94...";
+            (t) => {
+              submitBtn.textContent = `\u601D\u8003\u4E2D... ${t}`;
             },
             (t) => {
-              submitBtn.textContent = `\u601D\u8003\u4E2D... ${t.slice(0, 40)}`;
-            },
-            () => {
-              resultEl.textContent = "\u2713 \u5DF2\u6536\u5230\u54CD\u5E94";
+              submitBtn.textContent = t;
             }
           );
         } else {
@@ -3140,6 +3502,14 @@ init_server();
 var XiaoyuanAIPlugin = class extends import_obsidian5.Plugin {
   async onload() {
     await this.loadSettings();
+    if (this.settings.execMode === "cli") {
+      const resolved = await resolveOpenCodePath(this.settings.opencode.cliPath);
+      if (!fs2.existsSync(resolved)) {
+        this.settings.execMode = "api";
+        await this.saveSettings();
+        new import_obsidian5.Notice("\u672A\u68C0\u6D4B\u5230 opencode \u7A0B\u5E8F\uFF0C\u5DF2\u81EA\u52A8\u5207\u6362\u4E3A API \u6A21\u5F0F");
+      }
+    }
     this.registerView(VIEW_TYPE_XIAOYUAN_AI_CHAT, (leaf) => new XiaoyuanAIChatView(leaf, this));
     this.addRibbonIcon("message-circle", "\u5C0F\u5143AI", () => this.activateChatView());
     this.registerEvent(
