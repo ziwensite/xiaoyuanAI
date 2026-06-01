@@ -9,7 +9,7 @@ import {
   getActiveProvider,
 } from "./types";
 import { renderMarkdown } from "./markdown";
-import { callAIWithHTTPStreaming, callAIWithAPI, getVaultBasePath, fetchOpenCodeModelsFromCLI, estimateTokens, clearCLISessionID, getCLISessionID, checkOpenCodeStatus, ensureOpenCodeServer } from "./ai";
+import { callAIWithHTTPStreaming, callAIWithAPI, getVaultBasePath, fetchOpenCodeModelsFromCLI, estimateTokens, clearCLISessionID, checkOpenCodeStatus, ensureOpenCodeServer } from "./ai";
 import {
   getChatHistoryPath,
   ensureChatHistoryFolder,
@@ -72,12 +72,6 @@ export class XiaoyuanAIChatView extends ItemView {
     this.viewContainer.empty();
   }
 
-  refresh() {
-    this.messages = [];
-    this.messagesEl.empty();
-    this.addWelcomeMessage();
-  }
-
   public async newChat() {
     clearCLISessionID();
     await this.saveCurrentSession();
@@ -89,10 +83,6 @@ export class XiaoyuanAIChatView extends ItemView {
     this.messages.push({ id, role, content, timestamp: Date.now() });
     this.messagesEl.appendChild(this.renderMessageEl(id, role, content, false, undefined, Date.now()));
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
-  }
-
-  public getActiveEditor() {
-    return (this.app.workspace as any).activeEditor?.editor || null;
   }
 
   public rebuildToolbar() {

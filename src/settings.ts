@@ -1,6 +1,6 @@
 import { App, PluginSettingTab, Setting, Notice, setIcon } from "obsidian";
 import type XiaoyuanAIPlugin from "./main";
-import type { XiaoyuanAISettings, ApiProviderConfig } from "./types";
+import { VIEW_TYPE_XIAOYUAN_AI_CHAT, type XiaoyuanAISettings, type ApiProviderConfig } from "./types";
 import { showPopup, addPopupItem } from "./popup";
 
 type TabId = "cli" | "api" | "general";
@@ -62,7 +62,7 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
         dd.onChange(async (val) => {
           s.execMode = val as "api" | "cli";
           await this.plugin.saveSettings();
-          const leaf = this.app.workspace.getLeavesOfType("xiaoyuan-chat-view").first();
+          const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_XIAOYUAN_AI_CHAT).first();
           if (leaf?.view && "rebuildToolbar" in (leaf.view as any)) {
             (leaf.view as any).rebuildToolbar();
           }

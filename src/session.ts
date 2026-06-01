@@ -6,7 +6,7 @@ export function getChatHistoryPath(chatHistoryPath: string): string {
   return chatHistoryPath || ".chatHistory";
 }
 
-export function getSessionFilePath(chatHistoryPath: string, sessionId: string): string {
+function getSessionFilePath(chatHistoryPath: string, sessionId: string): string {
   return `${getChatHistoryPath(chatHistoryPath)}/${sessionId}.md`;
 }
 
@@ -23,7 +23,7 @@ export async function ensureChatHistoryFolder(vault: Vault, path: string): Promi
   }
 }
 
-export function parseMarkdownToMessages(content: string): ChatMessage[] {
+function parseMarkdownToMessages(content: string): ChatMessage[] {
   const messages: ChatMessage[] = [];
   const parts = content.split(/\n---\n+/);
   let idCounter = 0;
@@ -78,7 +78,7 @@ export function parseMarkdownToMessages(content: string): ChatMessage[] {
   return messages;
 }
 
-export function sessionToMarkdown(session: ChatSession | undefined, messages: ChatMessage[]): string {
+function sessionToMarkdown(session: ChatSession | undefined, messages: ChatMessage[]): string {
   let content = `---\ntitle: ${session?.title || "新对话"}\ncreated: ${session?.createdAt || Date.now()}\nupdated: ${Date.now()}\n---\n\n`;
   messages.forEach((msg) => {
     content += `**${msg.role === "user" ? "你" : "小元"}**:\n\n${msg.content}\n\n`;

@@ -3,7 +3,7 @@ import * as http from "http";
 import * as fs from "fs";
 import * as path from "path";
 import { getVaultBasePath } from "./server";
-import type { XiaoyuanAISettings, Attachment, FileDiff, ModelEntry, ModelCaps } from "./types";
+import type { XiaoyuanAISettings, FileDiff, ModelEntry, ModelCaps } from "./types";
 
 const OPENCODE_START_TIMEOUT_MS = 15000;
 
@@ -443,74 +443,6 @@ function requestOpenCode<T>(
   });
 }
 
-export async function callAIWithHTTP(
-  prompt: string,
-  settings: XiaoyuanAISettings,
-  vaultDir: string,
-  signal?: AbortSignal,
-  onConnected?: () => void,
-  onThinking?: (text: string) => void,
-  onTextUpdate?: (text: string) => void,
-): Promise<string> {
-  let conn = readServerConn(vaultDir, settings.opencode.port || 16226);
-  if (conn) {
-    try { await requestOpenCode(conn.url, "/global/health", "GET", undefined, conn.authHeader); }
-    catch { conn = null; }
-  }
-  if (!conn) {
-    const base = await ensureOpenCodeServer(
-      settings.opencode.cliPath, settings.opencode.hostname,
-      settings.opencode.port, vaultDir, true,
-    );
-    conn = { url: base, authHeader: readServerConn(vaultDir, settings.opencode.port || 16226)?.authHeader || "" };
-  }
-  onConnected?.();
-
-  const session = await requestOpenCode<{ id: string }>(conn.url, "/session", "POST", {}, conn.authHeader);
-  const sessionId = session.id;
-  if (!sessionId) throw new Error("创建会话失败");
-
-  try {
-    const payload: any = { parts: [{ type: "text", text: prompt }] };
-    if (settings.opencode.agent) payload.agent = settings.opencode.agent;
-    if (settings.defaultReasoning) payload.variant = settings.defaultReasoning;
-    if (settings.opencode.model) {
-      const parts = settings.opencode.model.split("/");
-      if (parts.length >= 2) {
-        payload.model = { providerID: parts[0], modelID: parts.slice(1).join("/") };
-      }
-    }
-
-    await requestOpenCode(conn.url, `/session/${sessionId}/prompt_async`, "POST", payload, conn.authHeader);
-
-    const timeout = 120000;
-    const start = Date.now();
-    while (Date.now() - start < timeout) {
-      if (signal?.aborted) throw new DOMException("已中断", "AbortError");
-      try {
-        const statusMap = await requestOpenCode<Record<string, { type?: string }>>(
-          conn.url, "/session/status", "GET", undefined, conn.authHeader,
-        );
-        if (statusMap?.[sessionId]?.type === "idle") break;
-      } catch {}
-      await new Promise(r => setTimeout(r, 500));
-    }
-
-    if (Date.now() - start >= timeout) throw new Error("等待回复超时");
-
-    const messages = await requestOpenCode<any[]>(conn.url, `/session/${sessionId}/message?limit=50`, "GET", undefined, conn.authHeader);
-    const lastAssistant = [...(messages || [])].reverse().find((m: any) => m.info?.role === "assistant");
-    const result = lastAssistant?.parts?.find((p: any) => p.type === "text")?.text ?? "";
-    if (result) {
-      onTextUpdate?.(result);
-      return result;
-    }
-    throw new Error("未找到 assistant 回复");
-  } finally {
-    try { await requestOpenCode(conn.url, `/session/${sessionId}`, "DELETE", undefined, conn.authHeader); } catch {}
-  }
-}
-
 // ─── SSE streaming for opencode serve ───────────────────────────
 
 function parseDiffText(text: string): FileDiff[] {
@@ -636,6 +568,7 @@ export async function callAIWithHTTPStreaming(
 
     const partTypes = new Map<string, string>();
     const partTexts = new Map<string, string>();
+    let idleDetected = false;
     connectSSE(
       conn.url, conn.authHeader, sessionId, combinedSig,
       (evt) => {
@@ -690,7 +623,6 @@ export async function callAIWithHTTPStreaming(
 
     const pollTimeout = 120000;
     const pollStart = Date.now();
-    let idleDetected = false;
 
     while (!idleDetected && Date.now() - pollStart < pollTimeout) {
       if (signal?.aborted) throw new DOMException("已中断", "AbortError");
@@ -718,143 +650,6 @@ export async function callAIWithHTTPStreaming(
   } finally {
     try { await requestOpenCode(conn.url, `/session/${sessionId}`, "DELETE", undefined, conn.authHeader); } catch {}
   }
-}
-
-export async function callAIWithCLI(
-  prompt: string,
-  settings: XiaoyuanAISettings,
-  vaultDir: string,
-  attachments?: Attachment[],
-  signal?: AbortSignal,
-  onConnected?: () => void,
-  onThinking?: (text: string) => void,
-  onTextUpdate?: (text: string) => void,
-  onDiffs?: (diffs: FileDiff[]) => void,
-  onToolProgress?: (tool: string, status: string) => void,
-  skipThinking?: boolean,
-): Promise<string> {
-  const effectiveBin = await resolveOpenCodePath(settings.opencode.cliPath);
-  const args: string[] = ["run", "--format", "json"];
-  if (!skipThinking) args.push("--thinking");
-
-  if (settings.defaultReasoning) args.push("--variant", settings.defaultReasoning);
-  const agent = settings.opencode.agent;
-  if (agent) args.push("--agent", agent);
-  if (settings.defaultPermission !== "read-only") args.push("--dangerously-skip-permissions");
-  if (settings.opencode.model) args.push("--model", settings.opencode.model);
-  if (settings.mcpEnabled) args.push("--mcp");
-
-  return new Promise<string>((resolve, reject) => {
-    cliCallInProgress = true;
-    let connected = false;
-    let stdoutBuf = "";
-    let stderrBuf = "";
-    let fullText = "";
-    let fullThinking = "";
-    let resolved = false;
-    let proc: any;
-    let fullRaw = "";
-
-    const cleanup = () => { cliCallInProgress = false; };
-
-    try {
-      const spec = buildSpawn(effectiveBin, args);
-      proc = spawn(spec.command, spec.args, {
-        cwd: vaultDir,
-        stdio: ["pipe", "pipe", "pipe"],
-        env: { ...process.env, ...envWithProxy(settings), OPENCODE_CALLER: "obsidian" },
-      });
-    } catch (err) {
-      reject(err instanceof Error ? err : new Error(String(err)));
-      return;
-    }
-
-    proc.stdin.write(prompt);
-    proc.stdin.end();
-
-    const done = (err?: Error) => {
-      if (resolved) return;
-      resolved = true;
-      cleanup();
-      if (err) reject(err);
-      else resolve(fullText || fullThinking || "(无响应内容)");
-    };
-
-    const parseEvent = (raw: string) => {
-      let event: any;
-      try { event = JSON.parse(raw); } catch { return; }
-      if (!connected) { connected = true; if (onConnected) onConnected(); }
-      if (event.sessionID && !currentCLISessionID) currentCLISessionID = event.sessionID;
-      if (event.type === "error") {
-        const errMsg = event.error?.data?.message || event.error?.message || "opencode 返回未知错误";
-        done(new Error(errMsg)); return;
-      }
-      if (event.type === "thinking" || event.type === "reasoning") {
-        const t = event.part?.text ?? event.text ?? event.content ?? "";
-        if (t) { fullThinking += t; if (onThinking) onThinking(t); } return;
-      }
-      if (event.type === "text") {
-        const t = typeof event.part === "string" ? event.part : (event.part?.text ?? event.part?.content ?? event.text ?? event.content ?? "");
-        if (t) { fullText = t; if (onTextUpdate) onTextUpdate(t); } return;
-      }
-      if (event.type === "tool_use") {
-        const tool = event.part?.tool || (event.tool as string) || "";
-        const status = event.part?.state?.status || "running";
-        if (tool && onToolProgress) onToolProgress(tool, status); return;
-      }
-      if (event.type === "files" && event.files) {
-        const diffs: FileDiff[] = (Array.isArray(event.files) ? event.files : []).map((f: any) => ({
-          file: typeof f === "string" ? f : f.path || f.file || "",
-          before: f.before || "", after: f.after || "", diff: f.diff || "",
-          additions: Number(f.additions) || 0,
-          deletions: Number(f.deletions) || 0,
-        })).filter((d: FileDiff) => d.file);
-        if (diffs.length && onDiffs) onDiffs(diffs);
-      }
-    };
-
-    proc.stdout.on("data", (chunk: Buffer) => {
-      stdoutBuf += chunk.toString();
-      const lines = stdoutBuf.split("\n");
-      stdoutBuf = lines.pop() || "";
-      for (const line of lines) {
-        const trimmed = stripAnsi(line).trim();
-        if (!trimmed) continue;
-        if (trimmed[0] === "{") { parseEvent(trimmed); }
-        else { fullRaw += trimmed + "\n"; }
-      }
-    });
-
-    proc.stderr.on("data", (chunk: Buffer) => { stderrBuf += stripAnsi(chunk.toString()); });
-    proc.on("error", (err: Error) => done(err));
-    proc.on("close", (code: number | null) => {
-      if (resolved) return;
-      const remaining = stripAnsi(stdoutBuf).trim();
-      if (remaining) {
-        if (remaining[0] === "{") { parseEvent(remaining); }
-        else { fullRaw += remaining + "\n"; }
-      }
-      if (code !== 0) done(new Error(stderrBuf.trim() || `进程退出码 ${code}`));
-      else if (!connected) done(new Error("未收到数据\n请检查 opencode 路径和模型配置，或重启 opencode serve"));
-      else {
-        resolve(fullText || fullThinking || fullRaw.trim() || "(无响应内容)");
-      }
-    });
-
-    if (signal) {
-      if (signal.aborted) {
-        try { stopTempServer(proc); } catch {}
-        clearCLISessionID();
-        done(new DOMException("已中断", "AbortError"));
-        return;
-      }
-      signal.addEventListener("abort", () => {
-        try { stopTempServer(proc); } catch {}
-        clearCLISessionID();
-        done(new DOMException("已中断", "AbortError"));
-      }, { once: true });
-    }
-  });
 }
 
 export async function callAIWithAPI(
@@ -902,11 +697,11 @@ export function estimateTokens(text: string): number {
 let autoStartedProc: ChildProcess | null = null;
 let processCleanupRegistered = false;
 
-function registerProcessCleanup(proc: ChildProcess): void {
+function registerProcessCleanup(): void {
   if (processCleanupRegistered) return;
   processCleanupRegistered = true;
   const cleanup = () => {
-    try { proc.kill(); } catch {}
+    try { autoStartedProc?.kill(); } catch {}
   };
   process.on("exit", cleanup);
   process.on("SIGTERM", cleanup);
@@ -914,10 +709,7 @@ function registerProcessCleanup(proc: ChildProcess): void {
 }
 
 export function isServerAutoStarted(): boolean {
-  if (autoStartedProc && autoStartedProc.exitCode !== null) {
-    autoStartedProc = null;
-  }
-  return autoStartedProc !== null && autoStartedProc.exitCode === null;
+  return autoStartedProc !== null && autoStartedProc?.exitCode === null;
 }
 
 export async function ensureOpenCodeServer(
@@ -944,7 +736,7 @@ export async function ensureOpenCodeServer(
   const effectiveBin = await resolveOpenCodePath(cliPath);
   const temp = await startTempOpenCodeServer(effectiveBin, vaultDir, port, hostname);
   autoStartedProc = temp.proc;
-  registerProcessCleanup(temp.proc);
+  registerProcessCleanup();
   return temp.url;
 }
 

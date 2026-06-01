@@ -2,7 +2,6 @@ import { App, Modal, Notice, Menu } from "obsidian";
 import type XiaoyuanAIPlugin from "./main";
 import { callAIWithHTTPStreaming, callAIWithAPIJson, getVaultBasePath } from "./ai";
 import { OPERATION_PROMPTS, OPERATION_LABELS, WIKI_SYSTEM_PROMPTS, getActiveProvider } from "./types";
-import type { ApiProviderConfig } from "./types";
 
 function ensureApiUrl(baseUrl: string): string {
   const trimmed = baseUrl.replace(/\/+$/, "");

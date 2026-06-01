@@ -1,4 +1,4 @@
-﻿import { Notice, setIcon, setTooltip } from "obsidian";
+﻿import { Notice, setTooltip } from "obsidian";
 import { showPopup, addPopupItem } from "./popup";
 import { getActiveProvider } from "./types";
 import type XiaoyuanAIPlugin from "./main";

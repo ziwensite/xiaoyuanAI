@@ -13,11 +13,6 @@ export interface ChatSession {
   updatedAt: number;
 }
 
-export interface UserDraft {
-  text: string;
-  attachments: Attachment[];
-}
-
 export interface Attachment {
   name: string;
   type: string;

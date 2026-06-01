@@ -53,8 +53,6 @@ var ai_exports = {};
 __export(ai_exports, {
   callAIWithAPI: () => callAIWithAPI,
   callAIWithAPIJson: () => callAIWithAPIJson,
-  callAIWithCLI: () => callAIWithCLI,
-  callAIWithHTTP: () => callAIWithHTTP,
   callAIWithHTTPStreaming: () => callAIWithHTTPStreaming,
   checkOpenCodeStatus: () => checkOpenCodeStatus,
   clearCLISessionID: () => clearCLISessionID,
@@ -79,9 +77,6 @@ function clearCLISessionID() {
 }
 function isCLICallInProgress() {
   return cliCallInProgress;
-}
-function stripAnsi(str) {
-  return str.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, "");
 }
 function buildSpawn(bin, args) {
   if (process.platform !== "win32") return { command: bin, args };
@@ -471,77 +466,6 @@ function requestOpenCode(base, apiPath, method, body, authHeader) {
     req.end();
   });
 }
-async function callAIWithHTTP(prompt, settings, vaultDir, signal, onConnected, onThinking, onTextUpdate) {
-  var _a, _b, _c, _d, _e;
-  let conn = readServerConn(vaultDir, settings.opencode.port || 16226);
-  if (conn) {
-    try {
-      await requestOpenCode(conn.url, "/global/health", "GET", void 0, conn.authHeader);
-    } catch (e) {
-      conn = null;
-    }
-  }
-  if (!conn) {
-    const base = await ensureOpenCodeServer(
-      settings.opencode.cliPath,
-      settings.opencode.hostname,
-      settings.opencode.port,
-      vaultDir,
-      true
-    );
-    conn = { url: base, authHeader: ((_a = readServerConn(vaultDir, settings.opencode.port || 16226)) == null ? void 0 : _a.authHeader) || "" };
-  }
-  onConnected == null ? void 0 : onConnected();
-  const session = await requestOpenCode(conn.url, "/session", "POST", {}, conn.authHeader);
-  const sessionId = session.id;
-  if (!sessionId) throw new Error("\u521B\u5EFA\u4F1A\u8BDD\u5931\u8D25");
-  try {
-    const payload = { parts: [{ type: "text", text: prompt }] };
-    if (settings.opencode.agent) payload.agent = settings.opencode.agent;
-    if (settings.defaultReasoning) payload.variant = settings.defaultReasoning;
-    if (settings.opencode.model) {
-      const parts = settings.opencode.model.split("/");
-      if (parts.length >= 2) {
-        payload.model = { providerID: parts[0], modelID: parts.slice(1).join("/") };
-      }
-    }
-    await requestOpenCode(conn.url, `/session/${sessionId}/prompt_async`, "POST", payload, conn.authHeader);
-    const timeout = 12e4;
-    const start = Date.now();
-    while (Date.now() - start < timeout) {
-      if (signal == null ? void 0 : signal.aborted) throw new DOMException("\u5DF2\u4E2D\u65AD", "AbortError");
-      try {
-        const statusMap = await requestOpenCode(
-          conn.url,
-          "/session/status",
-          "GET",
-          void 0,
-          conn.authHeader
-        );
-        if (((_b = statusMap == null ? void 0 : statusMap[sessionId]) == null ? void 0 : _b.type) === "idle") break;
-      } catch (e) {
-      }
-      await new Promise((r) => setTimeout(r, 500));
-    }
-    if (Date.now() - start >= timeout) throw new Error("\u7B49\u5F85\u56DE\u590D\u8D85\u65F6");
-    const messages = await requestOpenCode(conn.url, `/session/${sessionId}/message?limit=50`, "GET", void 0, conn.authHeader);
-    const lastAssistant = [...messages || []].reverse().find((m) => {
-      var _a2;
-      return ((_a2 = m.info) == null ? void 0 : _a2.role) === "assistant";
-    });
-    const result = (_e = (_d = (_c = lastAssistant == null ? void 0 : lastAssistant.parts) == null ? void 0 : _c.find((p) => p.type === "text")) == null ? void 0 : _d.text) != null ? _e : "";
-    if (result) {
-      onTextUpdate == null ? void 0 : onTextUpdate(result);
-      return result;
-    }
-    throw new Error("\u672A\u627E\u5230 assistant \u56DE\u590D");
-  } finally {
-    try {
-      await requestOpenCode(conn.url, `/session/${sessionId}`, "DELETE", void 0, conn.authHeader);
-    } catch (e) {
-    }
-  }
-}
 function parseDiffText(text) {
   var _a;
   const result = [];
@@ -666,6 +590,7 @@ async function callAIWithHTTPStreaming(prompt, settings, vaultDir, signal, onCon
     const combinedSig = combineSignals(signal, sseAbort.signal);
     const partTypes = /* @__PURE__ */ new Map();
     const partTexts = /* @__PURE__ */ new Map();
+    let idleDetected = false;
     connectSSE(
       conn.url,
       conn.authHeader,
@@ -723,7 +648,6 @@ async function callAIWithHTTPStreaming(prompt, settings, vaultDir, signal, onCon
     );
     const pollTimeout = 12e4;
     const pollStart = Date.now();
-    let idleDetected = false;
     while (!idleDetected && Date.now() - pollStart < pollTimeout) {
       if (signal == null ? void 0 : signal.aborted) throw new DOMException("\u5DF2\u4E2D\u65AD", "AbortError");
       await new Promise((r) => setTimeout(r, 1e3));
@@ -762,156 +686,6 @@ async function callAIWithHTTPStreaming(prompt, settings, vaultDir, signal, onCon
     }
   }
 }
-async function callAIWithCLI(prompt, settings, vaultDir, attachments, signal, onConnected, onThinking, onTextUpdate, onDiffs, onToolProgress, skipThinking) {
-  const effectiveBin = await resolveOpenCodePath(settings.opencode.cliPath);
-  const args = ["run", "--format", "json"];
-  if (!skipThinking) args.push("--thinking");
-  if (settings.defaultReasoning) args.push("--variant", settings.defaultReasoning);
-  const agent = settings.opencode.agent;
-  if (agent) args.push("--agent", agent);
-  if (settings.defaultPermission !== "read-only") args.push("--dangerously-skip-permissions");
-  if (settings.opencode.model) args.push("--model", settings.opencode.model);
-  if (settings.mcpEnabled) args.push("--mcp");
-  return new Promise((resolve, reject) => {
-    cliCallInProgress = true;
-    let connected = false;
-    let stdoutBuf = "";
-    let stderrBuf = "";
-    let fullText = "";
-    let fullThinking = "";
-    let resolved = false;
-    let proc;
-    let fullRaw = "";
-    const cleanup = () => {
-      cliCallInProgress = false;
-    };
-    try {
-      const spec = buildSpawn(effectiveBin, args);
-      proc = (0, import_child_process.spawn)(spec.command, spec.args, {
-        cwd: vaultDir,
-        stdio: ["pipe", "pipe", "pipe"],
-        env: { ...process.env, ...envWithProxy(settings), OPENCODE_CALLER: "obsidian" }
-      });
-    } catch (err) {
-      reject(err instanceof Error ? err : new Error(String(err)));
-      return;
-    }
-    proc.stdin.write(prompt);
-    proc.stdin.end();
-    const done = (err) => {
-      if (resolved) return;
-      resolved = true;
-      cleanup();
-      if (err) reject(err);
-      else resolve(fullText || fullThinking || "(\u65E0\u54CD\u5E94\u5185\u5BB9)");
-    };
-    const parseEvent = (raw) => {
-      var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p;
-      let event;
-      try {
-        event = JSON.parse(raw);
-      } catch (e) {
-        return;
-      }
-      if (!connected) {
-        connected = true;
-        if (onConnected) onConnected();
-      }
-      if (event.sessionID && !currentCLISessionID) currentCLISessionID = event.sessionID;
-      if (event.type === "error") {
-        const errMsg = ((_b = (_a = event.error) == null ? void 0 : _a.data) == null ? void 0 : _b.message) || ((_c = event.error) == null ? void 0 : _c.message) || "opencode \u8FD4\u56DE\u672A\u77E5\u9519\u8BEF";
-        done(new Error(errMsg));
-        return;
-      }
-      if (event.type === "thinking" || event.type === "reasoning") {
-        const t = (_g = (_f = (_e = (_d = event.part) == null ? void 0 : _d.text) != null ? _e : event.text) != null ? _f : event.content) != null ? _g : "";
-        if (t) {
-          fullThinking += t;
-          if (onThinking) onThinking(t);
-        }
-        return;
-      }
-      if (event.type === "text") {
-        const t = typeof event.part === "string" ? event.part : (_m = (_l = (_k = (_j = (_h = event.part) == null ? void 0 : _h.text) != null ? _j : (_i = event.part) == null ? void 0 : _i.content) != null ? _k : event.text) != null ? _l : event.content) != null ? _m : "";
-        if (t) {
-          fullText = t;
-          if (onTextUpdate) onTextUpdate(t);
-        }
-        return;
-      }
-      if (event.type === "tool_use") {
-        const tool = ((_n = event.part) == null ? void 0 : _n.tool) || event.tool || "";
-        const status = ((_p = (_o = event.part) == null ? void 0 : _o.state) == null ? void 0 : _p.status) || "running";
-        if (tool && onToolProgress) onToolProgress(tool, status);
-        return;
-      }
-      if (event.type === "files" && event.files) {
-        const diffs = (Array.isArray(event.files) ? event.files : []).map((f) => ({
-          file: typeof f === "string" ? f : f.path || f.file || "",
-          before: f.before || "",
-          after: f.after || "",
-          diff: f.diff || "",
-          additions: Number(f.additions) || 0,
-          deletions: Number(f.deletions) || 0
-        })).filter((d) => d.file);
-        if (diffs.length && onDiffs) onDiffs(diffs);
-      }
-    };
-    proc.stdout.on("data", (chunk) => {
-      stdoutBuf += chunk.toString();
-      const lines = stdoutBuf.split("\n");
-      stdoutBuf = lines.pop() || "";
-      for (const line of lines) {
-        const trimmed = stripAnsi(line).trim();
-        if (!trimmed) continue;
-        if (trimmed[0] === "{") {
-          parseEvent(trimmed);
-        } else {
-          fullRaw += trimmed + "\n";
-        }
-      }
-    });
-    proc.stderr.on("data", (chunk) => {
-      stderrBuf += stripAnsi(chunk.toString());
-    });
-    proc.on("error", (err) => done(err));
-    proc.on("close", (code) => {
-      if (resolved) return;
-      const remaining = stripAnsi(stdoutBuf).trim();
-      if (remaining) {
-        if (remaining[0] === "{") {
-          parseEvent(remaining);
-        } else {
-          fullRaw += remaining + "\n";
-        }
-      }
-      if (code !== 0) done(new Error(stderrBuf.trim() || `\u8FDB\u7A0B\u9000\u51FA\u7801 ${code}`));
-      else if (!connected) done(new Error("\u672A\u6536\u5230\u6570\u636E\n\u8BF7\u68C0\u67E5 opencode \u8DEF\u5F84\u548C\u6A21\u578B\u914D\u7F6E\uFF0C\u6216\u91CD\u542F opencode serve"));
-      else {
-        resolve(fullText || fullThinking || fullRaw.trim() || "(\u65E0\u54CD\u5E94\u5185\u5BB9)");
-      }
-    });
-    if (signal) {
-      if (signal.aborted) {
-        try {
-          stopTempServer(proc);
-        } catch (e) {
-        }
-        clearCLISessionID();
-        done(new DOMException("\u5DF2\u4E2D\u65AD", "AbortError"));
-        return;
-      }
-      signal.addEventListener("abort", () => {
-        try {
-          stopTempServer(proc);
-        } catch (e) {
-        }
-        clearCLISessionID();
-        done(new DOMException("\u5DF2\u4E2D\u65AD", "AbortError"));
-      }, { once: true });
-    }
-  });
-}
 async function callAIWithAPI(apiEndpoint, apiKey, model, messages, maxTokens, temperature, stream = false, signal, reasoningEffort) {
   const body = { model, messages, max_tokens: maxTokens, temperature, stream };
   if (reasoningEffort && reasoningEffort !== "none") {
@@ -942,12 +716,12 @@ function estimateTokens(text) {
   }
   return Math.ceil(tokens);
 }
-function registerProcessCleanup(proc) {
+function registerProcessCleanup() {
   if (processCleanupRegistered) return;
   processCleanupRegistered = true;
   const cleanup = () => {
     try {
-      proc.kill();
+      autoStartedProc == null ? void 0 : autoStartedProc.kill();
     } catch (e) {
     }
   };
@@ -956,10 +730,7 @@ function registerProcessCleanup(proc) {
   process.on("SIGINT", cleanup);
 }
 function isServerAutoStarted() {
-  if (autoStartedProc && autoStartedProc.exitCode !== null) {
-    autoStartedProc = null;
-  }
-  return autoStartedProc !== null && autoStartedProc.exitCode === null;
+  return autoStartedProc !== null && (autoStartedProc == null ? void 0 : autoStartedProc.exitCode) === null;
 }
 async function ensureOpenCodeServer(cliPath, hostname, port, vaultDir, autoStart) {
   const serverUrl = `http://${hostname || "127.0.0.1"}:${port || 16226}`;
@@ -976,7 +747,7 @@ async function ensureOpenCodeServer(cliPath, hostname, port, vaultDir, autoStart
   const effectiveBin = await resolveOpenCodePath(cliPath);
   const temp = await startTempOpenCodeServer(effectiveBin, vaultDir, port, hostname);
   autoStartedProc = temp.proc;
-  registerProcessCleanup(temp.proc);
+  registerProcessCleanup();
   return temp.url;
 }
 function stopOpenCodeServer() {
@@ -1609,11 +1380,6 @@ var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
     await this.saveCurrentSession();
     this.viewContainer.empty();
   }
-  refresh() {
-    this.messages = [];
-    this.messagesEl.empty();
-    this.addWelcomeMessage();
-  }
   async newChat() {
     clearCLISessionID();
     await this.saveCurrentSession();
@@ -1624,10 +1390,6 @@ var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
     this.messages.push({ id, role, content, timestamp: Date.now() });
     this.messagesEl.appendChild(this.renderMessageEl(id, role, content, false, void 0, Date.now()));
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
-  }
-  getActiveEditor() {
-    var _a;
-    return ((_a = this.app.workspace.activeEditor) == null ? void 0 : _a.editor) || null;
   }
   rebuildToolbar() {
     if (!this.toolbarEl) return;
@@ -2672,7 +2434,7 @@ var XiaoyuanAISettingTab = class extends import_obsidian3.PluginSettingTab {
       dd.onChange(async (val) => {
         s.execMode = val;
         await this.plugin.saveSettings();
-        const leaf = this.app.workspace.getLeavesOfType("xiaoyuan-chat-view").first();
+        const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_XIAOYUAN_AI_CHAT).first();
         if ((leaf == null ? void 0 : leaf.view) && "rebuildToolbar" in leaf.view) {
           leaf.view.rebuildToolbar();
         }
