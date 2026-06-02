@@ -191,6 +191,7 @@ export async function saveSessionToFile(
   session: ChatSession | undefined,
   messages: ChatMessage[],
 ): Promise<void> {
+  await ensureChatHistoryFolder(vault, chatHistoryPath);
   const filePath = getSessionFilePath(chatHistoryPath, sessionId);
   const content = sessionToMarkdown(session, messages);
 

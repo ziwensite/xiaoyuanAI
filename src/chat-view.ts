@@ -1,4 +1,4 @@
-﻿import { ItemView, WorkspaceLeaf, Notice, setIcon, setTooltip } from "obsidian";
+﻿import { ItemView, WorkspaceLeaf, Notice, setIcon, setTooltip, TFile } from "obsidian";
 import type XiaoyuanAIPlugin from "./main";
 import {
   ChatMessage,
@@ -343,6 +343,10 @@ export class XiaoyuanAIChatView extends ItemView {
           navigator.clipboard.writeText(content);
           new Notice("已复制");
         });
+        const openBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
+        openBtn.textContent = "\u{1F4D6}";
+        setTooltip(openBtn, "在编辑器中打开");
+        openBtn.addEventListener("click", () => this.openInEditor(content, timestamp));
         if (timestamp) {
           actionsEl.createSpan({ cls: "xiaoyuan-msg-time", text: formatTime(timestamp) });
         }
@@ -367,6 +371,42 @@ export class XiaoyuanAIChatView extends ItemView {
     }
 
     return msgEl;
+  }
+
+  private async openInEditor(content: string, ts?: number) {
+    try {
+      const vault = this.app.vault;
+      const tempRel = `${this.plugin.settings.chatHistoryPath}/temp`;
+      try { await vault.createFolder(tempRel); } catch {}
+
+      const dateStr = ts
+        ? formatTempTime(ts)
+        : String(Date.now()).slice(-8);
+      const hash = this.simpleHash(content);
+      const fileRel = `${tempRel}/msg-${dateStr}-${hash}.md`;
+
+      const existing = vault.getAbstractFileByPath(fileRel);
+      let file: TFile;
+      if (existing instanceof TFile) {
+        await vault.modify(existing, content);
+        file = existing;
+      } else {
+        file = await vault.create(fileRel, content);
+      }
+
+      await this.app.workspace.getLeaf("tab").openFile(file);
+    } catch (err: any) {
+      new Notice(`打开失败: ${err.message}`);
+    }
+  }
+
+  private simpleHash(s: string): string {
+    let h = 0;
+    for (let i = 0; i < s.length; i++) {
+      h = ((h << 5) - h) + s.charCodeAt(i);
+      h |= 0;
+    }
+    return (h >>> 0).toString(36);
   }
 
   private addWelcomeMessage() {
@@ -723,16 +763,20 @@ export class XiaoyuanAIChatView extends ItemView {
 
     if (!msgEl.querySelector(".xiaoyuan-msg-actions")) {
       const actionsEl = msgEl.createDiv({ cls: "xiaoyuan-msg-actions" });
-      const copyBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
-      copyBtn.textContent = "\uD83D\uDCCB";
-      setTooltip(copyBtn, "复制");
-      copyBtn.addEventListener("click", () => {
-        navigator.clipboard.writeText(lastMsg.content);
-        new Notice("已复制");
-      });
-      if (lastMsg.timestamp) {
-        actionsEl.createSpan({ cls: "xiaoyuan-msg-time", text: formatTime(lastMsg.timestamp) });
-      }
+        const copyBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
+        copyBtn.textContent = "\uD83D\uDCCB";
+        setTooltip(copyBtn, "复制");
+        copyBtn.addEventListener("click", () => {
+          navigator.clipboard.writeText(lastMsg.content);
+          new Notice("已复制");
+        });
+        const openBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
+        openBtn.textContent = "\u{1F4D6}";
+        setTooltip(openBtn, "在编辑器中打开");
+        openBtn.addEventListener("click", () => this.openInEditor(lastMsg.content, lastMsg.timestamp));
+        if (lastMsg.timestamp) {
+          actionsEl.createSpan({ cls: "xiaoyuan-msg-time", text: formatTime(lastMsg.timestamp) });
+        }
     }
 
     setTimeout(() => {
@@ -1144,6 +1188,11 @@ export class XiaoyuanAIChatView extends ItemView {
       this.sendBtn.style.color = "";
     }
   }
+}
+
+function formatTempTime(ts: number): string {
+  const d = new Date(ts);
+  return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}-${String(d.getHours()).padStart(2, "0")}${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
 function formatTime(ts: number): string {

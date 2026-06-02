@@ -200,7 +200,7 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
       .setName("OpenCode 路径")
       .setDesc("可执行文件路径。全局安装填 opencode，非全局写完整绝对路径。")
       .addText((text) =>
-        text.setPlaceholder("opencode").setValue(s.opencode.cliPath)
+        text.setPlaceholder("opencode").setValue(s.opencode.cliPath === "opencode" ? "" : s.opencode.cliPath)
           .onChange(async (val) => { s.opencode.cliPath = val; await this.plugin.saveSettings(); }),
       ), "terminal-square");
     (async () => {
@@ -231,7 +231,7 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
       .setName("Host")
       .setDesc("opencode 服务器主机地址")
       .addText((text) =>
-        text.setPlaceholder("127.0.0.1").setValue(s.opencode.hostname)
+        text.setPlaceholder("127.0.0.1").setValue(s.opencode.hostname === "127.0.0.1" ? "" : s.opencode.hostname)
           .onChange(async (val) => { s.opencode.hostname = val; await this.plugin.saveSettings(); }),
       ), "globe");
 
@@ -239,8 +239,8 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
       .setName("Port")
       .setDesc("opencode 服务器端口")
       .addText((text) =>
-        text.setPlaceholder("16226").setValue(String(s.opencode.port))
-          .onChange(async (val) => { const n = parseInt(val); if (n > 0) { s.opencode.port = n; await this.plugin.saveSettings(); } }),
+        text.setPlaceholder("16226").setValue(s.opencode.port === 16226 ? "" : String(s.opencode.port))
+          .onChange(async (val) => { const n = parseInt(val); s.opencode.port = n > 0 ? n : 16226; await this.plugin.saveSettings(); }),
       ), "plug");
 
     const modelSetting = this.decorateSetting(new Setting(container)
@@ -485,8 +485,8 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
     this.decorateSetting(new Setting(container)
       .setName("最大 Token 数")
       .addText((text) =>
-        text.setPlaceholder("4096").setValue(String(s.maxTokens))
-          .onChange(async (val) => { const n = parseInt(val); if (n > 0) { s.maxTokens = n; await this.plugin.saveSettings(); } }),
+        text.setPlaceholder("4096").setValue(s.maxTokens === 4096 ? "" : String(s.maxTokens))
+          .onChange(async (val) => { const n = parseInt(val); s.maxTokens = n > 0 ? n : 4096; await this.plugin.saveSettings(); }),
       ), "subtitles");
   }
 
@@ -563,8 +563,8 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
       .setName("聊天历史存储路径")
       .setDesc("聊天历史 Markdown 文件的存储目录")
       .addText((text) =>
-        text.setPlaceholder(".chatHistory").setValue(s.chatHistoryPath)
-          .onChange(async (val) => { if (val.trim()) { s.chatHistoryPath = val.trim(); await this.plugin.saveSettings(); } }),
+        text.setPlaceholder("_chatHistory").setValue(s.chatHistoryPath === "_chatHistory" ? "" : s.chatHistoryPath)
+          .onChange(async (val) => { s.chatHistoryPath = val.trim() || "_chatHistory"; await this.plugin.saveSettings(); }),
       ), "folder");
 
     this.decorateSetting(new Setting(container)

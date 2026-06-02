@@ -133,7 +133,7 @@ export const DEFAULT_SETTINGS: XiaoyuanAISettings = {
   systemPrompt: "你是一个 AI 助手，集成在 Obsidian 笔记软件中。用户正在做笔记或写作。请用中文回答，保持简洁专业。",
   maxTokens: 4096,
   temperature: 0.7,
-  chatHistoryPath: ".chatHistory",
+  chatHistoryPath: "_chatHistory",
   showDiffPreview: true,
   showThinking: true,
 };
@@ -161,8 +161,3 @@ export const OPERATION_LABELS: Record<string, string> = {
   expand: "扩写", translate: "翻译为中文", continue: "续写",
 };
 
-export const WIKI_SYSTEM_PROMPTS: Record<string, string> = {
-  query: "你是一个维基知识库的检索助手。根据用户的问题，从知识库角度给出综合性的回答。如果不知道，就诚实说不知道。",
-  capture: "你正在将用户提供的内容整理为维基笔记。请提取关键信息，分类（concept/skill/reference/decision），输出带 YAML frontmatter 的 Obsidian Markdown 格式。",
-  ingest: "你正在摄入文档。请分析内容，蒸馏出核心概念、实体、技能，用中文输出多个维基页面（带 frontmatter 和 [[维基链接]]）。",
-};

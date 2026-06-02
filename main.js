@@ -39,7 +39,7 @@ function getActiveProvider(s) {
   if (s.activeApiProviderId) return s.apiProviders.find((p) => p.id === s.activeApiProviderId);
   return s.apiProviders[0];
 }
-var DEFAULT_OPENCODE_SETTINGS, DEFAULT_SETTINGS, CHAT_SESSIONS_KEY, CURRENT_SESSION_KEY, VIEW_TYPE_XIAOYUAN_AI_CHAT, OPERATION_PROMPTS, OPERATION_LABELS, WIKI_SYSTEM_PROMPTS;
+var DEFAULT_OPENCODE_SETTINGS, DEFAULT_SETTINGS, CHAT_SESSIONS_KEY, CURRENT_SESSION_KEY, VIEW_TYPE_XIAOYUAN_AI_CHAT, OPERATION_PROMPTS, OPERATION_LABELS;
 var init_types = __esm({
   "src/types.ts"() {
     "use strict";
@@ -73,7 +73,7 @@ var init_types = __esm({
       systemPrompt: "\u4F60\u662F\u4E00\u4E2A AI \u52A9\u624B\uFF0C\u96C6\u6210\u5728 Obsidian \u7B14\u8BB0\u8F6F\u4EF6\u4E2D\u3002\u7528\u6237\u6B63\u5728\u505A\u7B14\u8BB0\u6216\u5199\u4F5C\u3002\u8BF7\u7528\u4E2D\u6587\u56DE\u7B54\uFF0C\u4FDD\u6301\u7B80\u6D01\u4E13\u4E1A\u3002",
       maxTokens: 4096,
       temperature: 0.7,
-      chatHistoryPath: ".chatHistory",
+      chatHistoryPath: "_chatHistory",
       showDiffPreview: true,
       showThinking: true
     };
@@ -95,11 +95,6 @@ var init_types = __esm({
       expand: "\u6269\u5199",
       translate: "\u7FFB\u8BD1\u4E3A\u4E2D\u6587",
       continue: "\u7EED\u5199"
-    };
-    WIKI_SYSTEM_PROMPTS = {
-      query: "\u4F60\u662F\u4E00\u4E2A\u7EF4\u57FA\u77E5\u8BC6\u5E93\u7684\u68C0\u7D22\u52A9\u624B\u3002\u6839\u636E\u7528\u6237\u7684\u95EE\u9898\uFF0C\u4ECE\u77E5\u8BC6\u5E93\u89D2\u5EA6\u7ED9\u51FA\u7EFC\u5408\u6027\u7684\u56DE\u7B54\u3002\u5982\u679C\u4E0D\u77E5\u9053\uFF0C\u5C31\u8BDA\u5B9E\u8BF4\u4E0D\u77E5\u9053\u3002",
-      capture: "\u4F60\u6B63\u5728\u5C06\u7528\u6237\u63D0\u4F9B\u7684\u5185\u5BB9\u6574\u7406\u4E3A\u7EF4\u57FA\u7B14\u8BB0\u3002\u8BF7\u63D0\u53D6\u5173\u952E\u4FE1\u606F\uFF0C\u5206\u7C7B\uFF08concept/skill/reference/decision\uFF09\uFF0C\u8F93\u51FA\u5E26 YAML frontmatter \u7684 Obsidian Markdown \u683C\u5F0F\u3002",
-      ingest: "\u4F60\u6B63\u5728\u6444\u5165\u6587\u6863\u3002\u8BF7\u5206\u6790\u5185\u5BB9\uFF0C\u84B8\u998F\u51FA\u6838\u5FC3\u6982\u5FF5\u3001\u5B9E\u4F53\u3001\u6280\u80FD\uFF0C\u7528\u4E2D\u6587\u8F93\u51FA\u591A\u4E2A\u7EF4\u57FA\u9875\u9762\uFF08\u5E26 frontmatter \u548C [[\u7EF4\u57FA\u94FE\u63A5]]\uFF09\u3002"
     };
   }
 });
@@ -229,8 +224,8 @@ async function checkOpenCodeStatus(opencodePath, vaultDir, port = 16226, hostnam
     return { ok: false, version: "", bin: opencodePath, error: err.message };
   }
 }
-function httpGetOpenCode(baseUrl, path2, directory) {
-  const url = new URL(path2, baseUrl.replace(/\/+$/, ""));
+function httpGetOpenCode(baseUrl, path3, directory) {
+  const url = new URL(path3, baseUrl.replace(/\/+$/, ""));
   url.searchParams.set("directory", directory);
   return new Promise((resolve, reject) => {
     http.get(url.toString(), (res) => {
@@ -240,14 +235,14 @@ function httpGetOpenCode(baseUrl, path2, directory) {
         var _a, _b, _c;
         const body = Buffer.concat(chunks).toString();
         if (!res.statusCode || res.statusCode >= 300) {
-          reject(new Error(`OpenCode API ${path2}: ${res.statusCode} ${res.statusMessage || ""}${body ? ` - ${body.slice(0, 200)}` : ""}`));
+          reject(new Error(`OpenCode API ${path3}: ${res.statusCode} ${res.statusMessage || ""}${body ? ` - ${body.slice(0, 200)}` : ""}`));
           return;
         }
         let parsed;
         try {
           parsed = JSON.parse(body);
         } catch (e) {
-          reject(new Error(`OpenCode API ${path2}: JSON \u89E3\u6790\u5931\u8D25 \u2014 ${e.message}`));
+          reject(new Error(`OpenCode API ${path3}: JSON \u89E3\u6790\u5931\u8D25 \u2014 ${e.message}`));
           return;
         }
         if (parsed && typeof parsed === "object" && "error" in parsed && parsed.error) {
@@ -912,6 +907,7 @@ __export(main_exports, {
 });
 module.exports = __toCommonJS(main_exports);
 var fs2 = __toESM(require("fs"));
+var path2 = __toESM(require("path"));
 var import_obsidian5 = require("obsidian");
 init_types();
 
@@ -945,11 +941,11 @@ function getChatHistoryPath(chatHistoryPath) {
 function getSessionFilePath(chatHistoryPath, sessionId) {
   return `${getChatHistoryPath(chatHistoryPath)}/${sessionId}.md`;
 }
-async function ensureChatHistoryFolder(vault, path2) {
-  const folder = vault.getFolderByPath(path2);
+async function ensureChatHistoryFolder(vault, path3) {
+  const folder = vault.getFolderByPath(path3);
   if (folder) return;
   try {
-    await vault.createFolder(path2);
+    await vault.createFolder(path3);
   } catch (e) {
     if (e instanceof Error && e.message.includes("already exists")) {
       return;
@@ -1105,6 +1101,7 @@ async function loadSessionFromFile(vault, chatHistoryPath, sessionId) {
   return parseMarkdownToMessages(content);
 }
 async function saveSessionToFile(vault, chatHistoryPath, sessionId, session, messages) {
+  await ensureChatHistoryFolder(vault, chatHistoryPath);
   const filePath = getSessionFilePath(chatHistoryPath, sessionId);
   const content = sessionToMarkdown(session, messages);
   try {
@@ -1693,6 +1690,10 @@ var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
           navigator.clipboard.writeText(content);
           new import_obsidian2.Notice("\u5DF2\u590D\u5236");
         });
+        const openBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
+        openBtn.textContent = "\u{1F4D6}";
+        (0, import_obsidian2.setTooltip)(openBtn, "\u5728\u7F16\u8F91\u5668\u4E2D\u6253\u5F00");
+        openBtn.addEventListener("click", () => this.openInEditor(content, timestamp));
         if (timestamp) {
           actionsEl.createSpan({ cls: "xiaoyuan-msg-time", text: formatTime(timestamp) });
         }
@@ -1719,6 +1720,38 @@ var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
       }, 0);
     }
     return msgEl;
+  }
+  async openInEditor(content, ts) {
+    try {
+      const vault = this.app.vault;
+      const tempRel = `${this.plugin.settings.chatHistoryPath}/temp`;
+      try {
+        await vault.createFolder(tempRel);
+      } catch (e) {
+      }
+      const dateStr = ts ? formatTempTime(ts) : String(Date.now()).slice(-8);
+      const hash = this.simpleHash(content);
+      const fileRel = `${tempRel}/msg-${dateStr}-${hash}.md`;
+      const existing = vault.getAbstractFileByPath(fileRel);
+      let file;
+      if (existing instanceof import_obsidian2.TFile) {
+        await vault.modify(existing, content);
+        file = existing;
+      } else {
+        file = await vault.create(fileRel, content);
+      }
+      await this.app.workspace.getLeaf("tab").openFile(file);
+    } catch (err) {
+      new import_obsidian2.Notice(`\u6253\u5F00\u5931\u8D25: ${err.message}`);
+    }
+  }
+  simpleHash(s) {
+    let h = 0;
+    for (let i = 0; i < s.length; i++) {
+      h = (h << 5) - h + s.charCodeAt(i);
+      h |= 0;
+    }
+    return (h >>> 0).toString(36);
   }
   addWelcomeMessage() {
     const s = this.plugin.settings;
@@ -2064,6 +2097,10 @@ ${att.data}
         navigator.clipboard.writeText(lastMsg.content);
         new import_obsidian2.Notice("\u5DF2\u590D\u5236");
       });
+      const openBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
+      openBtn.textContent = "\u{1F4D6}";
+      (0, import_obsidian2.setTooltip)(openBtn, "\u5728\u7F16\u8F91\u5668\u4E2D\u6253\u5F00");
+      openBtn.addEventListener("click", () => this.openInEditor(lastMsg.content, lastMsg.timestamp));
       if (lastMsg.timestamp) {
         actionsEl.createSpan({ cls: "xiaoyuan-msg-time", text: formatTime(lastMsg.timestamp) });
       }
@@ -2141,10 +2178,10 @@ ${att.data}
   async loadSessions() {
     var _a, _b;
     try {
-      const path2 = getChatHistoryPath(this.plugin.settings.chatHistoryPath);
-      await ensureChatHistoryFolder(this.app.vault, path2);
+      const path3 = getChatHistoryPath(this.plugin.settings.chatHistoryPath);
+      await ensureChatHistoryFolder(this.app.vault, path3);
       const meta = await loadSessionsMeta(this.plugin);
-      this.sessions = await scanChatHistoryFolder(this.app.vault, path2);
+      this.sessions = await scanChatHistoryFolder(this.app.vault, path3);
       this.sessions.sort((a, b) => b.updatedAt - a.updatedAt);
       this.currentSessionId = meta.currentSessionId;
       if (this.sessions.length === 0) {
@@ -2158,7 +2195,7 @@ ${att.data}
           };
           this.sessions.push(newSession);
           this.messages = [...oldMessages];
-          await saveSessionToFile(this.app.vault, path2, newSession.id, newSession, oldMessages);
+          await saveSessionToFile(this.app.vault, path3, newSession.id, newSession, oldMessages);
         }
       }
     } catch (e) {
@@ -2175,8 +2212,8 @@ ${att.data}
     this.updateSessionSelector();
   }
   async loadSession(session) {
-    const path2 = getChatHistoryPath(this.plugin.settings.chatHistoryPath);
-    this.messages = await loadSessionFromFile(this.app.vault, path2, session.id);
+    const path3 = getChatHistoryPath(this.plugin.settings.chatHistoryPath);
+    this.messages = await loadSessionFromFile(this.app.vault, path3, session.id);
     this.msgIdCounter = this.messages.length;
     this.messagesEl.empty();
     if (this.messages.length === 0) {
@@ -2196,7 +2233,7 @@ ${att.data}
     return cleaned.length > 30 ? cleaned.slice(0, 30) + "\u2026" : cleaned;
   }
   async saveCurrentSession() {
-    const path2 = getChatHistoryPath(this.plugin.settings.chatHistoryPath);
+    const path3 = getChatHistoryPath(this.plugin.settings.chatHistoryPath);
     const session = this.sessions.find((s) => s.id === this.currentSessionId);
     if (session) {
       session.updatedAt = Date.now();
@@ -2205,7 +2242,7 @@ ${att.data}
         this.updateSessionSelector();
       }
     }
-    await saveSessionToFile(this.app.vault, path2, this.currentSessionId, session, this.messages);
+    await saveSessionToFile(this.app.vault, path3, this.currentSessionId, session, this.messages);
     await saveSessionsMeta(this.plugin, this.sessions, this.currentSessionId);
   }
   updateSessionTitle() {
@@ -2266,8 +2303,8 @@ ${att.data}
       return;
     }
     await this.saveCurrentSession();
-    const path2 = getChatHistoryPath(this.plugin.settings.chatHistoryPath);
-    const diskSessions = await scanChatHistoryFolder(this.app.vault, path2);
+    const path3 = getChatHistoryPath(this.plugin.settings.chatHistoryPath);
+    const diskSessions = await scanChatHistoryFolder(this.app.vault, path3);
     const diskIds = new Set(diskSessions.map((s) => s.id));
     const unsaved = this.sessions.filter((s) => !diskIds.has(s.id));
     this.sessions = [...diskSessions, ...unsaved];
@@ -2448,6 +2485,10 @@ ${att.data}
     }
   }
 };
+function formatTempTime(ts) {
+  const d = new Date(ts);
+  return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}-${String(d.getHours()).padStart(2, "0")}${String(d.getMinutes()).padStart(2, "0")}`;
+}
 function formatTime(ts) {
   const d = new Date(ts);
   const month = String(d.getMonth() + 1).padStart(2, "0");
@@ -2635,7 +2676,7 @@ var XiaoyuanAISettingTab = class extends import_obsidian3.PluginSettingTab {
     var _a, _b;
     const s = this.s();
     const pathSetting = this.decorateSetting(new import_obsidian3.Setting(container).setName("OpenCode \u8DEF\u5F84").setDesc("\u53EF\u6267\u884C\u6587\u4EF6\u8DEF\u5F84\u3002\u5168\u5C40\u5B89\u88C5\u586B opencode\uFF0C\u975E\u5168\u5C40\u5199\u5B8C\u6574\u7EDD\u5BF9\u8DEF\u5F84\u3002").addText(
-      (text) => text.setPlaceholder("opencode").setValue(s.opencode.cliPath).onChange(async (val) => {
+      (text) => text.setPlaceholder("opencode").setValue(s.opencode.cliPath === "opencode" ? "" : s.opencode.cliPath).onChange(async (val) => {
         s.opencode.cliPath = val;
         await this.plugin.saveSettings();
       })
@@ -2662,18 +2703,16 @@ var XiaoyuanAISettingTab = class extends import_obsidian3.PluginSettingTab {
       });
     }), "play");
     this.decorateSetting(new import_obsidian3.Setting(container).setName("Host").setDesc("opencode \u670D\u52A1\u5668\u4E3B\u673A\u5730\u5740").addText(
-      (text) => text.setPlaceholder("127.0.0.1").setValue(s.opencode.hostname).onChange(async (val) => {
+      (text) => text.setPlaceholder("127.0.0.1").setValue(s.opencode.hostname === "127.0.0.1" ? "" : s.opencode.hostname).onChange(async (val) => {
         s.opencode.hostname = val;
         await this.plugin.saveSettings();
       })
     ), "globe");
     this.decorateSetting(new import_obsidian3.Setting(container).setName("Port").setDesc("opencode \u670D\u52A1\u5668\u7AEF\u53E3").addText(
-      (text) => text.setPlaceholder("16226").setValue(String(s.opencode.port)).onChange(async (val) => {
+      (text) => text.setPlaceholder("16226").setValue(s.opencode.port === 16226 ? "" : String(s.opencode.port)).onChange(async (val) => {
         const n = parseInt(val);
-        if (n > 0) {
-          s.opencode.port = n;
-          await this.plugin.saveSettings();
-        }
+        s.opencode.port = n > 0 ? n : 16226;
+        await this.plugin.saveSettings();
       })
     ), "plug");
     const modelSetting = this.decorateSetting(new import_obsidian3.Setting(container).setName("\u6A21\u578B").setDesc("\u70B9\u51FB\u9009\u62E9\u6A21\u578B\uFF0C\u6216\u70B9 \u21BB \u4ECE opencode \u540C\u6B65").addText((text) => {
@@ -2892,12 +2931,10 @@ var XiaoyuanAISettingTab = class extends import_obsidian3.PluginSettingTab {
       })
     ), "thermometer");
     this.decorateSetting(new import_obsidian3.Setting(container).setName("\u6700\u5927 Token \u6570").addText(
-      (text) => text.setPlaceholder("4096").setValue(String(s.maxTokens)).onChange(async (val) => {
+      (text) => text.setPlaceholder("4096").setValue(s.maxTokens === 4096 ? "" : String(s.maxTokens)).onChange(async (val) => {
         const n = parseInt(val);
-        if (n > 0) {
-          s.maxTokens = n;
-          await this.plugin.saveSettings();
-        }
+        s.maxTokens = n > 0 ? n : 4096;
+        await this.plugin.saveSettings();
       })
     ), "subtitles");
   }
@@ -2960,11 +2997,9 @@ var XiaoyuanAISettingTab = class extends import_obsidian3.PluginSettingTab {
     container.createEl("hr");
     container.createEl("h3", { text: "\u804A\u5929\u8BBE\u7F6E" });
     this.decorateSetting(new import_obsidian3.Setting(container).setName("\u804A\u5929\u5386\u53F2\u5B58\u50A8\u8DEF\u5F84").setDesc("\u804A\u5929\u5386\u53F2 Markdown \u6587\u4EF6\u7684\u5B58\u50A8\u76EE\u5F55").addText(
-      (text) => text.setPlaceholder(".chatHistory").setValue(s.chatHistoryPath).onChange(async (val) => {
-        if (val.trim()) {
-          s.chatHistoryPath = val.trim();
-          await this.plugin.saveSettings();
-        }
+      (text) => text.setPlaceholder("_chatHistory").setValue(s.chatHistoryPath === "_chatHistory" ? "" : s.chatHistoryPath).onChange(async (val) => {
+        s.chatHistoryPath = val.trim() || "_chatHistory";
+        await this.plugin.saveSettings();
       })
     ), "folder");
     this.decorateSetting(new import_obsidian3.Setting(container).setName("\u804A\u5929\u9762\u677F\u4F4D\u7F6E").addDropdown((dd) => {
@@ -3216,68 +3251,6 @@ var TextOperationModal = class extends import_obsidian4.Modal {
     this.contentEl.empty();
   }
 };
-var WikiCommandModal = class extends import_obsidian4.Modal {
-  constructor(app, plugin, command) {
-    super(app);
-    this.plugin = plugin;
-    this.command = command;
-  }
-  onOpen() {
-    const { contentEl, modalEl } = this;
-    contentEl.empty();
-    contentEl.classList.add("xiaoyuan-wiki-modal-container");
-    const h3El = contentEl.createEl("h3", { text: `\u{1F9E0} Wiki \u547D\u4EE4\uFF1A/${this.command}` });
-    h3El.style.cursor = "move";
-    makeDraggable(h3El, modalEl);
-    const inputEl = contentEl.createEl("textarea", {
-      cls: "xiaoyuan-wiki-input",
-      attr: { placeholder: this.command === "query" ? "\u8F93\u5165\u67E5\u8BE2\u5185\u5BB9..." : "\u8F93\u5165\u8981\u4FDD\u5B58\u7684\u5185\u5BB9..." }
-    });
-    const btnRow = contentEl.createDiv({ cls: "xiaoyuan-wiki-btn-row" });
-    const submitBtn = btnRow.createEl("button", { text: "\u6267\u884C", cls: "xiaoyuan-btn-primary" });
-    const resultEl = contentEl.createDiv({ cls: "xiaoyuan-wiki-result" });
-    submitBtn.addEventListener("click", async () => {
-      const text = inputEl.value.trim();
-      if (!text) {
-        new import_obsidian4.Notice("\u8BF7\u8F93\u5165\u5185\u5BB9");
-        return;
-      }
-      submitBtn.disabled = true;
-      submitBtn.textContent = "\u5DF2\u8FDE\u63A5\uFF0C\u7B49\u5F85\u54CD\u5E94...";
-      try {
-        const s = this.plugin.settings;
-        const systemPrompt = WIKI_SYSTEM_PROMPTS[this.command] || "";
-        const fullPrompt = systemPrompt ? `${systemPrompt}
-
----
-${text}` : text;
-        const vaultDir = getVaultBasePath(this.app.vault);
-        const result = await callAISession({
-          prompt: fullPrompt,
-          settings: s,
-          vaultDir,
-          onThinking: (t) => {
-            submitBtn.textContent = `\u601D\u8003\u4E2D... ${t}`;
-          },
-          onTextUpdate: (t) => {
-            submitBtn.textContent = t;
-          }
-        });
-        resultEl.classList.add("show");
-        resultEl.textContent = result;
-        resultEl.contentEditable = "true";
-      } catch (err) {
-        resultEl.classList.add("show");
-        resultEl.textContent = `\u274C \u9519\u8BEF\uFF1A${err.message}`;
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = "\u6267\u884C";
-      }
-    });
-    const closeBtn = btnRow.createEl("button", { text: "\u5173\u95ED", cls: "xiaoyuan-btn-secondary" });
-    closeBtn.addEventListener("click", () => this.close());
-  }
-};
 
 // src/main.ts
 init_types();
@@ -3341,21 +3314,6 @@ var XiaoyuanAIPlugin = class extends import_obsidian5.Plugin {
       });
     });
     this.addCommand({
-      id: "xiaoyuanAI-wiki-query",
-      name: "\u{1F50D} Wiki \u67E5\u8BE2",
-      callback: () => new WikiCommandModal(this.app, this, "query").open()
-    });
-    this.addCommand({
-      id: "xiaoyuanAI-wiki-capture",
-      name: "\u{1F4E5} Wiki \u6355\u6349",
-      callback: () => new WikiCommandModal(this.app, this, "capture").open()
-    });
-    this.addCommand({
-      id: "xiaoyuanAI-wiki-ingest",
-      name: "\u{1F4E5} Wiki \u6444\u5165",
-      callback: () => new WikiCommandModal(this.app, this, "ingest").open()
-    });
-    this.addCommand({
       id: "xiaoyuanAI-chat-with-note",
       name: "\u{1F4C4} \u7528\u5F53\u524D\u7B14\u8BB0\u5F00\u542F AI \u5BF9\u8BDD",
       callback: async () => {
@@ -3379,6 +3337,23 @@ ${content.slice(0, 3e3)}`);
     }
     if (this.settings.autoOpen) {
       this.app.workspace.onLayoutReady(() => this.activateChatView());
+    }
+    this.app.workspace.onLayoutReady(() => this.cleanTempFiles());
+  }
+  async cleanTempFiles() {
+    try {
+      const tempDir = path2.join(getVaultBasePath(this.app.vault), this.settings.chatHistoryPath, "temp");
+      if (!fs2.existsSync(tempDir)) return;
+      const now = Date.now();
+      const maxAge = 24 * 60 * 60 * 1e3;
+      for (const name of fs2.readdirSync(tempDir)) {
+        const fp = path2.join(tempDir, name);
+        const stat = fs2.statSync(fp);
+        if (stat.isFile() && name.endsWith(".md") && now - stat.mtimeMs > maxAge) {
+          fs2.unlinkSync(fp);
+        }
+      }
+    } catch (e) {
     }
   }
   async autoStartServer() {

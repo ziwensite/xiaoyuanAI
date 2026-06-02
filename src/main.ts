@@ -1,9 +1,10 @@
 import * as fs from "fs";
+import * as path from "path";
 import { Plugin, WorkspaceLeaf, Notice, Menu } from "obsidian";
 import { XiaoyuanAISettings, DEFAULT_SETTINGS, VIEW_TYPE_XIAOYUAN_AI_CHAT } from "./types";
 import { XiaoyuanAIChatView } from "./chat-view";
 import { XiaoyuanAISettingTab } from "./settings";
-import { TextOperationModal, WikiCommandModal } from "./modals";
+import { TextOperationModal } from "./modals";
 import { OPERATION_LABELS } from "./types";
 import { ensureOpenCodeServer, stopOpenCodeServer, resolveOpenCodePath } from "./ai";
 import { getVaultBasePath } from "./server";
@@ -80,18 +81,6 @@ export default class XiaoyuanAIPlugin extends Plugin {
     });
 
     this.addCommand({
-      id: "xiaoyuanAI-wiki-query", name: "\u{1F50D} Wiki 查询",
-      callback: () => new WikiCommandModal(this.app, this, "query").open(),
-    });
-    this.addCommand({
-      id: "xiaoyuanAI-wiki-capture", name: "\u{1F4E5} Wiki 捕捉",
-      callback: () => new WikiCommandModal(this.app, this, "capture").open(),
-    });
-    this.addCommand({
-      id: "xiaoyuanAI-wiki-ingest", name: "\u{1F4E5} Wiki 摄入",
-      callback: () => new WikiCommandModal(this.app, this, "ingest").open(),
-    });
-    this.addCommand({
       id: "xiaoyuanAI-chat-with-note", name: "\u{1F4C4} 用当前笔记开启 AI 对话",
       callback: async () => {
         const file = this.app.workspace.getActiveFile();
@@ -113,6 +102,24 @@ export default class XiaoyuanAIPlugin extends Plugin {
     if (this.settings.autoOpen) {
       this.app.workspace.onLayoutReady(() => this.activateChatView());
     }
+
+    this.app.workspace.onLayoutReady(() => this.cleanTempFiles());
+  }
+
+  private async cleanTempFiles() {
+    try {
+      const tempDir = path.join(getVaultBasePath(this.app.vault), this.settings.chatHistoryPath, "temp");
+      if (!fs.existsSync(tempDir)) return;
+      const now = Date.now();
+      const maxAge = 24 * 60 * 60 * 1000;
+      for (const name of fs.readdirSync(tempDir)) {
+        const fp = path.join(tempDir, name);
+        const stat = fs.statSync(fp);
+        if (stat.isFile() && name.endsWith(".md") && now - stat.mtimeMs > maxAge) {
+          fs.unlinkSync(fp);
+        }
+      }
+    } catch {}
   }
 
   private async autoStartServer(): Promise<void> {

@@ -1,7 +1,7 @@
 import { App, Modal, Notice, Menu } from "obsidian";
 import type XiaoyuanAIPlugin from "./main";
 import { callAISession, getVaultBasePath } from "./ai";
-import { OPERATION_PROMPTS, OPERATION_LABELS, WIKI_SYSTEM_PROMPTS } from "./types";
+import { OPERATION_PROMPTS, OPERATION_LABELS } from "./types";
 
 function makeDraggable(handle: HTMLElement, modalEl: HTMLElement) {
   handle.addEventListener("mousedown", (e) => {
@@ -159,65 +159,4 @@ export class TextOperationModal extends Modal {
   onClose() { this.contentEl.empty(); }
 }
 
-export class WikiCommandModal extends Modal {
-  plugin: XiaoyuanAIPlugin;
-  command: string;
 
-  constructor(app: App, plugin: XiaoyuanAIPlugin, command: string) {
-    super(app);
-    this.plugin = plugin;
-    this.command = command;
-  }
-
-  onOpen() {
-    const { contentEl, modalEl } = this;
-    contentEl.empty();
-    contentEl.classList.add("xiaoyuan-wiki-modal-container");
-
-    const h3El = contentEl.createEl("h3", { text: `\u{1F9E0} Wiki 命令：/${this.command}` });
-    h3El.style.cursor = "move";
-    makeDraggable(h3El, modalEl);
-
-    const inputEl = contentEl.createEl("textarea", {
-      cls: "xiaoyuan-wiki-input",
-      attr: { placeholder: this.command === "query" ? "输入查询内容..." : "输入要保存的内容..." },
-    });
-
-    const btnRow = contentEl.createDiv({ cls: "xiaoyuan-wiki-btn-row" });
-    const submitBtn = btnRow.createEl("button", { text: "执行", cls: "xiaoyuan-btn-primary" });
-    const resultEl = contentEl.createDiv({ cls: "xiaoyuan-wiki-result" });
-
-    submitBtn.addEventListener("click", async () => {
-      const text = inputEl.value.trim();
-      if (!text) { new Notice("请输入内容"); return; }
-
-      submitBtn.disabled = true;
-      submitBtn.textContent = "已连接，等待响应...";
-
-      try {
-        const s = this.plugin.settings;
-        const systemPrompt = WIKI_SYSTEM_PROMPTS[this.command] || "";
-        const fullPrompt = systemPrompt ? `${systemPrompt}\n\n---\n${text}` : text;
-        const vaultDir = getVaultBasePath(this.app.vault);
-        const result = await callAISession({
-          prompt: fullPrompt, settings: s, vaultDir,
-          onThinking: (t) => { submitBtn.textContent = `思考中... ${t}`; },
-          onTextUpdate: (t) => { submitBtn.textContent = t; },
-        });
-
-        resultEl.classList.add("show");
-        resultEl.textContent = result;
-        resultEl.contentEditable = "true";
-      } catch (err: any) {
-        resultEl.classList.add("show");
-        resultEl.textContent = `\u274C 错误：${err.message}`;
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = "执行";
-      }
-    });
-
-    const closeBtn = btnRow.createEl("button", { text: "关闭", cls: "xiaoyuan-btn-secondary" });
-    closeBtn.addEventListener("click", () => this.close());
-  }
-}
