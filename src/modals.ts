@@ -1,12 +1,7 @@
 import { App, Modal, Notice, Menu } from "obsidian";
 import type XiaoyuanAIPlugin from "./main";
-import { callAIWithHTTPStreaming, callAIWithAPIJson, getVaultBasePath } from "./ai";
-import { OPERATION_PROMPTS, OPERATION_LABELS, WIKI_SYSTEM_PROMPTS, getActiveProvider } from "./types";
-
-function ensureApiUrl(baseUrl: string): string {
-  const trimmed = baseUrl.replace(/\/+$/, "");
-  return trimmed.endsWith("/chat/completions") ? trimmed : trimmed + "/chat/completions";
-}
+import { callAISession, getVaultBasePath } from "./ai";
+import { OPERATION_PROMPTS, OPERATION_LABELS, WIKI_SYSTEM_PROMPTS } from "./types";
 
 function makeDraggable(handle: HTMLElement, modalEl: HTMLElement) {
   handle.addEventListener("mousedown", (e) => {
@@ -126,25 +121,12 @@ export class TextOperationModal extends Modal {
     try {
       const s = this.plugin.settings;
       const prompt = (OPERATION_PROMPTS[operation] || OPERATION_PROMPTS.polish) + textToProcess;
-      let result: string;
-
-      if (s.execMode === "cli") {
-        this.modeLabel.textContent = "CLI";
-        const vaultDir = getVaultBasePath(this.app.vault);
-        result = await callAIWithHTTPStreaming(prompt, s, vaultDir, undefined, undefined,
-          (text) => { this.contentAreaEl.textContent = `思考中... ${text}`; },
-          (text) => { this.contentAreaEl.textContent = text; },
-        );
-      } else {
-        this.modeLabel.textContent = "API";
-        const provider = getActiveProvider(s);
-        if (!provider || !provider.apiKey) { new Notice("API Key 未配置"); this.close(); return; }
-        result = await callAIWithAPIJson(ensureApiUrl(provider.baseUrl), provider.apiKey, provider.model, [
-          { role: "system", content: s.systemPrompt },
-          { role: "user", content: prompt },
-        ], s.maxTokens, s.temperature, s.apiReasoningEffort);
-      }
-
+      const vaultDir = getVaultBasePath(this.app.vault);
+      const result = await callAISession({
+        prompt, settings: s, vaultDir,
+        onThinking: (text) => { this.contentAreaEl.textContent = `思考中... ${text}`; },
+        onTextUpdate: (text) => { this.contentAreaEl.textContent = text; },
+      });
       this.contentAreaEl.textContent = result;
       this.contentAreaEl.contentEditable = "true";
     } catch (err: any) {
@@ -159,25 +141,12 @@ export class TextOperationModal extends Modal {
     try {
       const s = this.plugin.settings;
       const prompt = (OPERATION_PROMPTS[this.operation] || OPERATION_PROMPTS.polish) + this.inputText;
-      let result: string;
-
-      if (s.execMode === "cli") {
-        this.modeLabel.textContent = "CLI";
-        const vaultDir = getVaultBasePath(this.app.vault);
-        result = await callAIWithHTTPStreaming(prompt, s, vaultDir, undefined, undefined,
-          (text) => { this.contentAreaEl.textContent = `思考中... ${text}`; },
-          (text) => { this.contentAreaEl.textContent = text; },
-        );
-      } else {
-        this.modeLabel.textContent = "API";
-        const provider = getActiveProvider(s);
-        if (!provider || !provider.apiKey) { new Notice("API Key 未配置"); this.close(); return; }
-        result = await callAIWithAPIJson(ensureApiUrl(provider.baseUrl), provider.apiKey, provider.model, [
-          { role: "system", content: s.systemPrompt },
-          { role: "user", content: prompt },
-        ], s.maxTokens, s.temperature, s.apiReasoningEffort);
-      }
-
+      const vaultDir = getVaultBasePath(this.app.vault);
+      const result = await callAISession({
+        prompt, settings: s, vaultDir,
+        onThinking: (text) => { this.contentAreaEl.textContent = `思考中... ${text}`; },
+        onTextUpdate: (text) => { this.contentAreaEl.textContent = text; },
+      });
       this.contentAreaEl.textContent = result;
       this.contentAreaEl.contentEditable = "true";
     } catch (err: any) {
@@ -228,23 +197,13 @@ export class WikiCommandModal extends Modal {
       try {
         const s = this.plugin.settings;
         const systemPrompt = WIKI_SYSTEM_PROMPTS[this.command] || "";
-        let result: string;
-
-        if (s.execMode === "cli") {
-          const fullPrompt = systemPrompt ? `${systemPrompt}\n\n---\n${text}` : text;
-          const vaultDir = getVaultBasePath(this.app.vault);
-          result = await callAIWithHTTPStreaming(fullPrompt, s, vaultDir, undefined, undefined,
-            (t) => { submitBtn.textContent = `思考中... ${t}`; },
-            (t) => { submitBtn.textContent = t; },
-          );
-        } else {
-          const provider = getActiveProvider(s);
-          if (!provider || !provider.apiKey) { new Notice("请先在设置中配置 API Key"); return; }
-          const messages: { role: "system" | "user"; content: string }[] = systemPrompt
-            ? [{ role: "system", content: systemPrompt }, { role: "user", content: text }]
-            : [{ role: "user", content: text }];
-          result = await callAIWithAPIJson(ensureApiUrl(provider.baseUrl), provider.apiKey, provider.model, messages, s.maxTokens, s.temperature, s.apiReasoningEffort);
-        }
+        const fullPrompt = systemPrompt ? `${systemPrompt}\n\n---\n${text}` : text;
+        const vaultDir = getVaultBasePath(this.app.vault);
+        const result = await callAISession({
+          prompt: fullPrompt, settings: s, vaultDir,
+          onThinking: (t) => { submitBtn.textContent = `思考中... ${t}`; },
+          onTextUpdate: (t) => { submitBtn.textContent = t; },
+        });
 
         resultEl.classList.add("show");
         resultEl.textContent = result;

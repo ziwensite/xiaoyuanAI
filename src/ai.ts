@@ -4,6 +4,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { getVaultBasePath } from "./server";
 import type { XiaoyuanAISettings, FileDiff, ModelEntry, ModelCaps } from "./types";
+import { getActiveProvider } from "./types";
 
 const OPENCODE_START_TIMEOUT_MS = 15000;
 
@@ -690,6 +691,73 @@ export function estimateTokens(text: string): number {
     tokens += ch.charCodeAt(0) > 127 ? 1.5 : 0.25;
   }
   return Math.ceil(tokens);
+}
+
+function ensureApiUrl(baseUrl: string): string {
+  const trimmed = baseUrl.replace(/\/+$/, "");
+  return trimmed.endsWith("/chat/completions") ? trimmed : trimmed + "/chat/completions";
+}
+
+export async function processAPISSEStream(
+  resp: Response,
+  onThinking?: (text: string) => void,
+  onTextUpdate?: (text: string) => void,
+): Promise<string> {
+  const reader = resp.body?.getReader();
+  if (!reader) throw new Error("无法读取响应流");
+  const decoder = new TextDecoder("utf-8");
+  let fullContent = "";
+  let fullThinking = "";
+
+  const read = async (): Promise<string> => {
+    const { done, value } = await reader.read();
+    if (done) return fullContent || fullThinking || "（无响应）";
+    const chunk = decoder.decode(value, { stream: true });
+    for (const line of chunk.split("\n")) {
+      const trimmed = line.trim();
+      if (!trimmed || !trimmed.startsWith("data:")) continue;
+      const dataStr = trimmed.slice(5).trim();
+      if (dataStr === "[DONE]") continue;
+      try {
+        const data = JSON.parse(dataStr);
+        const delta = data.choices?.[0]?.delta;
+        if (delta?.reasoning_content) {
+          fullThinking += delta.reasoning_content;
+          onThinking?.(fullThinking);
+        }
+        if (delta?.content) {
+          fullContent += delta.content;
+          onTextUpdate?.(fullContent);
+        }
+      } catch {}
+    }
+    return read();
+  };
+  return read();
+}
+
+export interface CallAISessionOptions {
+  prompt: string;
+  settings: XiaoyuanAISettings;
+  vaultDir: string;
+  signal?: AbortSignal;
+  onThinking?: (text: string) => void;
+  onTextUpdate?: (text: string) => void;
+}
+
+export async function callAISession(options: CallAISessionOptions): Promise<string> {
+  const { prompt, settings, vaultDir, signal, onThinking, onTextUpdate } = options;
+  if (settings.execMode === "cli") {
+    return callAIWithHTTPStreaming(prompt, settings, vaultDir, signal, undefined, onThinking, onTextUpdate);
+  }
+  const provider = getActiveProvider(settings);
+  if (!provider || !provider.apiKey) throw new Error("API Key 未配置");
+  const resp = await callAIWithAPI(
+    ensureApiUrl(provider.baseUrl), provider.apiKey, provider.model,
+    [{ role: "system", content: settings.systemPrompt }, { role: "user", content: prompt }],
+    settings.maxTokens, settings.temperature, true, signal, settings.apiReasoningEffort,
+  );
+  return processAPISSEStream(resp, onThinking, onTextUpdate);
 }
 
 // ─── Auto-start opencode serve ──────────────────────────────────────

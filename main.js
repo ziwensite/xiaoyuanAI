@@ -34,6 +34,76 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 ));
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
+// src/types.ts
+function getActiveProvider(s) {
+  if (s.activeApiProviderId) return s.apiProviders.find((p) => p.id === s.activeApiProviderId);
+  return s.apiProviders[0];
+}
+var DEFAULT_OPENCODE_SETTINGS, DEFAULT_SETTINGS, CHAT_SESSIONS_KEY, CURRENT_SESSION_KEY, VIEW_TYPE_XIAOYUAN_AI_CHAT, OPERATION_PROMPTS, OPERATION_LABELS, WIKI_SYSTEM_PROMPTS;
+var init_types = __esm({
+  "src/types.ts"() {
+    "use strict";
+    DEFAULT_OPENCODE_SETTINGS = {
+      cliPath: "opencode",
+      autoStart: false,
+      hostname: "127.0.0.1",
+      port: 16226,
+      model: "",
+      agent: "build",
+      textEnabled: true,
+      imageEnabled: false,
+      pdfEnabled: false
+    };
+    DEFAULT_SETTINGS = {
+      execMode: "cli",
+      opencode: { ...DEFAULT_OPENCODE_SETTINGS },
+      activeApiProviderId: "",
+      apiProviders: [
+        { id: "default", name: "\u9ED8\u8BA4 API", baseUrl: "https://api.openai.com/v1", model: "gpt-4o", apiKey: "" }
+      ],
+      proxyEnabled: false,
+      proxyUrl: "",
+      mcpEnabled: false,
+      defaultReasoning: "low",
+      apiReasoningEffort: "none",
+      defaultPermission: "read-only",
+      autoOpen: true,
+      showContext: false,
+      chatViewType: "right",
+      systemPrompt: "\u4F60\u662F\u4E00\u4E2A AI \u52A9\u624B\uFF0C\u96C6\u6210\u5728 Obsidian \u7B14\u8BB0\u8F6F\u4EF6\u4E2D\u3002\u7528\u6237\u6B63\u5728\u505A\u7B14\u8BB0\u6216\u5199\u4F5C\u3002\u8BF7\u7528\u4E2D\u6587\u56DE\u7B54\uFF0C\u4FDD\u6301\u7B80\u6D01\u4E13\u4E1A\u3002",
+      maxTokens: 4096,
+      temperature: 0.7,
+      chatHistoryPath: ".chatHistory",
+      showDiffPreview: true,
+      showThinking: true
+    };
+    CHAT_SESSIONS_KEY = "xiaoyuan-chat-sessions";
+    CURRENT_SESSION_KEY = "xiaoyuan-current-session";
+    VIEW_TYPE_XIAOYUAN_AI_CHAT = "xiaoyuan-chat-view";
+    OPERATION_PROMPTS = {
+      polish: "\u4F60\u662F\u4E00\u4E2A\u6587\u5B57\u6DA6\u8272\u52A9\u624B\u3002\u8BF7\u6DA6\u8272\u4EE5\u4E0B\u6587\u672C\uFF0C\u6539\u8FDB\u8868\u8FBE\u3001\u8BED\u6CD5\u548C\u6D41\u7545\u5EA6\uFF0C\u4FDD\u6301\u539F\u610F\u4E0D\u53D8\u3002\u53EA\u8F93\u51FA\u6DA6\u8272\u540E\u7684\u7ED3\u679C\uFF0C\u4E0D\u8981\u6DFB\u52A0\u4EFB\u4F55\u89E3\u91CA\uFF1A\n\n",
+      summarize: "\u4F60\u662F\u4E00\u4E2A\u603B\u7ED3\u52A9\u624B\u3002\u8BF7\u5BF9\u4EE5\u4E0B\u6587\u672C\u8FDB\u884C\u7B80\u6D01\u7684\u603B\u7ED3\uFF0C\u63D0\u53D6\u5173\u952E\u8981\u70B9\u3002\u7528\u4E2D\u6587\u603B\u7ED3\uFF0C\u53EA\u8F93\u51FA\u603B\u7ED3\u5185\u5BB9\uFF1A\n\n",
+      complete: "\u4F60\u662F\u4E00\u4E2A\u5199\u4F5C\u52A9\u624B\u3002\u8BF7\u6839\u636E\u4E0A\u4E0B\u6587\uFF0C\u81EA\u7136\u5730\u8865\u5168\u4EE5\u4E0B\u5185\u5BB9\uFF0C\u4FDD\u6301\u98CE\u683C\u4E00\u81F4\uFF1A\n\n",
+      expand: "\u4F60\u662F\u4E00\u4E2A\u5199\u4F5C\u52A9\u624B\u3002\u8BF7\u6269\u5199\u4EE5\u4E0B\u5185\u5BB9\uFF0C\u589E\u52A0\u7EC6\u8282\u3001\u4F8B\u5B50\u548C\u6DF1\u5EA6\uFF0C\u4FDD\u7559\u539F\u6587\u7684\u6838\u5FC3\u89C2\u70B9\uFF1A\n\n",
+      translate: "\u4F60\u662F\u4E00\u4E2A\u7FFB\u8BD1\u52A9\u624B\u3002\u8BF7\u5C06\u4EE5\u4E0B\u6587\u672C\u7FFB\u8BD1\u6210\u4E2D\u6587\uFF0C\u4FDD\u6301\u4E13\u4E1A\u6027\u548C\u6D41\u7545\u5EA6\uFF1A\n\n",
+      continue: "\u4F60\u662F\u4E00\u4E2A\u5199\u4F5C\u52A9\u624B\u3002\u8BF7\u6839\u636E\u4EE5\u4E0B\u5185\u5BB9\u81EA\u7136\u5730\u7EED\u5199\uFF0C\u4FDD\u6301\u98CE\u683C\u4E00\u81F4\uFF1A\n\n"
+    };
+    OPERATION_LABELS = {
+      polish: "\u6DA6\u8272",
+      summarize: "\u603B\u7ED3",
+      complete: "\u8865\u5168",
+      expand: "\u6269\u5199",
+      translate: "\u7FFB\u8BD1\u4E3A\u4E2D\u6587",
+      continue: "\u7EED\u5199"
+    };
+    WIKI_SYSTEM_PROMPTS = {
+      query: "\u4F60\u662F\u4E00\u4E2A\u7EF4\u57FA\u77E5\u8BC6\u5E93\u7684\u68C0\u7D22\u52A9\u624B\u3002\u6839\u636E\u7528\u6237\u7684\u95EE\u9898\uFF0C\u4ECE\u77E5\u8BC6\u5E93\u89D2\u5EA6\u7ED9\u51FA\u7EFC\u5408\u6027\u7684\u56DE\u7B54\u3002\u5982\u679C\u4E0D\u77E5\u9053\uFF0C\u5C31\u8BDA\u5B9E\u8BF4\u4E0D\u77E5\u9053\u3002",
+      capture: "\u4F60\u6B63\u5728\u5C06\u7528\u6237\u63D0\u4F9B\u7684\u5185\u5BB9\u6574\u7406\u4E3A\u7EF4\u57FA\u7B14\u8BB0\u3002\u8BF7\u63D0\u53D6\u5173\u952E\u4FE1\u606F\uFF0C\u5206\u7C7B\uFF08concept/skill/reference/decision\uFF09\uFF0C\u8F93\u51FA\u5E26 YAML frontmatter \u7684 Obsidian Markdown \u683C\u5F0F\u3002",
+      ingest: "\u4F60\u6B63\u5728\u6444\u5165\u6587\u6863\u3002\u8BF7\u5206\u6790\u5185\u5BB9\uFF0C\u84B8\u998F\u51FA\u6838\u5FC3\u6982\u5FF5\u3001\u5B9E\u4F53\u3001\u6280\u80FD\uFF0C\u7528\u4E2D\u6587\u8F93\u51FA\u591A\u4E2A\u7EF4\u57FA\u9875\u9762\uFF08\u5E26 frontmatter \u548C [[\u7EF4\u57FA\u94FE\u63A5]]\uFF09\u3002"
+    };
+  }
+});
+
 // src/server.ts
 var server_exports = {};
 __export(server_exports, {
@@ -51,6 +121,7 @@ var init_server = __esm({
 // src/ai.ts
 var ai_exports = {};
 __export(ai_exports, {
+  callAISession: () => callAISession,
   callAIWithAPI: () => callAIWithAPI,
   callAIWithAPIJson: () => callAIWithAPIJson,
   callAIWithHTTPStreaming: () => callAIWithHTTPStreaming,
@@ -65,6 +136,7 @@ __export(ai_exports, {
   getVaultBasePath: () => getVaultBasePath,
   isCLICallInProgress: () => isCLICallInProgress,
   isServerAutoStarted: () => isServerAutoStarted,
+  processAPISSEStream: () => processAPISSEStream,
   resolveOpenCodePath: () => resolveOpenCodePath,
   stopOpenCodeServer: () => stopOpenCodeServer
 });
@@ -716,6 +788,65 @@ function estimateTokens(text) {
   }
   return Math.ceil(tokens);
 }
+function ensureApiUrl(baseUrl) {
+  const trimmed = baseUrl.replace(/\/+$/, "");
+  return trimmed.endsWith("/chat/completions") ? trimmed : trimmed + "/chat/completions";
+}
+async function processAPISSEStream(resp, onThinking, onTextUpdate) {
+  var _a;
+  const reader = (_a = resp.body) == null ? void 0 : _a.getReader();
+  if (!reader) throw new Error("\u65E0\u6CD5\u8BFB\u53D6\u54CD\u5E94\u6D41");
+  const decoder = new TextDecoder("utf-8");
+  let fullContent = "";
+  let fullThinking = "";
+  const read = async () => {
+    var _a2, _b;
+    const { done, value } = await reader.read();
+    if (done) return fullContent || fullThinking || "\uFF08\u65E0\u54CD\u5E94\uFF09";
+    const chunk = decoder.decode(value, { stream: true });
+    for (const line of chunk.split("\n")) {
+      const trimmed = line.trim();
+      if (!trimmed || !trimmed.startsWith("data:")) continue;
+      const dataStr = trimmed.slice(5).trim();
+      if (dataStr === "[DONE]") continue;
+      try {
+        const data = JSON.parse(dataStr);
+        const delta = (_b = (_a2 = data.choices) == null ? void 0 : _a2[0]) == null ? void 0 : _b.delta;
+        if (delta == null ? void 0 : delta.reasoning_content) {
+          fullThinking += delta.reasoning_content;
+          onThinking == null ? void 0 : onThinking(fullThinking);
+        }
+        if (delta == null ? void 0 : delta.content) {
+          fullContent += delta.content;
+          onTextUpdate == null ? void 0 : onTextUpdate(fullContent);
+        }
+      } catch (e) {
+      }
+    }
+    return read();
+  };
+  return read();
+}
+async function callAISession(options) {
+  const { prompt, settings, vaultDir, signal, onThinking, onTextUpdate } = options;
+  if (settings.execMode === "cli") {
+    return callAIWithHTTPStreaming(prompt, settings, vaultDir, signal, void 0, onThinking, onTextUpdate);
+  }
+  const provider = getActiveProvider(settings);
+  if (!provider || !provider.apiKey) throw new Error("API Key \u672A\u914D\u7F6E");
+  const resp = await callAIWithAPI(
+    ensureApiUrl(provider.baseUrl),
+    provider.apiKey,
+    provider.model,
+    [{ role: "system", content: settings.systemPrompt }, { role: "user", content: prompt }],
+    settings.maxTokens,
+    settings.temperature,
+    true,
+    signal,
+    settings.apiReasoningEffort
+  );
+  return processAPISSEStream(resp, onThinking, onTextUpdate);
+}
 function registerProcessCleanup() {
   if (processCleanupRegistered) return;
   processCleanupRegistered = true;
@@ -765,6 +896,7 @@ var init_ai = __esm({
     fs = __toESM(require("fs"));
     path = __toESM(require("path"));
     init_server();
+    init_types();
     OPENCODE_START_TIMEOUT_MS = 15e3;
     currentCLISessionID = "";
     cliCallInProgress = false;
@@ -781,73 +913,11 @@ __export(main_exports, {
 module.exports = __toCommonJS(main_exports);
 var fs2 = __toESM(require("fs"));
 var import_obsidian5 = require("obsidian");
-
-// src/types.ts
-var DEFAULT_OPENCODE_SETTINGS = {
-  cliPath: "opencode",
-  autoStart: false,
-  hostname: "127.0.0.1",
-  port: 16226,
-  model: "",
-  agent: "build",
-  textEnabled: true,
-  imageEnabled: false,
-  pdfEnabled: false
-};
-var DEFAULT_SETTINGS = {
-  execMode: "cli",
-  opencode: { ...DEFAULT_OPENCODE_SETTINGS },
-  activeApiProviderId: "",
-  apiProviders: [
-    { id: "default", name: "\u9ED8\u8BA4 API", baseUrl: "https://api.openai.com/v1", model: "gpt-4o", apiKey: "" }
-  ],
-  proxyEnabled: false,
-  proxyUrl: "",
-  mcpEnabled: false,
-  defaultReasoning: "low",
-  apiReasoningEffort: "none",
-  defaultPermission: "read-only",
-  autoOpen: true,
-  showContext: false,
-  chatViewType: "right",
-  systemPrompt: "\u4F60\u662F\u4E00\u4E2A AI \u52A9\u624B\uFF0C\u96C6\u6210\u5728 Obsidian \u7B14\u8BB0\u8F6F\u4EF6\u4E2D\u3002\u7528\u6237\u6B63\u5728\u505A\u7B14\u8BB0\u6216\u5199\u4F5C\u3002\u8BF7\u7528\u4E2D\u6587\u56DE\u7B54\uFF0C\u4FDD\u6301\u7B80\u6D01\u4E13\u4E1A\u3002",
-  maxTokens: 4096,
-  temperature: 0.7,
-  chatHistoryPath: ".chatHistory",
-  showDiffPreview: true,
-  showThinking: true
-};
-function getActiveProvider(s) {
-  if (s.activeApiProviderId) return s.apiProviders.find((p) => p.id === s.activeApiProviderId);
-  return s.apiProviders[0];
-}
-var CHAT_SESSIONS_KEY = "xiaoyuan-chat-sessions";
-var CURRENT_SESSION_KEY = "xiaoyuan-current-session";
-var VIEW_TYPE_XIAOYUAN_AI_CHAT = "xiaoyuan-chat-view";
-var OPERATION_PROMPTS = {
-  polish: "\u4F60\u662F\u4E00\u4E2A\u6587\u5B57\u6DA6\u8272\u52A9\u624B\u3002\u8BF7\u6DA6\u8272\u4EE5\u4E0B\u6587\u672C\uFF0C\u6539\u8FDB\u8868\u8FBE\u3001\u8BED\u6CD5\u548C\u6D41\u7545\u5EA6\uFF0C\u4FDD\u6301\u539F\u610F\u4E0D\u53D8\u3002\u53EA\u8F93\u51FA\u6DA6\u8272\u540E\u7684\u7ED3\u679C\uFF0C\u4E0D\u8981\u6DFB\u52A0\u4EFB\u4F55\u89E3\u91CA\uFF1A\n\n",
-  summarize: "\u4F60\u662F\u4E00\u4E2A\u603B\u7ED3\u52A9\u624B\u3002\u8BF7\u5BF9\u4EE5\u4E0B\u6587\u672C\u8FDB\u884C\u7B80\u6D01\u7684\u603B\u7ED3\uFF0C\u63D0\u53D6\u5173\u952E\u8981\u70B9\u3002\u7528\u4E2D\u6587\u603B\u7ED3\uFF0C\u53EA\u8F93\u51FA\u603B\u7ED3\u5185\u5BB9\uFF1A\n\n",
-  complete: "\u4F60\u662F\u4E00\u4E2A\u5199\u4F5C\u52A9\u624B\u3002\u8BF7\u6839\u636E\u4E0A\u4E0B\u6587\uFF0C\u81EA\u7136\u5730\u8865\u5168\u4EE5\u4E0B\u5185\u5BB9\uFF0C\u4FDD\u6301\u98CE\u683C\u4E00\u81F4\uFF1A\n\n",
-  expand: "\u4F60\u662F\u4E00\u4E2A\u5199\u4F5C\u52A9\u624B\u3002\u8BF7\u6269\u5199\u4EE5\u4E0B\u5185\u5BB9\uFF0C\u589E\u52A0\u7EC6\u8282\u3001\u4F8B\u5B50\u548C\u6DF1\u5EA6\uFF0C\u4FDD\u7559\u539F\u6587\u7684\u6838\u5FC3\u89C2\u70B9\uFF1A\n\n",
-  translate: "\u4F60\u662F\u4E00\u4E2A\u7FFB\u8BD1\u52A9\u624B\u3002\u8BF7\u5C06\u4EE5\u4E0B\u6587\u672C\u7FFB\u8BD1\u6210\u4E2D\u6587\uFF0C\u4FDD\u6301\u4E13\u4E1A\u6027\u548C\u6D41\u7545\u5EA6\uFF1A\n\n",
-  continue: "\u4F60\u662F\u4E00\u4E2A\u5199\u4F5C\u52A9\u624B\u3002\u8BF7\u6839\u636E\u4EE5\u4E0B\u5185\u5BB9\u81EA\u7136\u5730\u7EED\u5199\uFF0C\u4FDD\u6301\u98CE\u683C\u4E00\u81F4\uFF1A\n\n"
-};
-var OPERATION_LABELS = {
-  polish: "\u6DA6\u8272",
-  summarize: "\u603B\u7ED3",
-  complete: "\u8865\u5168",
-  expand: "\u6269\u5199",
-  translate: "\u7FFB\u8BD1\u4E3A\u4E2D\u6587",
-  continue: "\u7EED\u5199"
-};
-var WIKI_SYSTEM_PROMPTS = {
-  query: "\u4F60\u662F\u4E00\u4E2A\u7EF4\u57FA\u77E5\u8BC6\u5E93\u7684\u68C0\u7D22\u52A9\u624B\u3002\u6839\u636E\u7528\u6237\u7684\u95EE\u9898\uFF0C\u4ECE\u77E5\u8BC6\u5E93\u89D2\u5EA6\u7ED9\u51FA\u7EFC\u5408\u6027\u7684\u56DE\u7B54\u3002\u5982\u679C\u4E0D\u77E5\u9053\uFF0C\u5C31\u8BDA\u5B9E\u8BF4\u4E0D\u77E5\u9053\u3002",
-  capture: "\u4F60\u6B63\u5728\u5C06\u7528\u6237\u63D0\u4F9B\u7684\u5185\u5BB9\u6574\u7406\u4E3A\u7EF4\u57FA\u7B14\u8BB0\u3002\u8BF7\u63D0\u53D6\u5173\u952E\u4FE1\u606F\uFF0C\u5206\u7C7B\uFF08concept/skill/reference/decision\uFF09\uFF0C\u8F93\u51FA\u5E26 YAML frontmatter \u7684 Obsidian Markdown \u683C\u5F0F\u3002",
-  ingest: "\u4F60\u6B63\u5728\u6444\u5165\u6587\u6863\u3002\u8BF7\u5206\u6790\u5185\u5BB9\uFF0C\u84B8\u998F\u51FA\u6838\u5FC3\u6982\u5FF5\u3001\u5B9E\u4F53\u3001\u6280\u80FD\uFF0C\u7528\u4E2D\u6587\u8F93\u51FA\u591A\u4E2A\u7EF4\u57FA\u9875\u9762\uFF08\u5E26 frontmatter \u548C [[\u7EF4\u57FA\u94FE\u63A5]]\uFF09\u3002"
-};
+init_types();
 
 // src/chat-view.ts
 var import_obsidian2 = require("obsidian");
+init_types();
 
 // src/markdown.ts
 function renderMarkdown(text) {
@@ -868,6 +938,7 @@ function renderMarkdown(text) {
 init_ai();
 
 // src/session.ts
+init_types();
 function getChatHistoryPath(chatHistoryPath) {
   return chatHistoryPath || ".chatHistory";
 }
@@ -1147,6 +1218,7 @@ function addPopupItem(parent, label, checked, onClick) {
 
 // src/toolbar.ts
 var import_obsidian = require("obsidian");
+init_types();
 function buildToolbarContent(container, view) {
   var _a, _b;
   const s = view.plugin.settings;
@@ -2387,6 +2459,7 @@ function formatTime(ts) {
 
 // src/settings.ts
 var import_obsidian3 = require("obsidian");
+init_types();
 var XiaoyuanAISettingTab = class extends import_obsidian3.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
@@ -2995,10 +3068,7 @@ var XiaoyuanAISettingTab = class extends import_obsidian3.PluginSettingTab {
 // src/modals.ts
 var import_obsidian4 = require("obsidian");
 init_ai();
-function ensureApiUrl(baseUrl) {
-  const trimmed = baseUrl.replace(/\/+$/, "");
-  return trimmed.endsWith("/chat/completions") ? trimmed : trimmed + "/chat/completions";
-}
+init_types();
 function makeDraggable(handle, modalEl) {
   handle.addEventListener("mousedown", (e) => {
     e.preventDefault();
@@ -3097,36 +3167,18 @@ var TextOperationModal = class extends import_obsidian4.Modal {
     try {
       const s = this.plugin.settings;
       const prompt = (OPERATION_PROMPTS[operation] || OPERATION_PROMPTS.polish) + textToProcess;
-      let result;
-      if (s.execMode === "cli") {
-        this.modeLabel.textContent = "CLI";
-        const vaultDir = getVaultBasePath(this.app.vault);
-        result = await callAIWithHTTPStreaming(
-          prompt,
-          s,
-          vaultDir,
-          void 0,
-          void 0,
-          (text) => {
-            this.contentAreaEl.textContent = `\u601D\u8003\u4E2D... ${text}`;
-          },
-          (text) => {
-            this.contentAreaEl.textContent = text;
-          }
-        );
-      } else {
-        this.modeLabel.textContent = "API";
-        const provider = getActiveProvider(s);
-        if (!provider || !provider.apiKey) {
-          new import_obsidian4.Notice("API Key \u672A\u914D\u7F6E");
-          this.close();
-          return;
+      const vaultDir = getVaultBasePath(this.app.vault);
+      const result = await callAISession({
+        prompt,
+        settings: s,
+        vaultDir,
+        onThinking: (text) => {
+          this.contentAreaEl.textContent = `\u601D\u8003\u4E2D... ${text}`;
+        },
+        onTextUpdate: (text) => {
+          this.contentAreaEl.textContent = text;
         }
-        result = await callAIWithAPIJson(ensureApiUrl(provider.baseUrl), provider.apiKey, provider.model, [
-          { role: "system", content: s.systemPrompt },
-          { role: "user", content: prompt }
-        ], s.maxTokens, s.temperature, s.apiReasoningEffort);
-      }
+      });
       this.contentAreaEl.textContent = result;
       this.contentAreaEl.contentEditable = "true";
     } catch (err) {
@@ -3140,36 +3192,18 @@ var TextOperationModal = class extends import_obsidian4.Modal {
     try {
       const s = this.plugin.settings;
       const prompt = (OPERATION_PROMPTS[this.operation] || OPERATION_PROMPTS.polish) + this.inputText;
-      let result;
-      if (s.execMode === "cli") {
-        this.modeLabel.textContent = "CLI";
-        const vaultDir = getVaultBasePath(this.app.vault);
-        result = await callAIWithHTTPStreaming(
-          prompt,
-          s,
-          vaultDir,
-          void 0,
-          void 0,
-          (text) => {
-            this.contentAreaEl.textContent = `\u601D\u8003\u4E2D... ${text}`;
-          },
-          (text) => {
-            this.contentAreaEl.textContent = text;
-          }
-        );
-      } else {
-        this.modeLabel.textContent = "API";
-        const provider = getActiveProvider(s);
-        if (!provider || !provider.apiKey) {
-          new import_obsidian4.Notice("API Key \u672A\u914D\u7F6E");
-          this.close();
-          return;
+      const vaultDir = getVaultBasePath(this.app.vault);
+      const result = await callAISession({
+        prompt,
+        settings: s,
+        vaultDir,
+        onThinking: (text) => {
+          this.contentAreaEl.textContent = `\u601D\u8003\u4E2D... ${text}`;
+        },
+        onTextUpdate: (text) => {
+          this.contentAreaEl.textContent = text;
         }
-        result = await callAIWithAPIJson(ensureApiUrl(provider.baseUrl), provider.apiKey, provider.model, [
-          { role: "system", content: s.systemPrompt },
-          { role: "user", content: prompt }
-        ], s.maxTokens, s.temperature, s.apiReasoningEffort);
-      }
+      });
       this.contentAreaEl.textContent = result;
       this.contentAreaEl.contentEditable = "true";
     } catch (err) {
@@ -3213,35 +3247,22 @@ var WikiCommandModal = class extends import_obsidian4.Modal {
       try {
         const s = this.plugin.settings;
         const systemPrompt = WIKI_SYSTEM_PROMPTS[this.command] || "";
-        let result;
-        if (s.execMode === "cli") {
-          const fullPrompt = systemPrompt ? `${systemPrompt}
+        const fullPrompt = systemPrompt ? `${systemPrompt}
 
 ---
 ${text}` : text;
-          const vaultDir = getVaultBasePath(this.app.vault);
-          result = await callAIWithHTTPStreaming(
-            fullPrompt,
-            s,
-            vaultDir,
-            void 0,
-            void 0,
-            (t) => {
-              submitBtn.textContent = `\u601D\u8003\u4E2D... ${t}`;
-            },
-            (t) => {
-              submitBtn.textContent = t;
-            }
-          );
-        } else {
-          const provider = getActiveProvider(s);
-          if (!provider || !provider.apiKey) {
-            new import_obsidian4.Notice("\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u914D\u7F6E API Key");
-            return;
+        const vaultDir = getVaultBasePath(this.app.vault);
+        const result = await callAISession({
+          prompt: fullPrompt,
+          settings: s,
+          vaultDir,
+          onThinking: (t) => {
+            submitBtn.textContent = `\u601D\u8003\u4E2D... ${t}`;
+          },
+          onTextUpdate: (t) => {
+            submitBtn.textContent = t;
           }
-          const messages = systemPrompt ? [{ role: "system", content: systemPrompt }, { role: "user", content: text }] : [{ role: "user", content: text }];
-          result = await callAIWithAPIJson(ensureApiUrl(provider.baseUrl), provider.apiKey, provider.model, messages, s.maxTokens, s.temperature, s.apiReasoningEffort);
-        }
+        });
         resultEl.classList.add("show");
         resultEl.textContent = result;
         resultEl.contentEditable = "true";
@@ -3259,6 +3280,7 @@ ${text}` : text;
 };
 
 // src/main.ts
+init_types();
 init_ai();
 init_server();
 var XiaoyuanAIPlugin = class extends import_obsidian5.Plugin {
