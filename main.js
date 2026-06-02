@@ -914,23 +914,6 @@ init_types();
 // src/chat-view.ts
 var import_obsidian2 = require("obsidian");
 init_types();
-
-// src/markdown.ts
-function renderMarkdown(text) {
-  const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  const blocks = [];
-  let h = text.replace(/```(\w*)\n([\s\S]*?)```/g, (_m, lang, code) => {
-    const idx = blocks.length;
-    blocks.push(`<pre><code class="language-${lang}">${esc(code.trim())}</code></pre>`);
-    return `\0CODEBLOCK${idx}\0`;
-  });
-  h = esc(h);
-  h = h.replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>").replace(/\*([^*]+)\*/g, "<em>$1</em>").replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>').replace(/^- (.+)$/gm, "\u2022 $1").replace(/\n/g, "<br>");
-  h = h.replace(/\x00CODEBLOCK(\d+)\x00/g, (_m, idx) => blocks[parseInt(idx)]);
-  return h;
-}
-
-// src/chat-view.ts
 init_ai();
 
 // src/session.ts
@@ -1454,10 +1437,10 @@ var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
     await this.saveCurrentSession();
     await this.createNewSession();
   }
-  addMessage(role, content) {
+  async addMessage(role, content) {
     const id = "msg-" + ++this.msgIdCounter;
     this.messages.push({ id, role, content, timestamp: Date.now() });
-    this.messagesEl.appendChild(this.renderMessageEl(id, role, content, false, void 0, Date.now()));
+    this.messagesEl.appendChild(await this.renderMessageEl(id, role, content, false, void 0, Date.now()));
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
   }
   rebuildToolbar() {
@@ -1647,7 +1630,7 @@ var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
     (0, import_obsidian2.setTooltip)(this.connectionStatusEl, tip);
   }
   // ─── Message rendering ───────────────────────────────────────────
-  renderMessageEl(id, role, content, streaming = false, thinking, timestamp) {
+  async renderMessageEl(id, role, content, streaming = false, thinking, timestamp) {
     const msgEl = createDiv({ cls: `xiaoyuan-msg xiaoyuan-msg-${role}` });
     msgEl.id = id;
     const bubbleEl = msgEl.createDiv({ cls: "xiaoyuan-msg-bubble" });
@@ -1678,9 +1661,10 @@ var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
         const detailsEl = bubbleEl.createEl("details", { cls: "xiaoyuan-thinking" });
         detailsEl.createEl("summary", { text: "\u{1F914} \u601D\u8003\u8FC7\u7A0B" });
         const tc = detailsEl.createDiv({ cls: "xiaoyuan-thinking-content" });
-        tc.innerHTML = renderMarkdown(thinking.trim());
+        tc.textContent = thinking.trim();
       }
-      bubbleEl.insertAdjacentHTML("beforeend", renderMarkdown(content.trim()));
+      const mdContainer = bubbleEl.createDiv({ cls: "xy-obsidian-md" });
+      await this.renderObsidianMD(mdContainer, content.trim());
       if (!streaming) {
         const actionsEl = msgEl.createDiv({ cls: "xiaoyuan-msg-actions" });
         const copyBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
@@ -1720,6 +1704,33 @@ var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
       }, 0);
     }
     return msgEl;
+  }
+  sanitizeForRender(md) {
+    const blocks = [];
+    const noCode = md.replace(/```[\s\S]*?```/g, (m) => {
+      blocks.push(m);
+      return `\0CODERAW${blocks.length - 1}\0`;
+    });
+    const safe = noCode.replace(/!\[\[/g, "!\u200B[[");
+    return safe.replace(/\x00CODERAW(\d+)\x00/g, (_, i) => blocks[+i]);
+  }
+  async renderObsidianMD(container, md) {
+    const safe = this.sanitizeForRender(md);
+    await import_obsidian2.MarkdownRenderer.render(
+      this.app,
+      safe,
+      container,
+      "_chatHistory/session.md",
+      this
+    );
+    container.querySelectorAll("table").forEach((table) => {
+      var _a;
+      const wrapper = document.createElement("div");
+      wrapper.style.overflowX = "auto";
+      wrapper.style.maxWidth = "100%";
+      (_a = table.parentNode) == null ? void 0 : _a.insertBefore(wrapper, table);
+      wrapper.appendChild(table);
+    });
   }
   async openInEditor(content, ts) {
     try {
@@ -1765,7 +1776,7 @@ var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
     return msgEl;
   }
-  truncateMessagesIfNeeded() {
+  async truncateMessagesIfNeeded() {
     const s = this.plugin.settings;
     const threshold = Math.floor(s.maxTokens * 0.75);
     const sysTokens = estimateTokens(s.systemPrompt);
@@ -1783,7 +1794,7 @@ var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
     this.messagesEl.empty();
     this.addWelcomeMessage();
     for (const m of kept) {
-      this.messagesEl.appendChild(this.renderMessageEl(m.id, m.role, m.content, false, m.thinking, m.timestamp));
+      this.messagesEl.appendChild(await this.renderMessageEl(m.id, m.role, m.content, false, m.thinking, m.timestamp));
     }
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
     this.addSystemMessage(`\u5DF2\u81EA\u52A8\u622A\u65AD ${removed} \u6761\u5386\u53F2\u6D88\u606F\u4EE5\u63A7\u5236 Token \u7528\u91CF`);
@@ -1793,13 +1804,13 @@ var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
     if (this.abortController) return;
     const text = this.inputEl.value.trim();
     if (!text) return;
-    this.addMessage("user", text);
+    await this.addMessage("user", text);
     this.updateSessionTitle();
     this.inputEl.value = "";
     this.abortController = new AbortController();
     this.pendingDiffs = null;
     this.setProcessingState(true);
-    this.truncateMessagesIfNeeded();
+    await this.truncateMessagesIfNeeded();
     let statusMsg = null;
     if (this.plugin.settings.execMode === "cli") {
       statusMsg = this.addSystemMessage("\u6B63\u5728\u8FDE\u63A5 opencode...");
@@ -1810,7 +1821,7 @@ var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
       this.renderAttachments();
       if (statusMsg) statusMsg.remove();
       if (this.plugin.settings.execMode === "cli") {
-        const streamId = this.finalizeStreamingMessage();
+        const streamId = await this.finalizeStreamingMessage();
         await this.saveCurrentSession();
         const actualDiffs = this.pendingDiffs;
         if (this.plugin.settings.showDiffPreview && streamId && (actualDiffs == null ? void 0 : actualDiffs.length)) {
@@ -1819,7 +1830,7 @@ var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
           await this.saveCurrentSession();
         }
       } else {
-        const finalized = this.finalizeStreamingMessage();
+        const finalized = await this.finalizeStreamingMessage();
         if (!finalized && response) {
           this.addMessage("assistant", response);
         }
@@ -2063,7 +2074,7 @@ ${att.data}
     }
     entry.textContent = `${icon} ${toolLabel}`;
   }
-  finalizeStreamingMessage() {
+  async finalizeStreamingMessage() {
     const lastMsg = this.messages[this.messages.length - 1];
     if (!lastMsg || lastMsg.role !== "assistant") return null;
     const msgEl = this.messagesEl.querySelector(`#${lastMsg.id}`);
@@ -2078,15 +2089,14 @@ ${att.data}
     const hasContent = lastMsg.content.trim().length > 0;
     const displayContent = hasContent ? lastMsg.content.trim() : (lastMsg.thinking || "").trim();
     if (!displayContent) return lastMsg.id;
-    const renderedHTML = renderMarkdown(displayContent);
-    if (toolLog) {
-      toolLog.insertAdjacentHTML("beforebegin", renderedHTML);
-    } else {
-      bubbleEl.insertAdjacentHTML("beforeend", renderedHTML);
-    }
+    const mdContainer = bubbleEl.createDiv({ cls: "xy-obsidian-md" });
+    await this.renderObsidianMD(mdContainer, displayContent);
     if (hasContent && lastMsg.thinking && this.plugin.settings.showThinking) {
-      const thinkingHTML = `<details class="xiaoyuan-thinking"><summary>\u{1F914} \u601D\u8003\u8FC7\u7A0B</summary><div class="xiaoyuan-thinking-content">${renderMarkdown(lastMsg.thinking.trim())}</div></details>`;
-      bubbleEl.insertAdjacentHTML("afterbegin", thinkingHTML);
+      const detailsEl = bubbleEl.createEl("details", { cls: "xiaoyuan-thinking" });
+      detailsEl.createEl("summary", { text: "\u{1F914} \u601D\u8003\u8FC7\u7A0B" });
+      const tc = detailsEl.createDiv({ cls: "xiaoyuan-thinking-content" });
+      tc.textContent = lastMsg.thinking.trim();
+      bubbleEl.prepend(detailsEl);
     }
     if (!msgEl.querySelector(".xiaoyuan-msg-actions")) {
       const actionsEl = msgEl.createDiv({ cls: "xiaoyuan-msg-actions" });
@@ -2221,7 +2231,7 @@ ${att.data}
       return;
     }
     for (const msg of this.messages) {
-      this.messagesEl.appendChild(this.renderMessageEl(msg.id, msg.role, msg.content, false, msg.thinking, msg.timestamp));
+      this.messagesEl.appendChild(await this.renderMessageEl(msg.id, msg.role, msg.content, false, msg.thinking, msg.timestamp));
     }
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
   }

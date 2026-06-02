@@ -13,11 +13,12 @@
 
 .xiaoyuan-input-container {
   border: none !important;
-  border-radius: 8px;
+  border-radius: 14px;
   background-color: var(--background-primary);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
+  margin-top: 18px;
   box-shadow: 0 1px 4px rgba(0,0,0,0.08);
 }
 
@@ -34,11 +35,11 @@
 }
 
 .xy-agent-build .xiaoyuan-input-container {
-  border: 1px solid #fca5a5 !important;
+  border: 1px solid #d60303 !important;
 }
 
 .xy-agent-plan .xiaoyuan-input-container {
-  border: 1px solid #86efac !important;
+  border: 1px solid #61f898 !important;
 }
 
 .xiaoyuan-chat-input {
@@ -102,7 +103,7 @@
 .xiaoyuan-chat-messages {
   flex: 1;
   overflow-y: auto;
-  padding: 12px;
+  padding: 2px;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -111,7 +112,7 @@
 .xiaoyuan-msg {
   display: flex;
   flex-direction: column;
-  max-width: 92%;
+  max-width: 95%;
   position: relative;
 }
 
@@ -139,26 +140,24 @@
 
 .xiaoyuan-msg-bubble {
   padding: 10px 14px;
-  border-radius: 8px;
   line-height: 1.5;
   overflow-wrap: break-word;
   user-select: text;
 }
 
 .xiaoyuan-msg-user .xiaoyuan-msg-bubble {
-  background-color: var(--background-secondary);
-  color: var(--text-normal);
+  background-color: #007bff;
+  color: white;
+  border-radius: 14px;
   border-bottom-right-radius: 3px;
-  border: 1px solid var(--background-modifier-border);
-  border-right: 3px solid var(--interactive-accent);
 }
 
 .xiaoyuan-msg-assistant .xiaoyuan-msg-bubble {
-  background-color: var(--background-secondary);
+  background-color: var(--background-primary);
   color: var(--text-normal);
+  border-radius: 14px;
   border-bottom-left-radius: 3px;
   border: 1px solid var(--background-modifier-border);
-  border-left: 3px solid var(--color-cyan);
 }
 
 /* opacity 已移除 → actions 行常显 */
@@ -212,8 +211,9 @@
 }
 
 .xiaoyuan-welcome .xiaoyuan-msg-bubble {
-  background-color: var(--background-secondary);
+  background-color: var(--background-primary);
   color: var(--text-normal);
+  border-radius: 8px;
   border: 1px solid var(--background-modifier-border);
 }
 
@@ -221,7 +221,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0px 0px;
+  padding: 0px 0px 8px 0px;
   border-bottom: 1px solid var(--background-modifier-border);
   flex-shrink: 0;
 }
@@ -497,36 +497,24 @@
 /* ─── Thinking Block ──────────────────────────────── */
 
 .xiaoyuan-thinking {
-  margin-bottom: 8px;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 6px;
-  background: var(--background-primary-alt);
-  overflow: hidden;
+  margin-bottom: 6px;
 }
 
 .xiaoyuan-thinking summary {
   cursor: pointer;
-  padding: 4px 8px;
   font-size: 0.8em;
   color: var(--text-muted);
   font-weight: 500;
   user-select: none;
-}
-
-.xiaoyuan-thinking summary:hover {
-  background: var(--background-modifier-hover);
+  margin-bottom: 2px;
 }
 
 .xiaoyuan-thinking-content {
-  padding: 4px 8px 8px;
   font-size: 0.85em;
   line-height: 1.5;
   color: var(--text-muted);
-  border-top: 1px solid var(--background-modifier-border);
-}
-
-.xiaoyuan-thinking-content p {
-  margin: 4px 0;
+  padding-left: 1em;
+  border-left: 2px solid var(--background-modifier-border);
 }
 
 /* ─── Diff Preview ─────────────────────────────────── */
@@ -918,4 +906,11 @@ pre:hover .xy-copy-btn {
   user-select: none;
   white-space: nowrap;
 }
+
+/* ─── Obsidian Markdown 渲染容器 ──────────────────── */
+
+.xy-obsidian-md { font-size: var(--editor-font-size); line-height: 1.6; }
+.xy-obsidian-md :is(h1,h2,h3,h4,h5,h6) { margin: .3em 0; }
+.xy-obsidian-md table { width: 100%; border-collapse: collapse; font-size: 0.8em; }
+.xy-obsidian-md th, .xy-obsidian-md td { border: 1px solid var(--background-modifier-border); padding: 4px 8px; }
 

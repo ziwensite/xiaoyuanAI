@@ -1,4 +1,4 @@
-﻿import { ItemView, WorkspaceLeaf, Notice, setIcon, setTooltip, TFile } from "obsidian";
+﻿import { ItemView, WorkspaceLeaf, Notice, setIcon, setTooltip, TFile, MarkdownRenderer } from "obsidian";
 import type XiaoyuanAIPlugin from "./main";
 import {
   ChatMessage,
@@ -8,7 +8,6 @@ import {
   Attachment,
   getActiveProvider,
 } from "./types";
-import { renderMarkdown } from "./markdown";
 import { callAIWithHTTPStreaming, callAIWithAPI, getVaultBasePath, fetchOpenCodeModelsFromCLI, estimateTokens, clearCLISessionID, checkOpenCodeStatus, ensureOpenCodeServer } from "./ai";
 import {
   getChatHistoryPath,
@@ -78,10 +77,10 @@ export class XiaoyuanAIChatView extends ItemView {
     await this.createNewSession();
   }
 
-  public addMessage(role: "user" | "assistant", content: string) {
+  public async addMessage(role: "user" | "assistant", content: string) {
     const id = "msg-" + (++this.msgIdCounter);
     this.messages.push({ id, role, content, timestamp: Date.now() });
-    this.messagesEl.appendChild(this.renderMessageEl(id, role, content, false, undefined, Date.now()));
+    this.messagesEl.appendChild(await this.renderMessageEl(id, role, content, false, undefined, Date.now()));
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
   }
 
@@ -295,10 +294,10 @@ export class XiaoyuanAIChatView extends ItemView {
 
   // ─── Message rendering ───────────────────────────────────────────
 
-  private renderMessageEl(
+  private async renderMessageEl(
     id: string, role: "user" | "assistant", content: string,
     streaming = false, thinking?: string, timestamp?: number,
-  ): HTMLDivElement {
+  ): Promise<HTMLDivElement> {
     const msgEl = createDiv({ cls: `xiaoyuan-msg xiaoyuan-msg-${role}` });
     msgEl.id = id;
 
@@ -331,9 +330,10 @@ export class XiaoyuanAIChatView extends ItemView {
         const detailsEl = bubbleEl.createEl("details", { cls: "xiaoyuan-thinking" });
         detailsEl.createEl("summary", { text: "\u{1F914} 思考过程" });
         const tc = detailsEl.createDiv({ cls: "xiaoyuan-thinking-content" });
-        tc.innerHTML = renderMarkdown(thinking.trim());
+        tc.textContent = thinking.trim();
       }
-      bubbleEl.insertAdjacentHTML("beforeend", renderMarkdown(content.trim()));
+      const mdContainer = bubbleEl.createDiv({ cls: "xy-obsidian-md" });
+      await this.renderObsidianMD(mdContainer, content.trim());
       if (!streaming) {
         const actionsEl = msgEl.createDiv({ cls: "xiaoyuan-msg-actions" });
         const copyBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
@@ -371,6 +371,31 @@ export class XiaoyuanAIChatView extends ItemView {
     }
 
     return msgEl;
+  }
+
+  private sanitizeForRender(md: string): string {
+    const blocks: string[] = [];
+    const noCode = md.replace(/```[\s\S]*?```/g, (m) => {
+      blocks.push(m);
+      return `\x00CODERAW${blocks.length - 1}\x00`;
+    });
+    const safe = noCode.replace(/!\[\[/g, "!\u200B[[");
+    return safe.replace(/\x00CODERAW(\d+)\x00/g, (_, i) => blocks[+i]);
+  }
+
+  private async renderObsidianMD(container: HTMLElement, md: string) {
+    const safe = this.sanitizeForRender(md);
+    await MarkdownRenderer.render(
+      this.app, safe, container,
+      "_chatHistory/session.md", this,
+    );
+    container.querySelectorAll("table").forEach((table) => {
+      const wrapper = document.createElement("div");
+      wrapper.style.overflowX = "auto";
+      wrapper.style.maxWidth = "100%";
+      table.parentNode?.insertBefore(wrapper, table);
+      wrapper.appendChild(table);
+    });
   }
 
   private async openInEditor(content: string, ts?: number) {
@@ -427,7 +452,7 @@ export class XiaoyuanAIChatView extends ItemView {
     return msgEl;
   }
 
-  private truncateMessagesIfNeeded(): void {
+  private async truncateMessagesIfNeeded(): Promise<void> {
     const s = this.plugin.settings;
     const threshold = Math.floor(s.maxTokens * 0.75);
     const sysTokens = estimateTokens(s.systemPrompt);
@@ -447,7 +472,7 @@ export class XiaoyuanAIChatView extends ItemView {
     this.messagesEl.empty();
     this.addWelcomeMessage();
     for (const m of kept) {
-      this.messagesEl.appendChild(this.renderMessageEl(m.id, m.role, m.content, false, m.thinking, m.timestamp));
+      this.messagesEl.appendChild(await this.renderMessageEl(m.id, m.role, m.content, false, m.thinking, m.timestamp));
     }
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
     this.addSystemMessage(`已自动截断 ${removed} 条历史消息以控制 Token 用量`);
@@ -459,13 +484,13 @@ export class XiaoyuanAIChatView extends ItemView {
     if (this.abortController) return;
     const text = this.inputEl.value.trim();
     if (!text) return;
-    this.addMessage("user", text);
+    await this.addMessage("user", text);
     this.updateSessionTitle();
     this.inputEl.value = "";
     this.abortController = new AbortController();
     this.pendingDiffs = null;
     this.setProcessingState(true);
-    this.truncateMessagesIfNeeded();
+    await this.truncateMessagesIfNeeded();
 
     let statusMsg: HTMLDivElement | null = null;
     if (this.plugin.settings.execMode === "cli") {
@@ -478,7 +503,7 @@ export class XiaoyuanAIChatView extends ItemView {
       this.renderAttachments();
       if (statusMsg) statusMsg.remove();
       if (this.plugin.settings.execMode === "cli") {
-        const streamId = this.finalizeStreamingMessage();
+        const streamId = await this.finalizeStreamingMessage();
         await this.saveCurrentSession();
         const actualDiffs = this.pendingDiffs as FileDiff[] | null;
         if (this.plugin.settings.showDiffPreview && streamId && actualDiffs?.length) {
@@ -487,7 +512,7 @@ export class XiaoyuanAIChatView extends ItemView {
           await this.saveCurrentSession();
         }
       } else {
-        const finalized = this.finalizeStreamingMessage();
+        const finalized = await this.finalizeStreamingMessage();
         if (!finalized && response) {
           this.addMessage("assistant", response);
         }
@@ -727,7 +752,7 @@ export class XiaoyuanAIChatView extends ItemView {
     entry.textContent = `${icon} ${toolLabel}`;
   }
 
-  private finalizeStreamingMessage(): string | null {
+  private async finalizeStreamingMessage(): Promise<string | null> {
     const lastMsg = this.messages[this.messages.length - 1];
     if (!lastMsg || lastMsg.role !== "assistant") return null;
     const msgEl = this.messagesEl.querySelector(`#${lastMsg.id}`);
@@ -749,16 +774,15 @@ export class XiaoyuanAIChatView extends ItemView {
       : (lastMsg.thinking || "").trim();
     if (!displayContent) return lastMsg.id;
 
-    const renderedHTML = renderMarkdown(displayContent);
-    if (toolLog) {
-      toolLog.insertAdjacentHTML("beforebegin", renderedHTML);
-    } else {
-      bubbleEl.insertAdjacentHTML("beforeend", renderedHTML);
-    }
+    const mdContainer = bubbleEl.createDiv({ cls: "xy-obsidian-md" });
+    await this.renderObsidianMD(mdContainer, displayContent);
 
     if (hasContent && lastMsg.thinking && this.plugin.settings.showThinking) {
-      const thinkingHTML = `<details class="xiaoyuan-thinking"><summary>\u{1F914} 思考过程</summary><div class="xiaoyuan-thinking-content">${renderMarkdown(lastMsg.thinking.trim())}</div></details>`;
-      bubbleEl.insertAdjacentHTML("afterbegin", thinkingHTML);
+      const detailsEl = bubbleEl.createEl("details", { cls: "xiaoyuan-thinking" });
+      detailsEl.createEl("summary", { text: "\u{1F914} 思考过程" });
+      const tc = detailsEl.createDiv({ cls: "xiaoyuan-thinking-content" });
+      tc.textContent = lastMsg.thinking.trim();
+      bubbleEl.prepend(detailsEl);
     }
 
     if (!msgEl.querySelector(".xiaoyuan-msg-actions")) {
@@ -905,7 +929,7 @@ export class XiaoyuanAIChatView extends ItemView {
     }
 
     for (const msg of this.messages) {
-      this.messagesEl.appendChild(this.renderMessageEl(msg.id, msg.role, msg.content, false, msg.thinking, msg.timestamp));
+      this.messagesEl.appendChild(await this.renderMessageEl(msg.id, msg.role, msg.content, false, msg.thinking, msg.timestamp));
     }
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
   }
