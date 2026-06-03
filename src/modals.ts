@@ -34,6 +34,7 @@ export class TextOperationModal extends Modal {
   toolsBtn!: HTMLButtonElement;
   modeLabel!: HTMLSpanElement;
   titleEl!: HTMLHeadingElement;
+  thinkingBarEl!: HTMLDivElement;
 
   constructor(app: App, plugin: XiaoyuanAIPlugin, operation: Operation, inputText: string) {
     super(app);
@@ -54,6 +55,8 @@ export class TextOperationModal extends Modal {
     this.modeLabel.textContent = this.plugin.settings.execMode === "cli" ? "CLI" : "API";
     headerRow.style.cursor = "move";
     makeDraggable(headerRow, modalEl);
+
+    this.thinkingBarEl = contentEl.createDiv({ cls: "xiaoyuan-thinking-bar" });
 
     this.contentAreaEl = contentEl.createDiv({ cls: "xiaoyuan-modal-content-area", text: "已连接，等待响应..." });
 
@@ -125,6 +128,7 @@ export class TextOperationModal extends Modal {
     this.contentAreaEl.contentEditable = "false";
 
     this.toolsBtn.disabled = true;
+    this.thinkingBarEl.classList.add("is-active");
     try {
       const s = this.plugin.settings;
       const prompt = OPERATION_PROMPTS[operation] + textToProcess;
@@ -140,11 +144,13 @@ export class TextOperationModal extends Modal {
       this.contentAreaEl.textContent = `\u274C 错误：${err instanceof Error ? err.message : String(err)}`;
     } finally {
       this.toolsBtn.disabled = false;
+      this.thinkingBarEl.classList.remove("is-active");
     }
   }
 
   private async processOperation() {
     this.toolsBtn.disabled = true;
+    this.thinkingBarEl.classList.add("is-active");
     try {
       const s = this.plugin.settings;
       const prompt = OPERATION_PROMPTS[this.operation] + this.inputText;
@@ -160,6 +166,7 @@ export class TextOperationModal extends Modal {
       this.contentAreaEl.textContent = `\u274C 错误：${err instanceof Error ? err.message : String(err)}`;
     } finally {
       this.toolsBtn.disabled = false;
+      this.thinkingBarEl.classList.remove("is-active");
     }
   }
 

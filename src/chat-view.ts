@@ -26,11 +26,13 @@ import { buildToolbarContent as toolbarBuildToolbarContent } from "./toolbar";
 export class XiaoyuanAIChatView extends ItemView {
   plugin: XiaoyuanAIPlugin;
   messages: ChatMessage[] = [];
+  lastDateKey = "";
   sessions: ChatSession[] = [];
   currentSessionId = "";
   private msgIdCounter = 0;
   private viewContainer!: HTMLDivElement;
   private messagesEl!: HTMLDivElement;
+  private thinkingBarEl!: HTMLDivElement;
   private inputEl!: HTMLTextAreaElement;
   private sendBtn!: HTMLSpanElement;
   private sessionSelector!: HTMLSpanElement;
@@ -57,6 +59,7 @@ export class XiaoyuanAIChatView extends ItemView {
     contentEl.addClass("xiaoyuan-chat-container");
     this.viewContainer = contentEl.createDiv({ cls: "xiaoyuan-chat" });
     this.buildHeader();
+    this.thinkingBarEl = this.viewContainer.createDiv({ cls: "xiaoyuan-thinking-bar" });
     this.messagesEl = this.viewContainer.createDiv({ cls: "xiaoyuan-chat-messages" });
     this.buildInputArea();
     this.registerSelectionListener();
@@ -85,8 +88,10 @@ export class XiaoyuanAIChatView extends ItemView {
 
   public async addMessage(role: "user" | "assistant", content: string) {
     const id = "msg-" + (++this.msgIdCounter);
-    this.messages.push({ id, role, content, timestamp: Date.now() });
-    this.messagesEl.appendChild(await this.renderMessageEl(id, role, content, false, undefined, Date.now()));
+    const now = window.moment().format("YYYY-MM-DD HH:mm");
+    this.messages.push({ id, role, content, timestamp: now });
+    this.addDateHeaderIfNeeded(now);
+    this.messagesEl.appendChild(await this.renderMessageEl(id, role, content, false, undefined, now));
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
   }
 
@@ -338,7 +343,7 @@ export class XiaoyuanAIChatView extends ItemView {
 
   private async renderMessageEl(
     id: string, role: "user" | "assistant", content: string,
-    streaming = false, thinking?: string, timestamp?: number,
+    streaming = false, thinking?: string, timestamp?: string,
   ): Promise<HTMLDivElement> {
     const msgEl = createDiv({ cls: `xiaoyuan-msg xiaoyuan-msg-${role}` });
     msgEl.id = id;
@@ -411,25 +416,30 @@ export class XiaoyuanAIChatView extends ItemView {
     });
   }
 
-  private async openInEditor(content: string, ts?: number) {
+  private async openInEditor(content: string, ts?: string) {
     try {
       const vault = this.app.vault;
       const tempRel = `${this.plugin.settings.chatHistoryPath}/temp`;
       try { await vault.createFolder(tempRel); } catch {}
 
-      const dateStr = ts
-        ? formatTempTime(ts)
-        : String(Date.now()).slice(-8);
+      const dateStr = ts && ts.includes(" ")
+        ? ts.split(" ")[0].replace(/-/g, "") + "-" + ts.split(" ")[1].replace(/:/g, "")
+        : window.moment().format("YYYYMMDD-HHmm");
       const hash = this.simpleHash(content);
       const fileRel = `${tempRel}/msg-${dateStr}-${hash}.md`;
+
+      const title = (content.split("\n")[0] || "消息").replace(/^#+\s*/, "").slice(0, 50);
+      const dateOnly = ts ? ts.split(" ")[0] : window.moment().format("YYYY-MM-DD");
+      const frontmatter = `---\ntitle: ${title}\ncreated: ${dateOnly}\nupdated: ${dateOnly}\n---\n\n`;
+      const fullContent = frontmatter + content;
 
       const existing = vault.getAbstractFileByPath(fileRel);
       let file: TFile;
       if (existing instanceof TFile) {
-        await vault.modify(existing, content);
+        await vault.modify(existing, fullContent);
         file = existing;
       } else {
-        file = await vault.create(fileRel, content);
+        file = await vault.create(fileRel, fullContent);
       }
 
       await this.app.workspace.getLeaf("tab").openFile(file);
@@ -480,15 +490,19 @@ export class XiaoyuanAIChatView extends ItemView {
     return msgEl;
   }
 
-  private buildActionBar(msgEl: HTMLElement, role: string, content: string, timestamp?: number) {
+  private addDateHeaderIfNeeded(timestamp: string) {
+    const dateKey = getDateKey(timestamp);
+    if (dateKey !== this.lastDateKey) {
+      this.lastDateKey = dateKey;
+      const headerEl = this.messagesEl.createDiv({ cls: "xiaoyuan-msg xiaoyuan-msg-system xiaoyuan-date-header" });
+      headerEl.createDiv({ cls: "xiaoyuan-msg-bubble" }).textContent = formatDateWeekday(timestamp);
+    }
+  }
+
+  private buildActionBar(msgEl: HTMLElement, role: string, content: string, timestamp?: string) {
     const actionsEl = msgEl.createDiv({ cls: "xiaoyuan-msg-actions" });
 
     if (role === "user") {
-      const followUpBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
-      setIcon(followUpBtn, "corner-up-right");
-      setTooltip(followUpBtn, "追问");
-      followUpBtn.addEventListener("click", () => this.followUp(content));
-
       const copyBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
       setIcon(copyBtn, "copy");
       setTooltip(copyBtn, "复制");
@@ -496,6 +510,34 @@ export class XiaoyuanAIChatView extends ItemView {
         navigator.clipboard.writeText(content);
         new Notice("已复制");
       });
+
+      const speakBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
+      let isSpeaking = false;
+      setIcon(speakBtn, "volume-2");
+      setTooltip(speakBtn, "朗读");
+      speakBtn.addEventListener("click", () => {
+        if (isSpeaking) {
+          speechSynthesis.cancel();
+          isSpeaking = false;
+          speakBtn.removeClass("is-speaking");
+          setTooltip(speakBtn, "朗读");
+        } else {
+          speechSynthesis.cancel();
+          this.speakText(content, () => {
+            isSpeaking = false;
+            speakBtn.removeClass("is-speaking");
+            setTooltip(speakBtn, "朗读");
+          });
+          isSpeaking = true;
+          speakBtn.addClass("is-speaking");
+          setTooltip(speakBtn, "停止");
+        }
+      });
+
+      const quoteBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
+      setIcon(quoteBtn, "quote");
+      setTooltip(quoteBtn, "引用");
+      quoteBtn.addEventListener("click", () => this.quote(content));
 
       const undoBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
       setIcon(undoBtn, "undo");
@@ -522,21 +564,25 @@ export class XiaoyuanAIChatView extends ItemView {
         if (isSpeaking) {
           speechSynthesis.cancel();
           isSpeaking = false;
-          setIcon(speakBtn, "volume-2");
+          speakBtn.removeClass("is-speaking");
           setTooltip(speakBtn, "朗读");
         } else {
           speechSynthesis.cancel();
-          this.speakText(content);
+          this.speakText(content, () => {
+            isSpeaking = false;
+            speakBtn.removeClass("is-speaking");
+            setTooltip(speakBtn, "朗读");
+          });
           isSpeaking = true;
-          setIcon(speakBtn, "square");
+          speakBtn.addClass("is-speaking");
           setTooltip(speakBtn, "停止");
         }
       });
 
-      const followUpBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
-      setIcon(followUpBtn, "corner-up-right");
-      setTooltip(followUpBtn, "追问");
-      followUpBtn.addEventListener("click", () => this.followUp(content));
+      const quoteBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
+      setIcon(quoteBtn, "quote");
+      setTooltip(quoteBtn, "引用");
+      quoteBtn.addEventListener("click", () => this.quote(content));
 
       const editBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
       setIcon(editBtn, "pencil");
@@ -549,16 +595,19 @@ export class XiaoyuanAIChatView extends ItemView {
     }
   }
 
-  private followUp(text: string) {
+  private quote(text: string) {
     this.quoteText = text;
     this.renderQuoteBar();
     this.inputEl.focus();
   }
 
-  private speakText(text: string) {
+  private speakText(text: string, onEnd?: () => void) {
     const utterance = new SpeechSynthesisUtterance(text.replace(/[#*_`\[\]]/g, ""));
     utterance.lang = "zh-CN";
     utterance.rate = 1.0;
+    if (onEnd) {
+      utterance.onend = onEnd;
+    }
     speechSynthesis.speak(utterance);
   }
 
@@ -567,7 +616,7 @@ export class XiaoyuanAIChatView extends ItemView {
     if (this.quoteText) {
       this.attachPreviewEl.style.display = "flex";
       const chip = this.attachPreviewEl.createDiv({ cls: "xiaoyuan-attach-chip xy-quote-chip" });
-      chip.textContent = "📎 引用: " + (this.quoteText.length > 50 ? this.quoteText.slice(0, 50) + "..." : this.quoteText);
+      chip.textContent = "📎 引用: " + (this.quoteText.length > 20 ? this.quoteText.slice(0, 20) + "..." : this.quoteText);
       const removeBtn = chip.createSpan({ text: " ✕" });
       removeBtn.style.cursor = "pointer";
       removeBtn.addEventListener("click", () => {
@@ -620,11 +669,11 @@ export class XiaoyuanAIChatView extends ItemView {
       this.removeSelectionPopup();
     });
 
-    const followUpBtn = popup.createSpan({ cls: "xiaoyuan-msg-action" });
-    setIcon(followUpBtn, "corner-up-right");
-    setTooltip(followUpBtn, "追问选中");
-    followUpBtn.addEventListener("click", () => {
-      this.followUp(text);
+    const quoteBtn = popup.createSpan({ cls: "xiaoyuan-msg-action" });
+    setIcon(quoteBtn, "quote");
+    setTooltip(quoteBtn, "引用选中");
+    quoteBtn.addEventListener("click", () => {
+      this.quote(text);
       this.removeSelectionPopup();
     });
 
@@ -875,7 +924,8 @@ export class XiaoyuanAIChatView extends ItemView {
 
 private addStreamingMessage(content: string, thinking?: string): string {
     const id = "msg-" + (++this.msgIdCounter);
-    this.messages.push({ id, role: "assistant", content, thinking, timestamp: Date.now() });
+    const now = window.moment().format("YYYY-MM-DD HH:mm");
+    this.messages.push({ id, role: "assistant", content, thinking, timestamp: now });
     const msgEl = createDiv({ cls: "xiaoyuan-msg xiaoyuan-msg-assistant" });
     msgEl.id = id;
     const bubbleEl = msgEl.createDiv({ cls: "xiaoyuan-msg-bubble" });
@@ -888,7 +938,7 @@ private addStreamingMessage(content: string, thinking?: string): string {
     const contentEl = bubbleEl.createDiv({ cls: "xy-stream-content" });
     contentEl.textContent = content;
     this.messagesEl.appendChild(msgEl);
-    this.buildActionBar(msgEl, "assistant", content, Date.now());
+    this.buildActionBar(msgEl, "assistant", content, now);
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
     return id;
   }
@@ -1040,21 +1090,22 @@ private addStreamingMessage(content: string, thinking?: string): string {
 
       const meta = await loadSessionsMeta(this.plugin);
       this.sessions = await scanChatHistoryFolder(this.app.vault, path);
-      this.sessions.sort((a, b) => b.updatedAt - a.updatedAt);
+      this.sessions.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
       this.currentSessionId = meta.currentSessionId;
 
       if (this.sessions.length === 0) {
         const oldMessages = migrateOldData(meta as any);
         if (oldMessages && oldMessages.length > 0) {
+          const now = window.moment().format("YYYY-MM-DD");
           const newSession: ChatSession = {
             id: "session-" + Date.now(),
             title: oldMessages[0]?.content?.slice(0, 30) || "历史对话",
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
+            createdAt: now,
+            updatedAt: now,
           };
           this.sessions.push(newSession);
           this.messages = [...oldMessages];
-          await saveSessionToFile(this.app.vault, path, newSession.id, newSession, oldMessages);
+          await saveSessionToFile(this.app.vault, path, newSession.id, newSession, oldMessages, this.plugin.settings.execMode);
         }
       }
     } catch (e) {
@@ -1077,6 +1128,7 @@ private addStreamingMessage(content: string, thinking?: string): string {
     this.messages = await loadSessionFromFile(this.app.vault, path, session.id);
     this.msgIdCounter = this.messages.length;
     this.messagesEl.empty();
+    this.lastDateKey = "";
 
     if (this.messages.length === 0) {
       this.addWelcomeMessage();
@@ -1084,6 +1136,7 @@ private addStreamingMessage(content: string, thinking?: string): string {
     }
 
     for (const msg of this.messages) {
+      if (msg.timestamp) this.addDateHeaderIfNeeded(msg.timestamp);
       this.messagesEl.appendChild(await this.renderMessageEl(msg.id, msg.role, msg.content, false, msg.thinking, msg.timestamp));
     }
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
@@ -1101,13 +1154,13 @@ private addStreamingMessage(content: string, thinking?: string): string {
     const path = getChatHistoryPath(this.plugin.settings.chatHistoryPath);
     const session = this.sessions.find((s) => s.id === this.currentSessionId);
     if (session) {
-      session.updatedAt = Date.now();
+      session.updatedAt = window.moment().format("YYYY-MM-DD");
       if (session.title === "新对话" || session.title === "") {
         session.title = this.messages.length > 0 ? this.sessionTitleFromMessages() : "新对话";
         this.updateSessionSelector();
       }
     }
-    await saveSessionToFile(this.app.vault, path, this.currentSessionId, session, this.messages);
+    await saveSessionToFile(this.app.vault, path, this.currentSessionId, session, this.messages, this.plugin.settings.execMode);
     await saveSessionsMeta(this.plugin, this.sessions, this.currentSessionId);
   }
 
@@ -1115,17 +1168,18 @@ private addStreamingMessage(content: string, thinking?: string): string {
     const session = this.sessions.find((s) => s.id === this.currentSessionId);
     if (session && (session.title === "新对话" || session.title === "") && this.messages.length > 0) {
       session.title = this.sessionTitleFromMessages();
-      session.updatedAt = Date.now();
+      session.updatedAt = window.moment().format("YYYY-MM-DD");
       this.updateSessionSelector();
     }
   }
 
   private async createNewSession() {
+    const now = window.moment().format("YYYY-MM-DD");
     const newSession: ChatSession = {
       id: "session-" + Date.now(),
       title: "新对话",
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      createdAt: now,
+      updatedAt: now,
     };
     this.sessions.unshift(newSession);
     this.currentSessionId = newSession.id;
@@ -1341,6 +1395,7 @@ const msgEls = Array.from(this.messagesEl.querySelectorAll(".xiaoyuan-msg"));
   // ─── UI helpers ──────────────────────────────────────────────────
 
   private setProcessingState(processing: boolean) {
+    this.thinkingBarEl.classList.toggle("is-active", processing);
     if (processing) {
       setIcon(this.sendBtn, "circle-stop");
       setTooltip(this.sendBtn, "停止");
@@ -1353,18 +1408,17 @@ const msgEls = Array.from(this.messagesEl.querySelectorAll(".xiaoyuan-msg"));
   }
 }
 
-function formatTempTime(ts: number): string {
-  const d = new Date(ts);
-  return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}-${String(d.getHours()).padStart(2, "0")}${String(d.getMinutes()).padStart(2, "0")}`;
+function formatTime(ts: string): string {
+  return ts.split(" ")[1] || "";
 }
 
-function formatTime(ts: number): string {
-  const d = new Date(ts);
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  const hours = String(d.getHours()).padStart(2, "0");
-  const mins = String(d.getMinutes()).padStart(2, "0");
-  return `${d.getFullYear()}-${month}-${day} ${hours}:${mins}`;
+function formatDateWeekday(ts: string): string {
+  const m = window.moment(ts);
+  return m.format("YYYY年M月D日 dddd");
+}
+
+function getDateKey(ts: string): string {
+  return ts.split(" ")[0];
 }
 
 // ─── Exported popup helpers ───────────────────────────────────────

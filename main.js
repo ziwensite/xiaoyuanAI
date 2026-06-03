@@ -1026,28 +1026,26 @@ function parseMarkdownToMessages(content) {
     let thinkingLines = [];
     let inThinking = false;
     let ts;
+    const headerRegex = /^\*\*(你|小元)\*\* \((?:CLI|API) · (\d{4}-\d{2}-\d{2} \d{2}:\d{2})\):$/;
     for (const line of lines) {
-      if (line.startsWith("**\u4F60**:")) {
-        role = "user";
-      } else if (line.startsWith("**\u5C0F\u5143**:")) {
-        role = "assistant";
-      } else if (line.trim() === "> [!thinking] \u601D\u8003\u8FC7\u7A0B") {
+      const hMatch = line.match(headerRegex);
+      if (hMatch) {
+        role = hMatch[1] === "\u4F60" ? "user" : "assistant";
+        ts = hMatch[2];
+        continue;
+      }
+      if (line.trim() === "> [!thinking] \u601D\u8003\u8FC7\u7A0B") {
         inThinking = true;
-      } else if (inThinking) {
+        continue;
+      }
+      if (inThinking) {
         if (line.startsWith("> ")) {
           thinkingLines.push(line.slice(2));
-        } else {
-          inThinking = false;
-          msgContent += line + "\n";
+          continue;
         }
-      } else if (role) {
-        const tsMatch = line.match(/<!-- ts:(\d+) -->/);
-        if (tsMatch) {
-          ts = parseInt(tsMatch[1]);
-        } else {
-          msgContent += line + "\n";
-        }
+        inThinking = false;
       }
+      if (role) msgContent += line + "\n";
     }
     if (role && msgContent.trim()) {
       const msg = {
@@ -1062,21 +1060,21 @@ function parseMarkdownToMessages(content) {
   }
   return messages;
 }
-function sessionToMarkdown(session, messages) {
+function sessionToMarkdown(session, messages, execMode) {
+  const now = window.moment().format("YYYY-MM-DD");
+  const created = (session == null ? void 0 : session.createdAt) || now;
   let content = `---
 title: ${(session == null ? void 0 : session.title) || "\u65B0\u5BF9\u8BDD"}
-created: ${(session == null ? void 0 : session.createdAt) || Date.now()}
-updated: ${Date.now()}
+created: ${created}
+updated: ${now}
 ---
 
 `;
   messages.forEach((msg) => {
-    content += `**${msg.role === "user" ? "\u4F60" : "\u5C0F\u5143"}**:
+    const ts = msg.timestamp ? ` (${execMode.toUpperCase()} \xB7 ${msg.timestamp}):` : ":";
+    content += `**${msg.role === "user" ? "\u4F60" : "\u5C0F\u5143"}**${ts}
 
 ${msg.content}
-
-`;
-    if (msg.timestamp) content += `<!-- ts:${msg.timestamp} -->
 
 `;
     if (msg.thinking) {
@@ -1121,10 +1119,10 @@ async function scanChatHistoryFolder(vault, chatHistoryPath) {
         const messages = parseMarkdownToMessages(content);
         const match = content.match(/title:\s*(.+)/);
         const title = match ? match[1].trim() : ((_b = (_a = messages[0]) == null ? void 0 : _a.content) == null ? void 0 : _b.slice(0, 30)) || "\u5386\u53F2\u5BF9\u8BDD";
-        const matchCreated = content.match(/created:\s*(\d+)/);
-        const createdAt = matchCreated ? parseInt(matchCreated[1]) : Date.now();
-        const matchUpdated = content.match(/updated:\s*(\d+)/);
-        const updatedAt = matchUpdated ? parseInt(matchUpdated[1]) : Date.now();
+        const matchCreated = content.match(/created:\s*(\d{4}-\d{2}-\d{2})/);
+        const createdAt = matchCreated ? matchCreated[1] : "";
+        const matchUpdated = content.match(/updated:\s*(\d{4}-\d{2}-\d{2})/);
+        const updatedAt = matchUpdated ? matchUpdated[1] : "";
         loaded.push({
           id: sessionId,
           title,
@@ -1135,7 +1133,7 @@ async function scanChatHistoryFolder(vault, chatHistoryPath) {
         console.warn(`\u8BFB\u53D6\u4F1A\u8BDD\u6587\u4EF6 ${filePath} \u5931\u8D25:`, e);
       }
     }
-    loaded.sort((a, b) => b.updatedAt - a.updatedAt);
+    loaded.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
     return loaded;
   } catch (e) {
     console.warn("\u626B\u63CF\u5386\u53F2\u4F1A\u8BDD\u6587\u4EF6\u5939\u5931\u8D25:", e);
@@ -1162,10 +1160,10 @@ async function loadSessionFromFile(vault, chatHistoryPath, sessionId) {
   if (!content) return [];
   return parseMarkdownToMessages(content);
 }
-async function saveSessionToFile(vault, chatHistoryPath, sessionId, session, messages) {
+async function saveSessionToFile(vault, chatHistoryPath, sessionId, session, messages, execMode) {
   await ensureChatHistoryFolder(vault, chatHistoryPath);
   const filePath = getSessionFilePath(chatHistoryPath, sessionId);
-  const content = sessionToMarkdown(session, messages);
+  const content = sessionToMarkdown(session, messages, execMode);
   try {
     if (await vault.adapter.exists(filePath)) {
       await vault.adapter.write(filePath, content);
@@ -1468,6 +1466,7 @@ var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
   constructor(leaf, plugin) {
     super(leaf);
     this.messages = [];
+    this.lastDateKey = "";
     this.sessions = [];
     this.currentSessionId = "";
     this.msgIdCounter = 0;
@@ -1493,6 +1492,7 @@ var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
     contentEl.addClass("xiaoyuan-chat-container");
     this.viewContainer = contentEl.createDiv({ cls: "xiaoyuan-chat" });
     this.buildHeader();
+    this.thinkingBarEl = this.viewContainer.createDiv({ cls: "xiaoyuan-thinking-bar" });
     this.messagesEl = this.viewContainer.createDiv({ cls: "xiaoyuan-chat-messages" });
     this.buildInputArea();
     this.registerSelectionListener();
@@ -1518,8 +1518,10 @@ var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
   }
   async addMessage(role, content) {
     const id = "msg-" + ++this.msgIdCounter;
-    this.messages.push({ id, role, content, timestamp: Date.now() });
-    this.messagesEl.appendChild(await this.renderMessageEl(id, role, content, false, void 0, Date.now()));
+    const now = window.moment().format("YYYY-MM-DD HH:mm");
+    this.messages.push({ id, role, content, timestamp: now });
+    this.addDateHeaderIfNeeded(now);
+    this.messagesEl.appendChild(await this.renderMessageEl(id, role, content, false, void 0, now));
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
   }
   rebuildToolbar() {
@@ -1829,16 +1831,26 @@ var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
         await vault.createFolder(tempRel);
       } catch (e) {
       }
-      const dateStr = ts ? formatTempTime(ts) : String(Date.now()).slice(-8);
+      const dateStr = ts && ts.includes(" ") ? ts.split(" ")[0].replace(/-/g, "") + "-" + ts.split(" ")[1].replace(/:/g, "") : window.moment().format("YYYYMMDD-HHmm");
       const hash = this.simpleHash(content);
       const fileRel = `${tempRel}/msg-${dateStr}-${hash}.md`;
+      const title = (content.split("\n")[0] || "\u6D88\u606F").replace(/^#+\s*/, "").slice(0, 50);
+      const dateOnly = ts ? ts.split(" ")[0] : window.moment().format("YYYY-MM-DD");
+      const frontmatter = `---
+title: ${title}
+created: ${dateOnly}
+updated: ${dateOnly}
+---
+
+`;
+      const fullContent = frontmatter + content;
       const existing = vault.getAbstractFileByPath(fileRel);
       let file;
       if (existing instanceof import_obsidian2.TFile) {
-        await vault.modify(existing, content);
+        await vault.modify(existing, fullContent);
         file = existing;
       } else {
-        file = await vault.create(fileRel, content);
+        file = await vault.create(fileRel, fullContent);
       }
       await this.app.workspace.getLeaf("tab").openFile(file);
     } catch (err) {
@@ -1881,13 +1893,17 @@ var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
     return msgEl;
   }
+  addDateHeaderIfNeeded(timestamp) {
+    const dateKey = getDateKey(timestamp);
+    if (dateKey !== this.lastDateKey) {
+      this.lastDateKey = dateKey;
+      const headerEl = this.messagesEl.createDiv({ cls: "xiaoyuan-msg xiaoyuan-msg-system xiaoyuan-date-header" });
+      headerEl.createDiv({ cls: "xiaoyuan-msg-bubble" }).textContent = formatDateWeekday(timestamp);
+    }
+  }
   buildActionBar(msgEl, role, content, timestamp) {
     const actionsEl = msgEl.createDiv({ cls: "xiaoyuan-msg-actions" });
     if (role === "user") {
-      const followUpBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
-      (0, import_obsidian2.setIcon)(followUpBtn, "corner-up-right");
-      (0, import_obsidian2.setTooltip)(followUpBtn, "\u8FFD\u95EE");
-      followUpBtn.addEventListener("click", () => this.followUp(content));
       const copyBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
       (0, import_obsidian2.setIcon)(copyBtn, "copy");
       (0, import_obsidian2.setTooltip)(copyBtn, "\u590D\u5236");
@@ -1895,6 +1911,32 @@ var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
         navigator.clipboard.writeText(content);
         new import_obsidian2.Notice("\u5DF2\u590D\u5236");
       });
+      const speakBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
+      let isSpeaking = false;
+      (0, import_obsidian2.setIcon)(speakBtn, "volume-2");
+      (0, import_obsidian2.setTooltip)(speakBtn, "\u6717\u8BFB");
+      speakBtn.addEventListener("click", () => {
+        if (isSpeaking) {
+          speechSynthesis.cancel();
+          isSpeaking = false;
+          speakBtn.removeClass("is-speaking");
+          (0, import_obsidian2.setTooltip)(speakBtn, "\u6717\u8BFB");
+        } else {
+          speechSynthesis.cancel();
+          this.speakText(content, () => {
+            isSpeaking = false;
+            speakBtn.removeClass("is-speaking");
+            (0, import_obsidian2.setTooltip)(speakBtn, "\u6717\u8BFB");
+          });
+          isSpeaking = true;
+          speakBtn.addClass("is-speaking");
+          (0, import_obsidian2.setTooltip)(speakBtn, "\u505C\u6B62");
+        }
+      });
+      const quoteBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
+      (0, import_obsidian2.setIcon)(quoteBtn, "quote");
+      (0, import_obsidian2.setTooltip)(quoteBtn, "\u5F15\u7528");
+      quoteBtn.addEventListener("click", () => this.quote(content));
       const undoBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
       (0, import_obsidian2.setIcon)(undoBtn, "undo");
       (0, import_obsidian2.setTooltip)(undoBtn, "\u64A4\u9500\u6B64\u6D88\u606F");
@@ -1919,20 +1961,24 @@ var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
         if (isSpeaking) {
           speechSynthesis.cancel();
           isSpeaking = false;
-          (0, import_obsidian2.setIcon)(speakBtn, "volume-2");
+          speakBtn.removeClass("is-speaking");
           (0, import_obsidian2.setTooltip)(speakBtn, "\u6717\u8BFB");
         } else {
           speechSynthesis.cancel();
-          this.speakText(content);
+          this.speakText(content, () => {
+            isSpeaking = false;
+            speakBtn.removeClass("is-speaking");
+            (0, import_obsidian2.setTooltip)(speakBtn, "\u6717\u8BFB");
+          });
           isSpeaking = true;
-          (0, import_obsidian2.setIcon)(speakBtn, "square");
+          speakBtn.addClass("is-speaking");
           (0, import_obsidian2.setTooltip)(speakBtn, "\u505C\u6B62");
         }
       });
-      const followUpBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
-      (0, import_obsidian2.setIcon)(followUpBtn, "corner-up-right");
-      (0, import_obsidian2.setTooltip)(followUpBtn, "\u8FFD\u95EE");
-      followUpBtn.addEventListener("click", () => this.followUp(content));
+      const quoteBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
+      (0, import_obsidian2.setIcon)(quoteBtn, "quote");
+      (0, import_obsidian2.setTooltip)(quoteBtn, "\u5F15\u7528");
+      quoteBtn.addEventListener("click", () => this.quote(content));
       const editBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
       (0, import_obsidian2.setIcon)(editBtn, "pencil");
       (0, import_obsidian2.setTooltip)(editBtn, "\u5728\u7F16\u8F91\u5668\u4E2D\u7F16\u8F91");
@@ -1942,15 +1988,18 @@ var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
       actionsEl.createSpan({ cls: "xiaoyuan-msg-time", text: `${this.plugin.settings.execMode.toUpperCase()} \xB7 ${formatTime(timestamp)}` });
     }
   }
-  followUp(text) {
+  quote(text) {
     this.quoteText = text;
     this.renderQuoteBar();
     this.inputEl.focus();
   }
-  speakText(text) {
+  speakText(text, onEnd) {
     const utterance = new SpeechSynthesisUtterance(text.replace(/[#*_`\[\]]/g, ""));
     utterance.lang = "zh-CN";
     utterance.rate = 1;
+    if (onEnd) {
+      utterance.onend = onEnd;
+    }
     speechSynthesis.speak(utterance);
   }
   renderQuoteBar() {
@@ -1958,7 +2007,7 @@ var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
     if (this.quoteText) {
       this.attachPreviewEl.style.display = "flex";
       const chip = this.attachPreviewEl.createDiv({ cls: "xiaoyuan-attach-chip xy-quote-chip" });
-      chip.textContent = "\u{1F4CE} \u5F15\u7528: " + (this.quoteText.length > 50 ? this.quoteText.slice(0, 50) + "..." : this.quoteText);
+      chip.textContent = "\u{1F4CE} \u5F15\u7528: " + (this.quoteText.length > 20 ? this.quoteText.slice(0, 20) + "..." : this.quoteText);
       const removeBtn = chip.createSpan({ text: " \u2715" });
       removeBtn.style.cursor = "pointer";
       removeBtn.addEventListener("click", () => {
@@ -2006,11 +2055,11 @@ var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
       this.speakText(text);
       this.removeSelectionPopup();
     });
-    const followUpBtn = popup.createSpan({ cls: "xiaoyuan-msg-action" });
-    (0, import_obsidian2.setIcon)(followUpBtn, "corner-up-right");
-    (0, import_obsidian2.setTooltip)(followUpBtn, "\u8FFD\u95EE\u9009\u4E2D");
-    followUpBtn.addEventListener("click", () => {
-      this.followUp(text);
+    const quoteBtn = popup.createSpan({ cls: "xiaoyuan-msg-action" });
+    (0, import_obsidian2.setIcon)(quoteBtn, "quote");
+    (0, import_obsidian2.setTooltip)(quoteBtn, "\u5F15\u7528\u9009\u4E2D");
+    quoteBtn.addEventListener("click", () => {
+      this.quote(text);
       this.removeSelectionPopup();
     });
     popup.style.left = `${x}px`;
@@ -2262,7 +2311,8 @@ ${att.data}
   }
   addStreamingMessage(content, thinking) {
     const id = "msg-" + ++this.msgIdCounter;
-    this.messages.push({ id, role: "assistant", content, thinking, timestamp: Date.now() });
+    const now = window.moment().format("YYYY-MM-DD HH:mm");
+    this.messages.push({ id, role: "assistant", content, thinking, timestamp: now });
     const msgEl = createDiv({ cls: "xiaoyuan-msg xiaoyuan-msg-assistant" });
     msgEl.id = id;
     const bubbleEl = msgEl.createDiv({ cls: "xiaoyuan-msg-bubble" });
@@ -2275,7 +2325,7 @@ ${att.data}
     const contentEl = bubbleEl.createDiv({ cls: "xy-stream-content" });
     contentEl.textContent = content;
     this.messagesEl.appendChild(msgEl);
-    this.buildActionBar(msgEl, "assistant", content, Date.now());
+    this.buildActionBar(msgEl, "assistant", content, now);
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
     return id;
   }
@@ -2407,20 +2457,21 @@ ${att.data}
       await ensureChatHistoryFolder(this.app.vault, path3);
       const meta = await loadSessionsMeta(this.plugin);
       this.sessions = await scanChatHistoryFolder(this.app.vault, path3);
-      this.sessions.sort((a, b) => b.updatedAt - a.updatedAt);
+      this.sessions.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
       this.currentSessionId = meta.currentSessionId;
       if (this.sessions.length === 0) {
         const oldMessages = migrateOldData(meta);
         if (oldMessages && oldMessages.length > 0) {
+          const now = window.moment().format("YYYY-MM-DD");
           const newSession = {
             id: "session-" + Date.now(),
             title: ((_b = (_a = oldMessages[0]) == null ? void 0 : _a.content) == null ? void 0 : _b.slice(0, 30)) || "\u5386\u53F2\u5BF9\u8BDD",
-            createdAt: Date.now(),
-            updatedAt: Date.now()
+            createdAt: now,
+            updatedAt: now
           };
           this.sessions.push(newSession);
           this.messages = [...oldMessages];
-          await saveSessionToFile(this.app.vault, path3, newSession.id, newSession, oldMessages);
+          await saveSessionToFile(this.app.vault, path3, newSession.id, newSession, oldMessages, this.plugin.settings.execMode);
         }
       }
     } catch (e) {
@@ -2441,11 +2492,13 @@ ${att.data}
     this.messages = await loadSessionFromFile(this.app.vault, path3, session.id);
     this.msgIdCounter = this.messages.length;
     this.messagesEl.empty();
+    this.lastDateKey = "";
     if (this.messages.length === 0) {
       this.addWelcomeMessage();
       return;
     }
     for (const msg of this.messages) {
+      if (msg.timestamp) this.addDateHeaderIfNeeded(msg.timestamp);
       this.messagesEl.appendChild(await this.renderMessageEl(msg.id, msg.role, msg.content, false, msg.thinking, msg.timestamp));
     }
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
@@ -2462,29 +2515,30 @@ ${att.data}
     const path3 = getChatHistoryPath(this.plugin.settings.chatHistoryPath);
     const session = this.sessions.find((s) => s.id === this.currentSessionId);
     if (session) {
-      session.updatedAt = Date.now();
+      session.updatedAt = window.moment().format("YYYY-MM-DD");
       if (session.title === "\u65B0\u5BF9\u8BDD" || session.title === "") {
         session.title = this.messages.length > 0 ? this.sessionTitleFromMessages() : "\u65B0\u5BF9\u8BDD";
         this.updateSessionSelector();
       }
     }
-    await saveSessionToFile(this.app.vault, path3, this.currentSessionId, session, this.messages);
+    await saveSessionToFile(this.app.vault, path3, this.currentSessionId, session, this.messages, this.plugin.settings.execMode);
     await saveSessionsMeta(this.plugin, this.sessions, this.currentSessionId);
   }
   updateSessionTitle() {
     const session = this.sessions.find((s) => s.id === this.currentSessionId);
     if (session && (session.title === "\u65B0\u5BF9\u8BDD" || session.title === "") && this.messages.length > 0) {
       session.title = this.sessionTitleFromMessages();
-      session.updatedAt = Date.now();
+      session.updatedAt = window.moment().format("YYYY-MM-DD");
       this.updateSessionSelector();
     }
   }
   async createNewSession() {
+    const now = window.moment().format("YYYY-MM-DD");
     const newSession = {
       id: "session-" + Date.now(),
       title: "\u65B0\u5BF9\u8BDD",
-      createdAt: Date.now(),
-      updatedAt: Date.now()
+      createdAt: now,
+      updatedAt: now
     };
     this.sessions.unshift(newSession);
     this.currentSessionId = newSession.id;
@@ -2690,6 +2744,7 @@ ${att.data}
   }
   // ─── UI helpers ──────────────────────────────────────────────────
   setProcessingState(processing) {
+    this.thinkingBarEl.classList.toggle("is-active", processing);
     if (processing) {
       (0, import_obsidian2.setIcon)(this.sendBtn, "circle-stop");
       (0, import_obsidian2.setTooltip)(this.sendBtn, "\u505C\u6B62");
@@ -2701,17 +2756,15 @@ ${att.data}
     }
   }
 };
-function formatTempTime(ts) {
-  const d = new Date(ts);
-  return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}-${String(d.getHours()).padStart(2, "0")}${String(d.getMinutes()).padStart(2, "0")}`;
-}
 function formatTime(ts) {
-  const d = new Date(ts);
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  const hours = String(d.getHours()).padStart(2, "0");
-  const mins = String(d.getMinutes()).padStart(2, "0");
-  return `${d.getFullYear()}-${month}-${day} ${hours}:${mins}`;
+  return ts.split(" ")[1] || "";
+}
+function formatDateWeekday(ts) {
+  const m = window.moment(ts);
+  return m.format("YYYY\u5E74M\u6708D\u65E5 dddd");
+}
+function getDateKey(ts) {
+  return ts.split(" ")[0];
 }
 
 // src/settings.ts
@@ -3479,6 +3532,7 @@ var TextOperationModal = class extends import_obsidian4.Modal {
     this.modeLabel.textContent = this.plugin.settings.execMode === "cli" ? "CLI" : "API";
     headerRow.style.cursor = "move";
     makeDraggable(headerRow, modalEl);
+    this.thinkingBarEl = contentEl.createDiv({ cls: "xiaoyuan-thinking-bar" });
     this.contentAreaEl = contentEl.createDiv({ cls: "xiaoyuan-modal-content-area", text: "\u5DF2\u8FDE\u63A5\uFF0C\u7B49\u5F85\u54CD\u5E94..." });
     const btnRow = contentEl.createDiv({ cls: "xiaoyuan-modal-btn-row" });
     const leftGroup = btnRow.createDiv({ cls: "xy-modal-btn-group" });
@@ -3544,6 +3598,7 @@ var TextOperationModal = class extends import_obsidian4.Modal {
     this.contentAreaEl.textContent = "\u5DF2\u8FDE\u63A5\uFF0C\u7B49\u5F85\u54CD\u5E94...";
     this.contentAreaEl.contentEditable = "false";
     this.toolsBtn.disabled = true;
+    this.thinkingBarEl.classList.add("is-active");
     try {
       const s = this.plugin.settings;
       const prompt = OPERATION_PROMPTS[operation] + textToProcess;
@@ -3565,10 +3620,12 @@ var TextOperationModal = class extends import_obsidian4.Modal {
       this.contentAreaEl.textContent = `\u274C \u9519\u8BEF\uFF1A${err instanceof Error ? err.message : String(err)}`;
     } finally {
       this.toolsBtn.disabled = false;
+      this.thinkingBarEl.classList.remove("is-active");
     }
   }
   async processOperation() {
     this.toolsBtn.disabled = true;
+    this.thinkingBarEl.classList.add("is-active");
     try {
       const s = this.plugin.settings;
       const prompt = OPERATION_PROMPTS[this.operation] + this.inputText;
@@ -3590,6 +3647,7 @@ var TextOperationModal = class extends import_obsidian4.Modal {
       this.contentAreaEl.textContent = `\u274C \u9519\u8BEF\uFF1A${err instanceof Error ? err.message : String(err)}`;
     } finally {
       this.toolsBtn.disabled = false;
+      this.thinkingBarEl.classList.remove("is-active");
     }
   }
   async openInEditor() {

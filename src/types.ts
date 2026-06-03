@@ -3,14 +3,14 @@ export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   thinking?: string;
-  timestamp?: number;
+  timestamp?: string;
 }
 
 export interface ChatSession {
   id: string;
   title: string;
-  createdAt: number;
-  updatedAt: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Attachment {

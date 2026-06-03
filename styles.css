@@ -37,6 +37,43 @@
   flex-shrink: 0;
 }
 
+/* ═══════════════════════════════════════════════════════
+   AI Thinking Bar
+   ═══════════════════════════════════════════════════════ */
+
+.xiaoyuan-thinking-bar {
+  position: relative;
+  height: 1px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.15s;
+  overflow: hidden;
+}
+
+.xiaoyuan-thinking-bar.is-active {
+  opacity: 1;
+}
+
+.xiaoyuan-thinking-bar::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 0;
+  background: var(--interactive-accent);
+  animation: xy-thinking-slide 3s ease-in-out infinite;
+}
+
+@keyframes xy-thinking-slide {
+  0%   { width: 0; opacity: 1; }
+  50%  { width: 100%; opacity: 1; }
+  53%  { opacity: 0; }
+  55%  { width: 100%; opacity: 0; }
+  56%  { width: 0; }
+  100% { width: 0; opacity: 0; }
+}
+
 .xiaoyuan-chat-header-left,
 .xiaoyuan-chat-header-right {
   display: flex;
@@ -163,6 +200,11 @@
   border: none;
 }
 
+.xiaoyuan-date-header .xiaoyuan-msg-bubble {
+  font-weight: 500;
+  padding: 6px 12px 2px;
+}
+
 .xiaoyuan-msg-bubble {
   padding: 10px 14px;
   line-height: 1.5;
@@ -206,8 +248,9 @@
 
 .xiaoyuan-msg-actions {
   display: flex;
-  gap: 4px;
-  margin-top: 3px;
+  gap: 6px;
+  margin-top: 8px;
+  margin-bottom: 8px;
   opacity: 0;
   transition: opacity 0.12s;
 }
@@ -215,10 +258,6 @@
 .xiaoyuan-msg:hover .xiaoyuan-msg-actions,
 .xiaoyuan-msg:focus-within .xiaoyuan-msg-actions {
   opacity: 1;
-}
-
-.xiaoyuan-msg-user .xiaoyuan-msg-actions {
-  flex-direction: row-reverse;
 }
 
 .xiaoyuan-msg-action {
@@ -243,16 +282,36 @@
   color: var(--text-normal);
 }
 
+.xiaoyuan-msg-action.is-speaking svg {
+  animation: xy-voice-wave 0.6s ease-in-out infinite;
+}
+
+@keyframes xy-voice-wave {
+  0%, 100% {
+    transform: scaleY(1) scaleX(1);
+    opacity: 0.7;
+  }
+  25% {
+    transform: scaleY(1.2) scaleX(0.9);
+    opacity: 1;
+  }
+  50% {
+    transform: scaleY(0.8) scaleX(1.1);
+    opacity: 0.9;
+  }
+  75% {
+    transform: scaleY(1.4) scaleX(0.85);
+    opacity: 1;
+  }
+}
+
 .xiaoyuan-msg-time {
   margin-left: auto;
+  padding-left: 14px;
   font-size: 0.75em;
   color: var(--text-muted);
   user-select: none;
   white-space: nowrap;
-}
-
-.xiaoyuan-msg-user .xiaoyuan-msg-time {
-  margin-right: 14px;
 }
 
 /* ═══════════════════════════════════════════════════════

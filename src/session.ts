@@ -36,30 +36,25 @@ function parseMarkdownToMessages(content: string): ChatMessage[] {
     let msgContent = "";
     let thinkingLines: string[] = [];
     let inThinking = false;
-    let ts: number | undefined;
+    let ts: string | undefined;
+
+    const headerRegex = /^\*\*(你|小元)\*\* \((?:CLI|API) · (\d{4}-\d{2}-\d{2} \d{2}:\d{2})\):$/;
 
     for (const line of lines) {
-      if (line.startsWith("**你**:")) {
-        role = "user";
-      } else if (line.startsWith("**小元**:")) {
-        role = "assistant";
-      } else if (line.trim() === "> [!thinking] 思考过程") {
-        inThinking = true;
-      } else if (inThinking) {
-        if (line.startsWith("> ")) {
-          thinkingLines.push(line.slice(2));
-        } else {
-          inThinking = false;
-          msgContent += line + "\n";
-        }
-      } else if (role) {
-        const tsMatch = line.match(/<!-- ts:(\d+) -->/);
-        if (tsMatch) {
-          ts = parseInt(tsMatch[1]);
-        } else {
-          msgContent += line + "\n";
-        }
+      const hMatch = line.match(headerRegex);
+      if (hMatch) {
+        role = hMatch[1] === "你" ? "user" : "assistant";
+        ts = hMatch[2];
+        continue;
       }
+
+      if (line.trim() === "> [!thinking] 思考过程") { inThinking = true; continue; }
+      if (inThinking) {
+        if (line.startsWith("> ")) { thinkingLines.push(line.slice(2)); continue; }
+        inThinking = false;
+      }
+
+      if (role) msgContent += line + "\n";
     }
 
     if (role && msgContent.trim()) {
@@ -77,11 +72,15 @@ function parseMarkdownToMessages(content: string): ChatMessage[] {
   return messages;
 }
 
-function sessionToMarkdown(session: ChatSession | undefined, messages: ChatMessage[]): string {
-  let content = `---\ntitle: ${session?.title || "新对话"}\ncreated: ${session?.createdAt || Date.now()}\nupdated: ${Date.now()}\n---\n\n`;
+function sessionToMarkdown(session: ChatSession | undefined, messages: ChatMessage[], execMode: string): string {
+  const now = window.moment().format("YYYY-MM-DD");
+  const created = session?.createdAt || now;
+  let content = `---\ntitle: ${session?.title || "新对话"}\ncreated: ${created}\nupdated: ${now}\n---\n\n`;
   messages.forEach((msg) => {
-    content += `**${msg.role === "user" ? "你" : "小元"}**:\n\n${msg.content}\n\n`;
-    if (msg.timestamp) content += `<!-- ts:${msg.timestamp} -->\n\n`;
+    const ts = msg.timestamp
+      ? ` (${execMode.toUpperCase()} · ${msg.timestamp}):`
+      : ":";
+    content += `**${msg.role === "user" ? "你" : "小元"}**${ts}\n\n${msg.content}\n\n`;
     if (msg.thinking) {
       content += `> [!thinking] 思考过程\n> ${msg.thinking.replace(/\n/g, "\n> ")}\n\n`;
     }
@@ -136,11 +135,11 @@ export async function scanChatHistoryFolder(
           ? match[1].trim()
           : messages[0]?.content?.slice(0, 30) || "历史对话";
 
-        const matchCreated = content.match(/created:\s*(\d+)/);
-        const createdAt = matchCreated ? parseInt(matchCreated[1]) : Date.now();
+        const matchCreated = content.match(/created:\s*(\d{4}-\d{2}-\d{2})/);
+        const createdAt = matchCreated ? matchCreated[1] : "";
 
-        const matchUpdated = content.match(/updated:\s*(\d+)/);
-        const updatedAt = matchUpdated ? parseInt(matchUpdated[1]) : Date.now();
+        const matchUpdated = content.match(/updated:\s*(\d{4}-\d{2}-\d{2})/);
+        const updatedAt = matchUpdated ? matchUpdated[1] : "";
 
         loaded.push({
           id: sessionId,
@@ -153,7 +152,7 @@ export async function scanChatHistoryFolder(
       }
     }
 
-    loaded.sort((a, b) => b.updatedAt - a.updatedAt);
+    loaded.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
     return loaded;
   } catch (e) {
     console.warn("扫描历史会话文件夹失败:", e);
@@ -191,10 +190,11 @@ export async function saveSessionToFile(
   sessionId: string,
   session: ChatSession | undefined,
   messages: ChatMessage[],
+  execMode: string,
 ): Promise<void> {
   await ensureChatHistoryFolder(vault, chatHistoryPath);
   const filePath = getSessionFilePath(chatHistoryPath, sessionId);
-  const content = sessionToMarkdown(session, messages);
+  const content = sessionToMarkdown(session, messages, execMode);
 
   try {
     if (await vault.adapter.exists(filePath)) {
