@@ -1,19 +1,20 @@
 import * as fs from "fs";
 import * as path from "path";
-import { Plugin, WorkspaceLeaf, Notice, Menu } from "obsidian";
+import { Plugin, WorkspaceLeaf, Notice, Menu, MarkdownView } from "obsidian";
 import { XiaoyuanAISettings, DEFAULT_SETTINGS, VIEW_TYPE_XIAOYUAN_AI_CHAT } from "./types";
 import { XiaoyuanAIChatView } from "./chat-view";
 import { XiaoyuanAISettingTab } from "./settings";
 import { TextOperationModal } from "./modals";
-import { OPERATION_LABELS } from "./types";
+import { OPERATION_LABELS, OPERATIONS, OPERATION_ICONS } from "./types";
 import { ensureOpenCodeServer, stopOpenCodeServer, resolveOpenCodePath } from "./ai";
-import { getVaultBasePath } from "./server";
+import { getVaultBasePath, setVaultBasePath } from "./server";
 
 export default class XiaoyuanAIPlugin extends Plugin {
   settings!: XiaoyuanAISettings;
 
   async onload() {
     await this.loadSettings();
+    setVaultBasePath((this.app.vault.adapter as any).getBasePath());
 
     if (this.settings.execMode === "cli") {
       const resolved = await resolveOpenCodePath(this.settings.opencode.cliPath);
@@ -31,20 +32,13 @@ export default class XiaoyuanAIPlugin extends Plugin {
       this.app.workspace.on("editor-menu", (menu, editor) => {
         const sel = editor.getSelection();
         menu.addItem((item) => {
-          item.setTitle("小元AI");
-          item.setIcon("message-circle");
-          const submenu = (item as any).setSubmenu() as Menu;
-          ["polish", "summarize", "complete", "expand", "continue", "translate"].forEach((op) => {
+          item.setTitle("小元写作");
+          item.setIcon("sparkles");
+          const submenu = item.setSubmenu();
+          OPERATIONS.forEach((op) => {
             submenu.addItem((subItem) => {
               subItem.setTitle(OPERATION_LABELS[op]);
-              subItem.setIcon(
-                op === "polish" ? "pencil" :
-                op === "summarize" ? "file-text" :
-                op === "complete" ? "check" :
-                op === "expand" ? "maximize" :
-                op === "continue" ? "arrow-right" :
-                "globe"
-              );
+              subItem.setIcon(OPERATION_ICONS[op]);
               subItem.onClick(() => new TextOperationModal(this.app, this, op, sel).open());
             });
           });
@@ -69,7 +63,7 @@ export default class XiaoyuanAIPlugin extends Plugin {
       hotkeys: [{ modifiers: ["Ctrl", "Shift"], key: "N" }],
     });
 
-    ["polish", "summarize", "complete", "expand", "translate", "continue"].forEach((op) => {
+    OPERATIONS.forEach((op) => {
       this.addCommand({
         id: `xiaoyuanAI-${op}`,
         name: `AI ${OPERATION_LABELS[op]}选中文本`,
@@ -119,7 +113,7 @@ export default class XiaoyuanAIPlugin extends Plugin {
           fs.unlinkSync(fp);
         }
       }
-    } catch {}
+    } catch (e) { console.warn("清理临时文件失败:", e); }
   }
 
   private async autoStartServer(): Promise<void> {
@@ -150,17 +144,34 @@ export default class XiaoyuanAIPlugin extends Plugin {
   }
 
   getActiveEditor() {
-    return (this.app.workspace as any).activeEditor?.editor || null;
+    const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+    return view?.editor || null;
   }
 
   async loadSettings() {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
     if (!this.settings.opencode.agent) this.settings.opencode.agent = "build";
+    for (const p of this.settings.apiProviders) {
+      if (p.apiKey) {
+        try { p.apiKey = atob(p.apiKey); } catch { /* 明文 Key，无需解码 */ }
+      }
+    }
   }
-  async saveSettings() { await this.saveData(this.settings); }
+  async saveSettings() {
+    const encoded = this.settings.apiProviders.map(p => ({
+      ...p, apiKey: p.apiKey ? btoa(p.apiKey) : p.apiKey,
+    }));
+    const original = this.settings.apiProviders;
+    this.settings.apiProviders = encoded;
+    await this.saveData(this.settings);
+    this.settings.apiProviders = original;
+  }
 
   async onunload() {
     stopOpenCodeServer();
+    for (const p of this.settings.apiProviders) {
+      p.apiKey = "";
+    }
     this.app.workspace.detachLeavesOfType(VIEW_TYPE_XIAOYUAN_AI_CHAT);
   }
 }

@@ -1,9 +1,10 @@
 import { App, PluginSettingTab, Setting, Notice, setIcon } from "obsidian";
 import type XiaoyuanAIPlugin from "./main";
-import { VIEW_TYPE_XIAOYUAN_AI_CHAT, type XiaoyuanAISettings, type ApiProviderConfig } from "./types";
+import { XiaoyuanAIChatView } from "./chat-view";
+import { VIEW_TYPE_XIAOYUAN_AI_CHAT, type XiaoyuanAISettings, type ApiProviderConfig, type ReasoningEffort, type ReasoningEffortAPI, type PermissionMode } from "./types";
 import { showPopup, addPopupItem } from "./popup";
 
-type TabId = "cli" | "api" | "general";
+type TabId = "cli" | "api" | "general" | "mcp";
 
 export class XiaoyuanAISettingTab extends PluginSettingTab {
   plugin: XiaoyuanAIPlugin;
@@ -26,9 +27,9 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
   private s(): XiaoyuanAISettings { return this.plugin.settings; }
 
   private decorateSetting(setting: Setting, iconName: string): Setting {
-    const nameEl = (setting as any).nameEl as HTMLElement | undefined;
+    const nameEl = setting.nameEl as HTMLElement | undefined;
     if (!nameEl) return setting;
-    const settingEl = (setting as any).settingEl as HTMLElement | undefined;
+    const settingEl = setting.settingEl as HTMLElement | undefined;
     settingEl?.addClass("xy-setting-with-icon");
     nameEl.addClass("xy-setting-name-with-icon");
     const icon = document.createElement("span");
@@ -63,8 +64,8 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
           s.execMode = val as "api" | "cli";
           await this.plugin.saveSettings();
           const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_XIAOYUAN_AI_CHAT).first();
-          if (leaf?.view && "rebuildToolbar" in (leaf.view as any)) {
-            (leaf.view as any).rebuildToolbar();
+          if (leaf?.view instanceof XiaoyuanAIChatView) {
+            leaf.view.rebuildToolbar();
           }
           this.display();
         });
@@ -91,7 +92,7 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
           try {
             await ensureOpenCodeServer(s.opencode.cliPath, s.opencode.hostname, s.opencode.port, vaultDir, true);
             ok = true;
-          } catch {}
+} catch (e) { console.warn("opencode 自动启动失败:", e); }
         }
         this.updateRow(card, 0, ok ? "已连接" : "未连接");
       } else {
@@ -164,6 +165,7 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
       { id: "general", icon: "settings", label: "通用" },
       { id: "cli", icon: "terminal-square", label: "CLI 设置" },
       { id: "api", icon: "key-round", label: "API 设置" },
+      { id: "mcp", icon: "blocks", label: "MCP 工具" },
     ];
     const bar = container.createDiv({ cls: "xy-settings-tabs" });
     for (const t of tabs) {
@@ -188,6 +190,7 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
       case "cli": this.buildCLITab(container); break;
       case "api": this.buildAPITab(container); break;
       case "general": this.buildGeneralTab(container); break;
+      case "mcp": this.buildMCPTab(container); break;
     }
   }
 
@@ -255,13 +258,11 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
           await this.plugin.saveSettings();
         });
         text.inputEl.addEventListener("click", (e) => {
-          if (s.opencodeModels && s.opencodeModels.length > 0) {
-            e.preventDefault();
-            this.showModelPicker(text.inputEl, s.opencodeModels!, (val) => {
-              s.opencode.model = val;
-              this.plugin.saveSettings().then(() => this.display());
-            });
-          }
+          e.preventDefault();
+          this.showModelPicker(text.inputEl, s.opencodeModels || [], (val) => {
+            s.opencode.model = val;
+            this.plugin.saveSettings().then(() => this.display());
+          });
         });
       })
       .addButton((btn) => {
@@ -277,14 +278,16 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
             if (result.defaultModel && !s.opencode.model) {
               s.opencode.model = result.defaultModel;
             }
-            const { fetchOpenCodeAgents } = await import("./ai");
-            s.opencodeAgents = await fetchOpenCodeAgents(s.opencode.cliPath, getVaultBasePath(this.app.vault), s.opencode.port);
             await this.plugin.saveSettings();
             new Notice(result.models.length === 0 ? "未找到模型" : `已同步 ${result.models.length} 个模型`);
             this.display();
-          } catch (err: any) { new Notice(`同步失败：${err.message}`); }
+            const { fetchOpenCodeAgents } = await import("./ai");
+            s.opencodeAgents = await fetchOpenCodeAgents(s.opencode.cliPath, getVaultBasePath(this.app.vault), s.opencode.port).catch(() => s.opencodeAgents);
+            await this.plugin.saveSettings();
+          } catch (err: unknown) { new Notice(`同步失败：${err instanceof Error ? err.message : String(err)}`); }
         });
       }), "box");
+
     {
       const caps = s.opencodeModelCaps?.[s.opencode.model];
       if (caps) {
@@ -310,7 +313,7 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
       this.decorateSetting(new Setting(container)
         .setName("Agent")
         .setDesc(currentAgent
-          ? `当前: ${currentAgent}${allItems.find((a) => a.name === currentAgent)?.description ? ` — ${allItems.find((a) => a.name === currentAgent)!.description}` : ""}`
+          ? `当前: ${currentAgent}${allItems.find((a) => a.name === currentAgent)?.description ? ` (${allItems.find((a) => a.name === currentAgent)!.description})` : ""}`
           : "选择 agent")
         .addDropdown((dd) => {
           for (const a of allItems) dd.addOption(a.name, a.name);
@@ -350,7 +353,7 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
         dd.addOption("high", "high");
         dd.addOption("xhigh", "xhigh");
         dd.setValue(s.defaultReasoning);
-        dd.onChange(async (val) => { s.defaultReasoning = val as any; await this.plugin.saveSettings(); });
+        dd.onChange(async (val) => { s.defaultReasoning = val as ReasoningEffort; await this.plugin.saveSettings(); });
       }), "brain");
 
     this.decorateSetting(new Setting(container)
@@ -361,7 +364,7 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
         dd.addOption("workspace-write", "工作区可写");
         dd.addOption("danger-full-access", "完全放开");
         dd.setValue(s.defaultPermission);
-        dd.onChange(async (val) => { s.defaultPermission = val as any; await this.plugin.saveSettings(); });
+        dd.onChange(async (val) => { s.defaultPermission = val as PermissionMode; await this.plugin.saveSettings(); });
       }), "shield-check");
 
   }
@@ -471,7 +474,7 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
         dd.addOption("medium", "medium");
         dd.addOption("high", "high");
         dd.setValue(s.apiReasoningEffort);
-        dd.onChange(async (val) => { s.apiReasoningEffort = val as any; await this.plugin.saveSettings(); });
+        dd.onChange(async (val) => { s.apiReasoningEffort = val as ReasoningEffortAPI; await this.plugin.saveSettings(); });
       }), "brain");
 
     this.decorateSetting(new Setting(container)
@@ -500,6 +503,139 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
     const input = field.createEl("input", { cls: "xy-api-provider-input", attr: { placeholder } });
     input.value = value;
     if (password) input.type = "password";
+    input.addEventListener("change", () => { void onChange(input.value); });
+  }
+
+  // ─── MCP 设置 ─────────────────────────────────────────────────────
+
+  private buildMCPTab(container: HTMLElement) {
+    const s = this.s();
+    const servers = s.mcpServers || [];
+
+    container.createEl("p", { cls: "xy-settings-desc", text: "配置 MCP 服务器，为 AI 提供额外的工具和上下文能力。" });
+
+    for (let i = 0; i < servers.length; i++) {
+      const server = servers[i];
+      const card = container.createDiv({ cls: "xy-api-provider-row" });
+
+      const head = card.createDiv({ cls: "xy-api-provider-head" });
+      const title = head.createDiv({ cls: "xy-api-provider-title" });
+      const nameSpan = title.createSpan({ text: server.name || "未命名" });
+      const typeSmall = title.createEl("small", { text: ` · ${server.type === "local" ? "本地进程" : "远程服务"}` });
+      const enabledBadge = title.createEl("small", { text: server.enabled ? " · 已启用" : " · 已禁用", cls: server.enabled ? "" : "xy-mcp-disabled" });
+
+      const updateHeader = () => {
+        nameSpan.textContent = server.name || "未命名";
+        typeSmall.textContent = ` · ${server.type === "local" ? "本地进程" : "远程服务"}`;
+        enabledBadge.textContent = server.enabled ? " · 已启用" : " · 已禁用";
+      };
+
+      const headActions = head.createDiv({ cls: "xy-api-provider-actions" });
+      const deleteBtn = headActions.createEl("button", { cls: "xy-status-btn", text: "删除" });
+      deleteBtn.addEventListener("click", async () => {
+        s.mcpServers.splice(i, 1);
+        await this.plugin.saveSettings();
+        this.display();
+      });
+
+      let collapsed = true;
+      const content = card.createDiv({ cls: "xy-api-provider-content" });
+      content.style.display = "none";
+      head.style.cursor = "pointer";
+      head.addEventListener("click", (e) => {
+        if ((e.target as HTMLElement).closest("button")) return;
+        collapsed = !collapsed;
+        content.style.display = collapsed ? "none" : "";
+      });
+
+      this.addMCPFieldText(content, "名称", server.name, "my-server", async (val) => {
+        server.name = val;
+        await this.plugin.saveSettings();
+        updateHeader();
+      });
+
+      const typeField = content.createDiv({ cls: "xy-api-provider-field" });
+      typeField.createSpan({ cls: "xy-api-provider-label", text: "类型" });
+      const typeSelect = typeField.createEl("select", { cls: "dropdown" });
+      typeSelect.createEl("option", { value: "local", text: "本地进程" });
+      typeSelect.createEl("option", { value: "remote", text: "远程服务" });
+      typeSelect.value = server.type;
+      typeSelect.addEventListener("change", async () => {
+        server.type = typeSelect.value as "local" | "remote";
+        await this.plugin.saveSettings();
+        this.display();
+      });
+
+      const commandField = content.createDiv({ cls: "xy-api-provider-field xy-mcp-local" });
+      commandField.style.display = server.type === "local" ? "" : "none";
+      commandField.createSpan({ cls: "xy-api-provider-label", text: "命令" });
+      const commandInput = commandField.createEl("input", { cls: "xy-api-provider-input", attr: { placeholder: "npx" } });
+      commandInput.value = server.command || "";
+      commandInput.addEventListener("change", async () => {
+        server.command = commandInput.value.trim();
+        await this.plugin.saveSettings();
+      });
+
+      const argsField = content.createDiv({ cls: "xy-api-provider-field xy-mcp-local" });
+      argsField.style.display = server.type === "local" ? "" : "none";
+      argsField.createSpan({ cls: "xy-api-provider-label", text: "参数" });
+      const argsInput = argsField.createEl("input", { cls: "xy-api-provider-input", attr: { placeholder: "-y @modelcontextprotocol/server-filesystem ./" } });
+      argsInput.value = server.args || "";
+      argsInput.addEventListener("change", async () => {
+        server.args = argsInput.value.trim();
+        await this.plugin.saveSettings();
+      });
+
+      const urlField = content.createDiv({ cls: "xy-api-provider-field xy-mcp-remote" });
+      urlField.style.display = server.type === "remote" ? "" : "none";
+      urlField.createSpan({ cls: "xy-api-provider-label", text: "URL" });
+      const urlInput = urlField.createEl("input", { cls: "xy-api-provider-input", attr: { placeholder: "http://localhost:3000/mcp" } });
+      urlInput.value = server.url || "";
+      urlInput.addEventListener("change", async () => {
+        server.url = urlInput.value.trim();
+        await this.plugin.saveSettings();
+      });
+
+      const headersField = content.createDiv({ cls: "xy-api-provider-field xy-mcp-remote" });
+      headersField.style.display = server.type === "remote" ? "" : "none";
+      headersField.createSpan({ cls: "xy-api-provider-label", text: "Headers" });
+      const headersInput = headersField.createEl("input", { cls: "xy-api-provider-input", attr: { placeholder: '{"Authorization":"Bearer xxx"}' } });
+      headersInput.value = server.headers || "";
+      headersInput.addEventListener("change", async () => {
+        server.headers = headersInput.value.trim();
+        await this.plugin.saveSettings();
+      });
+
+      const enabledField = content.createDiv({ cls: "xy-api-provider-field" });
+      enabledField.createSpan({ cls: "xy-api-provider-label", text: "启用" });
+      const enabledToggle = enabledField.createEl("input", { type: "checkbox" });
+      enabledToggle.checked = server.enabled;
+      enabledToggle.addEventListener("change", async () => {
+        server.enabled = enabledToggle.checked;
+        await this.plugin.saveSettings();
+        const { resetMCPSyncDone } = await import("./ai");
+        resetMCPSyncDone();
+        this.display();
+      });
+    }
+
+    const addBtn = container.createDiv({ cls: "xy-settings-status-actions" });
+    const newBtn = addBtn.createEl("button", { cls: "xy-status-btn", text: "+ 新增 MCP 服务器" });
+    newBtn.addEventListener("click", async () => {
+      s.mcpServers.push({ name: "新服务器", type: "local", command: "", args: "", enabled: false });
+      await this.plugin.saveSettings();
+      this.display();
+    });
+  }
+
+  private addMCPFieldText(
+    container: HTMLElement, label: string, value: string,
+    placeholder: string, onChange: (val: string) => Promise<void>,
+  ) {
+    const field = container.createDiv({ cls: "xy-api-provider-field" });
+    field.createSpan({ cls: "xy-api-provider-label", text: label });
+    const input = field.createEl("input", { cls: "xy-api-provider-input", attr: { placeholder } });
+    input.value = value;
     input.addEventListener("change", () => { void onChange(input.value); });
   }
 
@@ -540,14 +676,6 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
         text.setPlaceholder("http://127.0.0.1:7890").setValue(s.proxyUrl)
           .onChange(async (val) => { s.proxyUrl = val.trim(); await this.plugin.saveSettings(); }),
       ), "route");
-
-    this.decorateSetting(new Setting(container)
-      .setName("启用 MCP 工具")
-      .setDesc("默认关闭以加快普通聊天速度（当前未实现）")
-      .addToggle((t) => {
-        t.setValue(s.mcpEnabled);
-        t.onChange(async (val) => { s.mcpEnabled = val; await this.plugin.saveSettings(); });
-      }), "blocks");
 
     this.decorateSetting(new Setting(container)
       .setName("启动时自动打开侧栏")
@@ -591,6 +719,18 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
         t.setValue(s.showThinking);
         t.onChange(async (val) => { s.showThinking = val; await this.plugin.saveSettings(); });
       }), "brain");
+
+    this.decorateSetting(new Setting(container)
+      .setName("附件大小上限")
+      .setDesc("单位 MB，超出限制的文件会被跳过")
+      .addText((text) =>
+        text.setPlaceholder("10").setValue(s.maxAttachmentSize === 10 ? "" : String(s.maxAttachmentSize))
+          .onChange(async (val) => {
+            const n = parseInt(val);
+            s.maxAttachmentSize = n > 0 ? n : 10;
+            await this.plugin.saveSettings();
+          }),
+      ), "hard-drive");
 
     container.createEl("hr");
     container.createEl("h3", { text: "系统提示词" });
@@ -639,8 +779,8 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
           }
           await this.plugin.saveSettings();
           new Notice(`已同步 ${result.models.length} 个模型`);
-        } catch (err: any) {
-          new Notice(`同步失败: ${err.message}`);
+        } catch (err: unknown) {
+          new Notice(`同步失败: ${err instanceof Error ? err.message : String(err)}`);
         }
       });
 

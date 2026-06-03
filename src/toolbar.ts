@@ -1,6 +1,6 @@
 ﻿import { Notice, setTooltip } from "obsidian";
 import { showPopup, addPopupItem } from "./popup";
-import { getActiveProvider } from "./types";
+import { getActiveProvider, type ReasoningEffort, type ReasoningEffortAPI } from "./types";
 import type XiaoyuanAIPlugin from "./main";
 
 interface ToolbarHost {
@@ -173,7 +173,7 @@ export function buildToolbarContent(container: HTMLElement, view: ToolbarHost): 
       showPopup(levelText, (popup) => {
         for (const m of levels) {
           addPopupItem(popup, m.label, m.value === s.defaultReasoning, () => {
-            s.defaultReasoning = m.value as any;
+            s.defaultReasoning = m.value as ReasoningEffort;
             view.plugin.saveSettings();
             levelText.textContent = m.label;
             new Notice(`推理强度: ${m.label}`);
@@ -191,7 +191,7 @@ export function buildToolbarContent(container: HTMLElement, view: ToolbarHost): 
       showPopup(apiLevelText, (popup) => {
         for (const m of apiLevels) {
           addPopupItem(popup, m.label, m.value === s.apiReasoningEffort, () => {
-            s.apiReasoningEffort = m.value as any;
+            s.apiReasoningEffort = m.value as ReasoningEffortAPI;
             view.plugin.saveSettings();
             apiLevelText.textContent = m.label;
             new Notice(`推理强度: ${m.label}`);
@@ -203,7 +203,7 @@ export function buildToolbarContent(container: HTMLElement, view: ToolbarHost): 
   }
 
   // Send/Stop button
-  const sendBtn = container.createSpan({ cls: "xiaoyuan-attach-btn" });
+  const sendBtn = container.createSpan({ cls: "xiaoyuan-send-btn" });
   sendBtn.style.marginLeft = "auto";
   sendBtn.addEventListener("click", () => {
     if (view.abortController) {

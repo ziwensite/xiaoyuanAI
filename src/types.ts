@@ -52,9 +52,6 @@ export interface OpenCodeSettings {
   port: number;
   model: string;
   agent: string;
-  textEnabled: boolean;
-  imageEnabled: boolean;
-  pdfEnabled: boolean;
 }
 
 export interface ApiProviderConfig {
@@ -63,6 +60,16 @@ export interface ApiProviderConfig {
   baseUrl: string;
   model: string;
   apiKey: string;
+}
+
+export interface McpServerConfig {
+  name: string;
+  type: "local" | "remote";
+  command?: string;
+  args?: string;
+  url?: string;
+  headers?: string;
+  enabled: boolean;
 }
 
 export type ReasoningEffort = "none" | "minimal" | "low" | "medium" | "high" | "xhigh";
@@ -78,7 +85,7 @@ export interface XiaoyuanAISettings {
 
   proxyEnabled: boolean;
   proxyUrl: string;
-  mcpEnabled: boolean;
+  mcpServers: McpServerConfig[];
   defaultReasoning: ReasoningEffort;
   apiReasoningEffort: ReasoningEffortAPI;
   defaultPermission: PermissionMode;
@@ -92,6 +99,7 @@ export interface XiaoyuanAISettings {
   chatHistoryPath: string;
   showDiffPreview: boolean;
   showThinking: boolean;
+  maxAttachmentSize: number;
 
   opencodeModels?: { label: string; value: string }[];
   opencodeModelCaps?: Record<string, ModelCaps>;
@@ -105,9 +113,6 @@ export const DEFAULT_OPENCODE_SETTINGS: OpenCodeSettings = {
   port: 16226,
   model: "",
   agent: "build",
-  textEnabled: true,
-  imageEnabled: false,
-  pdfEnabled: false,
 };
 
 export const DEFAULT_SETTINGS: XiaoyuanAISettings = {
@@ -122,7 +127,7 @@ export const DEFAULT_SETTINGS: XiaoyuanAISettings = {
 
   proxyEnabled: false,
   proxyUrl: "",
-  mcpEnabled: false,
+  mcpServers: [],
   defaultReasoning: "low",
   apiReasoningEffort: "none",
   defaultPermission: "read-only",
@@ -136,6 +141,7 @@ export const DEFAULT_SETTINGS: XiaoyuanAISettings = {
   chatHistoryPath: "_chatHistory",
   showDiffPreview: true,
   showThinking: true,
+  maxAttachmentSize: 10,
 };
 
 export function getActiveProvider(s: { apiProviders: ApiProviderConfig[]; activeApiProviderId: string }): ApiProviderConfig | undefined {
@@ -147,7 +153,9 @@ export const CHAT_SESSIONS_KEY = "xiaoyuan-chat-sessions";
 export const CURRENT_SESSION_KEY = "xiaoyuan-current-session";
 export const VIEW_TYPE_XIAOYUAN_AI_CHAT = "xiaoyuan-chat-view";
 
-export const OPERATION_PROMPTS: Record<string, string> = {
+export type Operation = "polish" | "summarize" | "complete" | "expand" | "translate" | "continue";
+
+export const OPERATION_PROMPTS: Record<Operation, string> = {
   polish: "你是一个文字润色助手。请润色以下文本，改进表达、语法和流畅度，保持原意不变。只输出润色后的结果，不要添加任何解释：\n\n",
   summarize: "你是一个总结助手。请对以下文本进行简洁的总结，提取关键要点。用中文总结，只输出总结内容：\n\n",
   complete: "你是一个写作助手。请根据上下文，自然地补全以下内容，保持风格一致：\n\n",
@@ -156,7 +164,20 @@ export const OPERATION_PROMPTS: Record<string, string> = {
   continue: "你是一个写作助手。请根据以下内容自然地续写，保持风格一致：\n\n",
 };
 
-export const OPERATION_LABELS: Record<string, string> = {
+export const OPERATIONS: readonly Operation[] = [
+  "polish", "summarize", "complete", "expand", "continue", "translate",
+];
+
+export const OPERATION_ICONS: Record<Operation, string> = {
+  polish: "pencil",
+  summarize: "file-text",
+  complete: "check",
+  expand: "maximize",
+  continue: "arrow-right",
+  translate: "languages",
+};
+
+export const OPERATION_LABELS: Record<Operation, string> = {
   polish: "润色", summarize: "总结", complete: "补全",
   expand: "扩写", translate: "翻译为中文", continue: "续写",
 };

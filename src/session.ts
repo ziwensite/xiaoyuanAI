@@ -1,5 +1,6 @@
 import { Vault } from "obsidian";
 import type { ChatMessage, ChatSession } from "./types";
+import type XiaoyuanAIPlugin from "./main";
 import { CHAT_SESSIONS_KEY, CURRENT_SESSION_KEY } from "./types";
 
 export function getChatHistoryPath(chatHistoryPath: string): string {
@@ -16,9 +17,7 @@ export async function ensureChatHistoryFolder(vault: Vault, path: string): Promi
   try {
     await vault.createFolder(path);
   } catch (e) {
-    if (e instanceof Error && e.message.includes("already exists")) {
-      return;
-    }
+    if (vault.getFolderByPath(path)) return;
     throw e;
   }
 }
@@ -222,7 +221,7 @@ export async function deleteSessionFile(
 }
 
 export async function loadSessionsMeta(
-  plugin: any,
+  plugin: XiaoyuanAIPlugin,
 ): Promise<{ sessions: ChatSession[]; currentSessionId: string }> {
   const data = await plugin.loadData();
   let sessions: ChatSession[] = [];
@@ -242,7 +241,7 @@ export async function loadSessionsMeta(
 }
 
 export async function saveSessionsMeta(
-  plugin: any,
+  plugin: XiaoyuanAIPlugin,
   sessions: ChatSession[],
   currentSessionId: string,
 ): Promise<void> {

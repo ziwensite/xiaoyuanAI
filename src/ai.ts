@@ -29,12 +29,6 @@ interface OpenCodeProvider {
 }
 
 // Single-threaded (Obsidian plugin), no concurrency concern
-let currentCLISessionID = "";
-let cliCallInProgress = false;
-
-export function getCLISessionID(): string { return currentCLISessionID; }
-export function clearCLISessionID() { currentCLISessionID = ""; cliCallInProgress = false; }
-export function isCLICallInProgress(): boolean { return cliCallInProgress; }
 
 function stripAnsi(str: string): string {
   return str.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, "");
@@ -117,8 +111,8 @@ export async function checkOpenCodeStatus(
       const out = await spawnWithTimeout(effectiveBin, ["--version"], vaultDir, 5000).catch(() => "");
       return { ok: false, version: out.trim(), bin: effectiveBin, error: "opencode serve 未运行\n请执行 opencode serve 启动服务，或开启设置中的「自动启动」" };
     }
-  } catch (err: any) {
-    return { ok: false, version: "", bin: opencodePath, error: err.message };
+  } catch (err: unknown) {
+    return { ok: false, version: "", bin: opencodePath, error: err instanceof Error ? err.message : String(err) };
   }
 }
 
@@ -486,8 +480,10 @@ function connectSSE(
   base: string, authHeader: string, sessionId: string, signal: AbortSignal,
   onEvent: (evt: SSEEvent) => void,
   onDone?: () => void,
+  onError?: (err: Error) => void,
 ): void {
-  const noop = onDone || (() => {});
+  const handleDone = onDone || (() => {});
+  const handleError = onError || (() => {});
   const u = new URL("/event", base.replace(/\/+$/, ""));
   const opts: http.RequestOptions = {
     hostname: u.hostname,
@@ -512,11 +508,11 @@ function connectSSE(
         try { onEvent(JSON.parse(payload)); } catch {}
       }
     });
-    res.on("end", noop);
-    res.on("error", noop);
+    res.on("end", handleDone);
+    res.on("error", (err) => handleError(err instanceof Error ? err : new Error(String(err))));
   });
-  req.on("error", noop);
-  req.setTimeout(15000, () => { req.destroy(); noop(); });
+  req.on("error", (err) => handleError(err instanceof Error ? err : new Error(String(err))));
+  req.setTimeout(15000, () => { const err = new Error("SSE 连接超时"); req.destroy(); handleError(err); });
   signal.addEventListener("abort", () => req.destroy(), { once: true });
   req.end();
 }
@@ -569,7 +565,13 @@ export async function callAIWithHTTPStreaming(
 
     const partTypes = new Map<string, string>();
     const partTexts = new Map<string, string>();
-    let idleDetected = false;
+    let idleResolve: (() => void) | null = null;
+    let idleReject: ((err: Error) => void) | null = null;
+    const idlePromise = new Promise<void>((resolve, reject) => {
+      idleResolve = resolve;
+      idleReject = reject;
+    });
+    let sseFailed = false;
     connectSSE(
       conn.url, conn.authHeader, sessionId, combinedSig,
       (evt) => {
@@ -615,28 +617,28 @@ export async function callAIWithHTTPStreaming(
           }
         } else if (evt.type === "session.status") {
           if (props.status?.type === "idle") {
-            idleDetected = true;
             sseAbort.abort();
+            idleResolve?.();
           }
         }
       },
+      undefined,
+      () => {
+        sseFailed = true;
+        idleReject?.(new Error("SSE 连接中断"));
+      },
     );
 
-    const pollTimeout = 120000;
-    const pollStart = Date.now();
-
-    while (!idleDetected && Date.now() - pollStart < pollTimeout) {
-      if (signal?.aborted) throw new DOMException("已中断", "AbortError");
-      await new Promise(r => setTimeout(r, 1000));
-      try {
-        const statusMap = await requestOpenCode<Record<string, { type?: string }>>(
-          conn.url, "/session/status", "GET", undefined, conn.authHeader,
-        );
-        if (statusMap?.[sessionId]?.type === "idle") { idleDetected = true; break; }
-      } catch {}
-    }
-
-    if (!idleDetected) throw new Error("等待回复超时");
+    const timeoutMs = 120000;
+    const timeoutErr = await Promise.race([
+      idlePromise.then(() => null),
+      new Promise<Error>((_, reject) =>
+        setTimeout(() => reject(new Error("等待回复超时")), timeoutMs),
+      ),
+    ]);
+    if (timeoutErr) throw timeoutErr;
+    if (signal?.aborted) throw new DOMException("已中断", "AbortError");
+    if (sseFailed) throw new Error("SSE 连接中断");
 
     sseAbort.abort();
 
@@ -762,8 +764,10 @@ export async function callAISession(options: CallAISessionOptions): Promise<stri
 
 // ─── Auto-start opencode serve ──────────────────────────────────────
 
+// Module-level server state (Obsidian plugin is single-threaded, no concurrency concern)
 let autoStartedProc: ChildProcess | null = null;
 let processCleanupRegistered = false;
+let ensureServerPromise: Promise<string> | null = null;
 
 function registerProcessCleanup(): void {
   if (processCleanupRegistered) return;
@@ -787,6 +791,8 @@ export async function ensureOpenCodeServer(
   vaultDir: string,
   autoStart: boolean,
 ): Promise<string> {
+  if (ensureServerPromise) return ensureServerPromise;
+
   const serverUrl = `http://${hostname || "127.0.0.1"}:${port || 16226}`;
 
   try {
@@ -796,16 +802,24 @@ export async function ensureOpenCodeServer(
 
   if (!autoStart) throw new Error("opencode serve 未运行，且自动启动未开启");
 
-  if (autoStartedProc && autoStartedProc.exitCode === null) {
-    stopTempServer(autoStartedProc);
-    autoStartedProc = null;
-  }
+  ensureServerPromise = (async () => {
+    if (autoStartedProc && autoStartedProc.exitCode === null) {
+      stopTempServer(autoStartedProc);
+      autoStartedProc = null;
+    }
 
-  const effectiveBin = await resolveOpenCodePath(cliPath);
-  const temp = await startTempOpenCodeServer(effectiveBin, vaultDir, port, hostname);
-  autoStartedProc = temp.proc;
-  registerProcessCleanup();
-  return temp.url;
+    const effectiveBin = await resolveOpenCodePath(cliPath);
+    const temp = await startTempOpenCodeServer(effectiveBin, vaultDir, port, hostname);
+    autoStartedProc = temp.proc;
+    registerProcessCleanup();
+    return temp.url;
+  })();
+
+  try {
+    return await ensureServerPromise;
+  } finally {
+    ensureServerPromise = null;
+  }
 }
 
 export function stopOpenCodeServer(): void {
@@ -815,4 +829,58 @@ export function stopOpenCodeServer(): void {
   }
 }
 
-export { getVaultBasePath };
+// ─── MCP server sync ────────────────────────────────────────────────
+
+let mcpSyncDone = false;
+
+export function resetMCPSyncDone(): void {
+  mcpSyncDone = false;
+}
+
+export async function syncMCPServers(
+  settings: XiaoyuanAISettings,
+  vaultDir: string,
+): Promise<void> {
+  if (mcpSyncDone) return;
+
+  const servers = settings.mcpServers?.filter(s => s.enabled) || [];
+  if (servers.length === 0) return;
+
+  let conn = readServerConn(vaultDir, settings.opencode.port || 16226);
+  if (conn) {
+    try { await requestOpenCode(conn.url, "/global/health", "GET", undefined, conn.authHeader); }
+    catch { conn = null; }
+  }
+  if (!conn) {
+    try {
+      const base = await ensureOpenCodeServer(
+        settings.opencode.cliPath, settings.opencode.hostname,
+        settings.opencode.port, vaultDir, true,
+      );
+      conn = { url: base, authHeader: readServerConn(vaultDir, settings.opencode.port || 16226)?.authHeader || "" };
+    } catch {
+      return;
+    }
+  }
+
+  for (const server of servers) {
+    try {
+      const config: Record<string, any> = { type: server.type };
+      if (server.type === "local") {
+        if (server.command) config.command = server.command;
+        if (server.args) config.args = server.args.split(/\s+/).filter(Boolean);
+      } else {
+        if (server.url) config.url = server.url;
+        if (server.headers) {
+          try { config.headers = JSON.parse(server.headers); } catch { config.headers = {}; }
+        }
+      }
+      await requestOpenCode(conn!.url, "/mcp", "POST", { name: server.name, config }, conn!.authHeader);
+    } catch (err) {
+      console.warn(`MCP server "${server.name}" sync failed:`, err);
+    }
+  }
+  mcpSyncDone = true;
+}
+
+export { getVaultBasePath, readServerConn };

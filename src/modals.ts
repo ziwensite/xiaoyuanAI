@@ -1,7 +1,7 @@
-import { App, Modal, Notice, Menu } from "obsidian";
+import { App, Modal, Notice, TFile, Menu, setIcon, setTooltip } from "obsidian";
 import type XiaoyuanAIPlugin from "./main";
 import { callAISession, getVaultBasePath } from "./ai";
-import { OPERATION_PROMPTS, OPERATION_LABELS } from "./types";
+import { OPERATION_PROMPTS, OPERATION_LABELS, OPERATIONS, OPERATION_ICONS, type Operation } from "./types";
 
 function makeDraggable(handle: HTMLElement, modalEl: HTMLElement) {
   handle.addEventListener("mousedown", (e) => {
@@ -28,14 +28,14 @@ function makeDraggable(handle: HTMLElement, modalEl: HTMLElement) {
 
 export class TextOperationModal extends Modal {
   plugin: XiaoyuanAIPlugin;
-  operation: string;
+  operation: Operation;
   inputText: string;
   contentAreaEl!: HTMLDivElement;
   toolsBtn!: HTMLButtonElement;
   modeLabel!: HTMLSpanElement;
   titleEl!: HTMLHeadingElement;
 
-  constructor(app: App, plugin: XiaoyuanAIPlugin, operation: string, inputText: string) {
+  constructor(app: App, plugin: XiaoyuanAIPlugin, operation: Operation, inputText: string) {
     super(app);
     this.plugin = plugin;
     this.operation = operation;
@@ -49,7 +49,7 @@ export class TextOperationModal extends Modal {
     modalEl.style.height = Math.round(window.innerHeight * 0.75) + 'px';
 
     const headerRow = contentEl.createDiv({ cls: "xiaoyuan-modal-header" });
-    this.titleEl = headerRow.createEl("h3", { text: `AI ${OPERATION_LABELS[this.operation] || this.operation}` });
+    this.titleEl = headerRow.createEl("h3", { text: `AI ${OPERATION_LABELS[this.operation]}` });
     this.modeLabel = headerRow.createSpan({ cls: "xiaoyuan-modal-mode-label" });
     this.modeLabel.textContent = this.plugin.settings.execMode === "cli" ? "CLI" : "API";
     headerRow.style.cursor = "move";
@@ -59,10 +59,12 @@ export class TextOperationModal extends Modal {
 
     const btnRow = contentEl.createDiv({ cls: "xiaoyuan-modal-btn-row" });
 
-    this.toolsBtn = btnRow.createEl("button", { text: "AI工具", cls: "xiaoyuan-btn-secondary" });
-    this.toolsBtn.addEventListener("click", (e) => this.showAIToolsMenu(e));
+    const leftGroup = btnRow.createDiv({ cls: "xy-modal-btn-group" });
+    const rightGroup = btnRow.createDiv({ cls: "xy-modal-btn-group" });
 
-    const replaceBtn = btnRow.createEl("button", { text: "替换原文", cls: "xiaoyuan-btn-primary" });
+    const replaceBtn = leftGroup.createEl("button", { cls: "xy-icon-btn" });
+    setIcon(replaceBtn, "replace");
+    setTooltip(replaceBtn, "替换选中文本");
     replaceBtn.addEventListener("click", () => {
       const editor = this.plugin.getActiveEditor();
       if (editor) { editor.replaceSelection(this.contentAreaEl.textContent || ""); new Notice("已替换"); }
@@ -70,10 +72,22 @@ export class TextOperationModal extends Modal {
       this.close();
     });
 
-    const copyBtn = btnRow.createEl("button", { text: "复制结果", cls: "xiaoyuan-btn-secondary" });
+    const copyBtn = leftGroup.createEl("button", { cls: "xy-icon-btn" });
+    setIcon(copyBtn, "copy");
+    setTooltip(copyBtn, "复制到剪贴板");
     copyBtn.addEventListener("click", () => { navigator.clipboard.writeText(this.contentAreaEl.textContent || ""); new Notice("已复制"); });
 
-    const closeBtn = btnRow.createEl("button", { text: "关闭", cls: "xiaoyuan-btn-secondary" });
+    const openBtn = leftGroup.createEl("button", { cls: "xy-icon-btn" });
+    setIcon(openBtn, "external-link");
+    setTooltip(openBtn, "在编辑器中打开");
+    openBtn.addEventListener("click", () => this.openInEditor());
+
+    this.toolsBtn = leftGroup.createEl("button", { cls: "xy-icon-btn" });
+    setIcon(this.toolsBtn, "sparkles");
+    setTooltip(this.toolsBtn, "切换 AI 操作");
+    this.toolsBtn.addEventListener("click", (e) => this.showAIToolsMenu(e));
+
+    const closeBtn = rightGroup.createEl("button", { text: "关闭", cls: "xiaoyuan-btn-secondary" });
     closeBtn.addEventListener("click", () => this.close());
 
     if (this.inputText) {
@@ -85,24 +99,17 @@ export class TextOperationModal extends Modal {
 
   private showAIToolsMenu(e: MouseEvent) {
     const menu = new Menu();
-    ["polish", "summarize", "complete", "expand", "continue", "translate"].forEach((op) => {
+    OPERATIONS.forEach((op) => {
       menu.addItem((item) => {
         item.setTitle(OPERATION_LABELS[op]);
-        item.setIcon(
-          op === "polish" ? "pencil" :
-          op === "summarize" ? "file-text" :
-          op === "complete" ? "check" :
-          op === "expand" ? "maximize" :
-          op === "continue" ? "arrow-right" :
-          "globe"
-        );
+        item.setIcon(OPERATION_ICONS[op]);
         item.onClick(() => this.reprocessWith(op));
       });
     });
     menu.showAtMouseEvent(e);
   }
 
-  private async reprocessWith(operation: string) {
+  private async reprocessWith(operation: Operation) {
     const fullText = this.contentAreaEl.textContent || "";
     if (!fullText.trim()) { new Notice("内容为空，请先输入内容"); return; }
 
@@ -113,14 +120,14 @@ export class TextOperationModal extends Modal {
     }
     if (!textToProcess) textToProcess = fullText;
 
-    this.titleEl.textContent = `AI ${OPERATION_LABELS[operation] || operation}`;
+    this.titleEl.textContent = `AI ${OPERATION_LABELS[operation]}`;
     this.contentAreaEl.textContent = "已连接，等待响应...";
     this.contentAreaEl.contentEditable = "false";
 
     this.toolsBtn.disabled = true;
     try {
       const s = this.plugin.settings;
-      const prompt = (OPERATION_PROMPTS[operation] || OPERATION_PROMPTS.polish) + textToProcess;
+      const prompt = OPERATION_PROMPTS[operation] + textToProcess;
       const vaultDir = getVaultBasePath(this.app.vault);
       const result = await callAISession({
         prompt, settings: s, vaultDir,
@@ -129,8 +136,8 @@ export class TextOperationModal extends Modal {
       });
       this.contentAreaEl.textContent = result;
       this.contentAreaEl.contentEditable = "true";
-    } catch (err: any) {
-      this.contentAreaEl.textContent = `\u274C 错误：${err.message}`;
+    } catch (err: unknown) {
+      this.contentAreaEl.textContent = `\u274C 错误：${err instanceof Error ? err.message : String(err)}`;
     } finally {
       this.toolsBtn.disabled = false;
     }
@@ -140,7 +147,7 @@ export class TextOperationModal extends Modal {
     this.toolsBtn.disabled = true;
     try {
       const s = this.plugin.settings;
-      const prompt = (OPERATION_PROMPTS[this.operation] || OPERATION_PROMPTS.polish) + this.inputText;
+      const prompt = OPERATION_PROMPTS[this.operation] + this.inputText;
       const vaultDir = getVaultBasePath(this.app.vault);
       const result = await callAISession({
         prompt, settings: s, vaultDir,
@@ -149,11 +156,44 @@ export class TextOperationModal extends Modal {
       });
       this.contentAreaEl.textContent = result;
       this.contentAreaEl.contentEditable = "true";
-    } catch (err: any) {
-      this.contentAreaEl.textContent = `\u274C 错误：${err.message}`;
+    } catch (err: unknown) {
+      this.contentAreaEl.textContent = `\u274C 错误：${err instanceof Error ? err.message : String(err)}`;
     } finally {
       this.toolsBtn.disabled = false;
     }
+  }
+
+  private async openInEditor() {
+    const content = this.contentAreaEl.textContent || "";
+    if (!content.trim()) return;
+    try {
+      const vault = this.app.vault;
+      const tempRel = `${this.plugin.settings.chatHistoryPath}/temp`;
+      try { await vault.createFolder(tempRel); } catch {}
+      const dateStr = String(Date.now()).slice(-8);
+      const hash = this.simpleHash(content);
+      const fileRel = `${tempRel}/ai-result-${dateStr}-${hash}.md`;
+      const existing = vault.getAbstractFileByPath(fileRel);
+      let file: TFile;
+      if (existing instanceof TFile) {
+        await vault.modify(existing, content);
+        file = existing;
+      } else {
+        file = await vault.create(fileRel, content);
+      }
+      await this.app.workspace.getLeaf("tab").openFile(file);
+    } catch (err: unknown) {
+      new Notice(`打开失败: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  private simpleHash(s: string): string {
+    let h = 0;
+    for (let i = 0; i < s.length; i++) {
+      h = ((h << 5) - h) + s.charCodeAt(i);
+      h |= 0;
+    }
+    return (h >>> 0).toString(36);
   }
 
   onClose() { this.contentEl.empty(); }

@@ -8,7 +8,7 @@ import {
   Attachment,
   getActiveProvider,
 } from "./types";
-import { callAIWithHTTPStreaming, callAIWithAPI, getVaultBasePath, fetchOpenCodeModelsFromCLI, estimateTokens, clearCLISessionID, checkOpenCodeStatus, ensureOpenCodeServer } from "./ai";
+import { callAIWithHTTPStreaming, callAIWithAPI, getVaultBasePath, fetchOpenCodeModelsFromCLI, estimateTokens, checkOpenCodeStatus, ensureOpenCodeServer, syncMCPServers } from "./ai";
 import {
   getChatHistoryPath,
   ensureChatHistoryFolder,
@@ -67,12 +67,16 @@ export class XiaoyuanAIChatView extends ItemView {
   }
 
   async onClose() {
+    if (this.abortController) {
+      this.abortController.abort();
+      this.abortController = null;
+    }
+    this.pendingDiffs = null;
     await this.saveCurrentSession();
     this.viewContainer.empty();
   }
 
   public async newChat() {
-    clearCLISessionID();
     await this.saveCurrentSession();
     await this.createNewSession();
   }
@@ -174,8 +178,8 @@ export class XiaoyuanAIChatView extends ItemView {
     setIcon(settingsIcon, "settings");
     setTooltip(settingsIcon, "设置");
     settingsIcon.addEventListener("click", () => {
-      (this.app as any).setting.open();
-      (this.app as any).setting.openTabById("xiaoyuanAI");
+      this.app.setting.open();
+      this.app.setting.openTabById("xiaoyuanAI");
     });
   }
 
@@ -198,6 +202,22 @@ export class XiaoyuanAIChatView extends ItemView {
     this.inputEl.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); this.sendMessage(); }
     });
+
+    container.addEventListener("dragenter", (e) => {
+      e.preventDefault();
+      container.addClass("xy-drag-over");
+    });
+    container.addEventListener("dragover", (e) => {
+      e.preventDefault();
+    });
+    container.addEventListener("dragleave", () => {
+      container.removeClass("xy-drag-over");
+    });
+    container.addEventListener("drop", (e) => {
+      e.preventDefault();
+      container.removeClass("xy-drag-over");
+      if (e.dataTransfer?.files?.length) this.handleFiles(e.dataTransfer.files);
+    });
   }
 
   private updateAgentBorderClass() {
@@ -216,7 +236,7 @@ export class XiaoyuanAIChatView extends ItemView {
     const s = this.plugin.settings;
     try {
       if (s.opencode.autoStart) {
-        await ensureOpenCodeServer(s.opencode.cliPath, s.opencode.hostname, s.opencode.port, getVaultBasePath(this.app.vault), true).catch(() => {});
+        await ensureOpenCodeServer(s.opencode.cliPath, s.opencode.hostname, s.opencode.port, getVaultBasePath(this.app.vault), true).catch((e) => { console.warn("opencode 自动启动失败:", e); });
       }
       const result = await fetchOpenCodeModelsFromCLI(s.opencode.cliPath, getVaultBasePath(this.app.vault), s.opencode.port);
       s.opencodeModels = result.models.map((m) => ({ label: m.displayName, value: m.id }));
@@ -237,9 +257,10 @@ export class XiaoyuanAIChatView extends ItemView {
         new Notice(`已同步 ${result.models.length} 个模型`);
       }
       this.updateConnectionStatusUI(true);
-    } catch (err: any) {
+      syncMCPServers(s, getVaultBasePath(this.app.vault)).catch(() => {});
+    } catch (err: unknown) {
       this.updateConnectionStatusUI(false);
-      new Notice(`同步模型失败：${err.message}`);
+      new Notice(`同步模型失败：${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
@@ -307,21 +328,21 @@ export class XiaoyuanAIChatView extends ItemView {
       bubbleEl.createSpan().textContent = content;
       if (!streaming) {
         const actionsEl = msgEl.createDiv({ cls: "xiaoyuan-msg-actions" });
-        const undoBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
-        undoBtn.textContent = "\u21A9";
-        setTooltip(undoBtn, "撤销此消息");
-        undoBtn.addEventListener("click", () => {
-          this.undoMessage(id);
-        });
         const copyBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
-        copyBtn.textContent = "\uD83D\uDCCB";
+        setIcon(copyBtn, "copy");
         setTooltip(copyBtn, "复制");
         copyBtn.addEventListener("click", () => {
           navigator.clipboard.writeText(content);
           new Notice("已复制");
         });
+        const undoBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
+        setIcon(undoBtn, "undo");
+        setTooltip(undoBtn, "撤销此消息");
+        undoBtn.addEventListener("click", () => {
+          this.undoMessage(id);
+        });
         if (timestamp) {
-          actionsEl.createSpan({ cls: "xiaoyuan-msg-time", text: formatTime(timestamp) });
+          actionsEl.createSpan({ cls: "xiaoyuan-msg-time", text: `${this.plugin.settings.execMode.toUpperCase()} · ${formatTime(timestamp)}` });
         }
       }
     } else {
@@ -334,40 +355,24 @@ export class XiaoyuanAIChatView extends ItemView {
       }
       const mdContainer = bubbleEl.createDiv({ cls: "xy-obsidian-md" });
       await this.renderObsidianMD(mdContainer, content.trim());
+      this.enhanceCodeBlocks(bubbleEl);
       if (!streaming) {
         const actionsEl = msgEl.createDiv({ cls: "xiaoyuan-msg-actions" });
         const copyBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
-        copyBtn.textContent = "\uD83D\uDCCB";
+        setIcon(copyBtn, "copy");
         setTooltip(copyBtn, "复制");
         copyBtn.addEventListener("click", () => {
           navigator.clipboard.writeText(content);
           new Notice("已复制");
         });
         const openBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
-        openBtn.textContent = "\u{1F4D6}";
+        setIcon(openBtn, "external-link");
         setTooltip(openBtn, "在编辑器中打开");
         openBtn.addEventListener("click", () => this.openInEditor(content, timestamp));
         if (timestamp) {
-          actionsEl.createSpan({ cls: "xiaoyuan-msg-time", text: formatTime(timestamp) });
+          actionsEl.createSpan({ cls: "xiaoyuan-msg-time", text: `${this.plugin.settings.execMode.toUpperCase()} · ${formatTime(timestamp)}` });
         }
       }
-      setTimeout(() => {
-        if (!bubbleEl.isConnected) return;
-        (window as Record<string, any>).Prism?.highlightAllUnder(bubbleEl);
-        bubbleEl.querySelectorAll("pre").forEach((pre) => {
-          if (pre.querySelector(".xy-copy-btn")) return;
-          const btn = document.createElement("button");
-          btn.className = "xy-copy-btn";
-          btn.textContent = "复制";
-          pre.style.position = "relative";
-          btn.addEventListener("click", () => {
-            navigator.clipboard.writeText(pre.textContent || "");
-            btn.textContent = "已复制";
-            setTimeout(() => { btn.textContent = "复制"; }, 2000);
-          });
-          pre.appendChild(btn);
-        });
-      }, 0);
     }
 
     return msgEl;
@@ -383,11 +388,30 @@ export class XiaoyuanAIChatView extends ItemView {
     return safe.replace(/\x00CODERAW(\d+)\x00/g, (_, i) => blocks[+i]);
   }
 
+  private enhanceCodeBlocks(container: HTMLElement) {
+    if (!container.isConnected) return;
+    (window as Record<string, any>).Prism?.highlightAllUnder(container);
+    container.querySelectorAll("pre").forEach((pre) => {
+      if (pre.querySelector(".xy-copy-btn")) return;
+      const btn = document.createElement("button");
+      btn.className = "xy-copy-btn";
+      btn.textContent = "复制";
+      pre.style.position = "relative";
+      btn.addEventListener("click", () => {
+        navigator.clipboard.writeText(pre.textContent || "");
+        btn.textContent = "已复制";
+        setTimeout(() => { btn.textContent = "复制"; }, 2000);
+      });
+      pre.appendChild(btn);
+    });
+  }
+
   private async renderObsidianMD(container: HTMLElement, md: string) {
     const safe = this.sanitizeForRender(md);
+    const sourcePath = `${this.plugin.settings.chatHistoryPath}/session.md`;
     await MarkdownRenderer.render(
       this.app, safe, container,
-      "_chatHistory/session.md", this,
+      sourcePath, this,
     );
     container.querySelectorAll("table").forEach((table) => {
       const wrapper = document.createElement("div");
@@ -420,8 +444,8 @@ export class XiaoyuanAIChatView extends ItemView {
       }
 
       await this.app.workspace.getLeaf("tab").openFile(file);
-    } catch (err: any) {
-      new Notice(`打开失败: ${err.message}`);
+    } catch (err: unknown) {
+      new Notice(`打开失败: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
@@ -441,8 +465,23 @@ export class XiaoyuanAIChatView extends ItemView {
       : "当前模式：API（直接调用）";
 
     const msgEl = this.messagesEl.createDiv({ cls: "xiaoyuan-msg xiaoyuan-msg-assistant xiaoyuan-welcome" });
-    msgEl.createDiv({ cls: "xiaoyuan-msg-bubble" }).innerHTML =
-      `\uD83D\uDC4B 你好！我是小元。<br><br>${modeInfo}<br><br>我可以帮你：<br>\u2022 \uD83D\uDCAC 聊天对话<br>\u2022 \u270D\uFE0F 润色、总结、补全笔记<br>\u2022 \uD83D\uDD0D 查询维基知识<br><br>选中文本后右键 \u2192 使用 AI 操作。`;
+    const bubble = msgEl.createDiv({ cls: "xiaoyuan-msg-bubble" });
+    bubble.createEl("span", { text: "👋 你好！我是小元。" });
+    bubble.createEl("br");
+    bubble.createEl("br");
+    bubble.createEl("span", { text: modeInfo });
+    bubble.createEl("br");
+    bubble.createEl("br");
+    bubble.createEl("span", { text: "我可以帮你：" });
+    bubble.createEl("br");
+    bubble.createEl("span", { text: "• 💬 聊天对话" });
+    bubble.createEl("br");
+    bubble.createEl("span", { text: "• ✍️ 润色、总结、补全笔记" });
+    bubble.createEl("br");
+    bubble.createEl("span", { text: "• 🔍 查询维基知识" });
+    bubble.createEl("br");
+    bubble.createEl("br");
+    bubble.createEl("span", { text: "选中文本后右键 → 使用 AI 操作。" });
   }
 
   private addSystemMessage(text: string): HTMLDivElement {
@@ -467,13 +506,16 @@ export class XiaoyuanAIChatView extends ItemView {
     }
     if (removed === 0) return;
 
-    const kept = this.messages.slice(removed);
-    this.messages = kept;
-    this.messagesEl.empty();
-    this.addWelcomeMessage();
-    for (const m of kept) {
-      this.messagesEl.appendChild(await this.renderMessageEl(m.id, m.role, m.content, false, m.thinking, m.timestamp));
+    const msgEls = Array.from(this.messagesEl.querySelectorAll(".xiaoyuan-msg"));
+    let removedFromDom = 0;
+    for (const el of msgEls) {
+      if (removedFromDom >= removed) break;
+      if (el.classList.contains("xiaoyuan-welcome") || el.classList.contains("xiaoyuan-msg-system")) continue;
+      el.remove();
+      removedFromDom++;
     }
+
+    this.messages = this.messages.slice(removed);
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
     this.addSystemMessage(`已自动截断 ${removed} 条历史消息以控制 Token 用量`);
   }
@@ -490,14 +532,14 @@ export class XiaoyuanAIChatView extends ItemView {
     this.abortController = new AbortController();
     this.pendingDiffs = null;
     this.setProcessingState(true);
-    await this.truncateMessagesIfNeeded();
 
     let statusMsg: HTMLDivElement | null = null;
-    if (this.plugin.settings.execMode === "cli") {
-      statusMsg = this.addSystemMessage("正在连接 opencode...");
-    }
 
     try {
+      await this.truncateMessagesIfNeeded();
+      if (this.plugin.settings.execMode === "cli") {
+        statusMsg = this.addSystemMessage("正在连接 opencode...");
+      }
       const response = await this.callAI(text, this.abortController.signal, statusMsg);
       this.attachments = [];
       this.renderAttachments();
@@ -518,10 +560,9 @@ export class XiaoyuanAIChatView extends ItemView {
         }
         await this.saveCurrentSession();
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (statusMsg) statusMsg.remove();
-      if (err.name === "AbortError") {
-        clearCLISessionID();
+      if (err instanceof DOMException && err.name === "AbortError") {
         for (let i = this.messages.length - 1; i >= 0; i--) {
           if (this.messages[i].role === "user") {
             this.restoreMessage(this.messages[i].id);
@@ -530,7 +571,7 @@ export class XiaoyuanAIChatView extends ItemView {
         }
         this.addSystemMessage("\u23F9 已中断");
       } else {
-        this.addMessage("assistant", `\u274C 错误：${err.message}`);
+        this.addMessage("assistant", `\u274C 错误：${err instanceof Error ? err.message : String(err)}`);
       }
       await this.saveCurrentSession();
     } finally {
@@ -563,9 +604,10 @@ export class XiaoyuanAIChatView extends ItemView {
         if (s.opencode.autoStart) {
           try {
             await ensureOpenCodeServer(s.opencode.cliPath, s.opencode.hostname, s.opencode.port, vaultDir, true);
-          } catch (err: any) {
-            new Notice(`⚠ 启动 opencode 失败: ${err.message}`);
-            throw new Error(`无法启动 opencode serve: ${err.message}`);
+          } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err);
+            new Notice(`⚠ 启动 opencode 失败: ${msg}`);
+            throw new Error(`无法启动 opencode serve: ${msg}`);
           }
         }
         if (this.messages.length > 0 && this.messages[this.messages.length - 1].role === "user") {
@@ -788,39 +830,22 @@ export class XiaoyuanAIChatView extends ItemView {
     if (!msgEl.querySelector(".xiaoyuan-msg-actions")) {
       const actionsEl = msgEl.createDiv({ cls: "xiaoyuan-msg-actions" });
         const copyBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
-        copyBtn.textContent = "\uD83D\uDCCB";
+        setIcon(copyBtn, "copy");
         setTooltip(copyBtn, "复制");
         copyBtn.addEventListener("click", () => {
           navigator.clipboard.writeText(lastMsg.content);
           new Notice("已复制");
         });
         const openBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
-        openBtn.textContent = "\u{1F4D6}";
+        setIcon(openBtn, "external-link");
         setTooltip(openBtn, "在编辑器中打开");
         openBtn.addEventListener("click", () => this.openInEditor(lastMsg.content, lastMsg.timestamp));
         if (lastMsg.timestamp) {
-          actionsEl.createSpan({ cls: "xiaoyuan-msg-time", text: formatTime(lastMsg.timestamp) });
+          actionsEl.createSpan({ cls: "xiaoyuan-msg-time", text: `${this.plugin.settings.execMode.toUpperCase()} · ${formatTime(lastMsg.timestamp)}` });
         }
-    }
+}
 
-    setTimeout(() => {
-      if (!bubbleEl.isConnected) return;
-      (window as Record<string, any>).Prism?.highlightAllUnder(bubbleEl);
-      bubbleEl.querySelectorAll("pre").forEach((pre) => {
-        if (pre.querySelector(".xy-copy-btn")) return;
-        const btn = document.createElement("button");
-        btn.className = "xy-copy-btn";
-        btn.textContent = "复制";
-        pre.style.position = "relative";
-        btn.addEventListener("click", () => {
-          navigator.clipboard.writeText(pre.textContent || "");
-          btn.textContent = "已复制";
-          setTimeout(() => { btn.textContent = "复制"; }, 2000);
-        });
-        pre.appendChild(btn);
-      });
-    }, 0);
-
+    this.enhanceCodeBlocks(bubbleEl);
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
     return lastMsg.id;
   }
@@ -942,6 +967,7 @@ export class XiaoyuanAIChatView extends ItemView {
   }
 
   private async saveCurrentSession() {
+    if (this.messages.length === 0) return;
     const path = getChatHistoryPath(this.plugin.settings.chatHistoryPath);
     const session = this.sessions.find((s) => s.id === this.currentSessionId);
     if (session) {
@@ -981,6 +1007,7 @@ export class XiaoyuanAIChatView extends ItemView {
   }
 
   private async switchSession(sessionId: string) {
+    if (this.abortController) { new Notice("请等待当前 AI 回复完成"); return; }
     await this.saveCurrentSession();
     const session = this.sessions.find((s) => s.id === sessionId);
     if (session) {
@@ -993,6 +1020,7 @@ export class XiaoyuanAIChatView extends ItemView {
   }
 
   private async deleteSession(sessionId: string) {
+    if (this.abortController) { new Notice("请等待当前 AI 回复完成"); return; }
     if (this.sessions.length <= 1) {
       new Notice("至少保留一个对话");
       return;
@@ -1131,7 +1159,7 @@ export class XiaoyuanAIChatView extends ItemView {
     const content = this.messages[idx].content;
     this.messages = this.messages.slice(0, idx);
     setTimeout(() => {
-      const msgEls = this.messagesEl.querySelectorAll(".xiaoyuan-msg");
+const msgEls = Array.from(this.messagesEl.querySelectorAll(".xiaoyuan-msg"));
       for (let i = msgEls.length - 1; i >= idx; i--) msgEls[i].remove();
       this.inputEl.value = content;
       this.inputEl.focus();
@@ -1146,26 +1174,29 @@ export class XiaoyuanAIChatView extends ItemView {
   // ─── Attachments ───────────────────────────────────────────────
 
   pickFiles() {
-    const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024;
     const input = document.createElement("input");
     input.type = "file";
     input.multiple = true;
     input.accept = "image/*,.pdf,.txt,.md,.csv,.json,.yaml,.yml,.xml";
     input.addEventListener("change", async () => {
-      const files = Array.from(input.files || []);
-      for (const file of files) {
-        if (file.size > MAX_ATTACHMENT_SIZE) {
-          new Notice(`文件过大: ${file.name} (最大 10MB)`);
-          continue;
-        }
-        try {
-          const data = await this.readFileAsBase64(file);
-          this.attachments.push({ name: file.name, type: file.type || "application/octet-stream", data, size: file.size });
-        } catch {}
-      }
-      this.renderAttachments();
+      if (input.files) this.handleFiles(input.files);
     });
     input.click();
+  }
+
+  private async handleFiles(files: FileList) {
+    const maxBytes = this.plugin.settings.maxAttachmentSize * 1024 * 1024;
+    for (const file of Array.from(files)) {
+      if (file.size > maxBytes) {
+        new Notice(`文件过大: ${file.name} (最大 ${this.plugin.settings.maxAttachmentSize}MB)`);
+        continue;
+      }
+      try {
+        const data = await this.readFileAsBase64(file);
+        this.attachments.push({ name: file.name, type: file.type || "application/octet-stream", data, size: file.size });
+      } catch {}
+    }
+    this.renderAttachments();
   }
 
   private readFileAsBase64(file: File): Promise<string> {
@@ -1205,11 +1236,11 @@ export class XiaoyuanAIChatView extends ItemView {
     if (processing) {
       setIcon(this.sendBtn, "circle-stop");
       setTooltip(this.sendBtn, "停止");
-      this.sendBtn.style.color = "var(--color-red)";
+      this.sendBtn.classList.add("is-stop");
     } else {
       setIcon(this.sendBtn, "circle-arrow-right");
       setTooltip(this.sendBtn, "发送");
-      this.sendBtn.style.color = "";
+      this.sendBtn.classList.remove("is-stop");
     }
   }
 }
