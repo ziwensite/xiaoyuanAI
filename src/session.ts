@@ -124,7 +124,9 @@ export async function scanChatHistoryFolder(
     const loaded: ChatSession[] = [];
 
     for (const filePath of filePaths) {
-      const sessionId = filePath.split("/").pop()!.replace(".md", "");
+      const name = filePath.split("/").pop();
+      if (!name) continue;
+      const sessionId = name.replace(".md", "");
       try {
         const content = await vault.adapter.read(filePath);
         const messages = parseMarkdownToMessages(content);

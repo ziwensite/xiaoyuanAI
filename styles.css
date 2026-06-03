@@ -1,3 +1,7 @@
+/* ═══════════════════════════════════════════════════════
+   Chat Layout
+   ═══════════════════════════════════════════════════════ */
+
 .xiaoyuan-chat-container {
   display: flex;
   flex-direction: column;
@@ -11,115 +15,6 @@
   height: 100%;
 }
 
-.xiaoyuan-input-container {
-  border: none;
-  border-radius: 4px;
-  background-color: var(--background-primary);
-  display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-  margin-top: 18px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-  transition: outline 0.12s;
-}
-
-.xy-drag-over {
-  outline: 2px dashed var(--interactive-accent);
-  outline-offset: -2px;
-}
-
-.xiaoyuan-input-container:focus-within,
-.xiaoyuan-input-container:focus {
-  outline: none;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-  border: none;
-}
-
-.xiaoyuan-input-container:focus-visible {
-  outline: 2px solid var(--interactive-accent);
-  outline-offset: -2px;
-}
-
-.xiaoyuan-input-container *:focus {
-  outline: none;
-  box-shadow: none;
-}
-
-.xiaoyuan-input-container *:focus-visible {
-  outline: 2px solid var(--interactive-accent);
-  outline-offset: -2px;
-}
-
-.xy-agent-build .xiaoyuan-input-container {
-  border: 1px solid var(--background-modifier-error);
-}
-
-.xy-agent-plan .xiaoyuan-input-container {
-  border: 1px solid var(--interactive-accent);
-}
-
-.xiaoyuan-chat-input {
-  width: 100%;
-  background: transparent;
-  color: var(--text-normal);
-  border: none;
-  resize: none;
-  min-height: calc(1.4em * 3 + 8px);
-  line-height: 1.4;
-  padding: 12px 14px 8px;
-  font-size: 0.8em;
-  font-family: inherit;
-  outline: none;
-  box-sizing: border-box;
-}
-
-.xiaoyuan-chat-input:focus,
-.xiaoyuan-chat-input:focus-within {
-  outline: none;
-  box-shadow: none;
-  border: none;
-}
-
-.xiaoyuan-chat-input:focus-visible {
-  outline: none;
-  outline-offset: -2px;
-}
-
-.xiaoyuan-toolbar {
-  display: flex;
-  align-items: center;
-  padding: 5px 10px 5px 12px;
-  gap: 6px;
-}
-
-.xiaoyuan-model-select,
-.xiaoyuan-level-select {
-  color: var(--text-muted);
-  font-size: 0.8em;
-  cursor: pointer;
-  border-radius: 4px;
-  padding: 2px 6px 2px 18px;
-  position: relative;
-}
-
-.xiaoyuan-model-select::before,
-.xiaoyuan-level-select::before {
-  content: "▲";
-  position: absolute;
-  left: 4px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 0.6em;
-  color: var(--text-muted);
-  pointer-events: none;
-}
-
-.xiaoyuan-model-select:hover,
-.xiaoyuan-level-select:hover {
-  color: var(--text-normal);
-  background-color: var(--background-modifier-hover);
-}
-
 .xiaoyuan-chat-messages {
   flex: 1;
   overflow-y: auto;
@@ -129,175 +24,9 @@
   gap: 10px;
 }
 
-.xiaoyuan-msg {
-  display: flex;
-  flex-direction: column;
-  max-width: 95%;
-  position: relative;
-}
-
-.xiaoyuan-msg-user {
-  align-self: flex-end;
-}
-
-.xiaoyuan-msg-assistant {
-  align-self: flex-start;
-}
-
-.xiaoyuan-msg-user .xiaoyuan-msg-actions {
-  flex-direction: row-reverse;
-}
-
-.xiaoyuan-msg-user .xiaoyuan-msg-time {
-  margin-right: 14px;
-}
-
-.xiaoyuan-msg-system {
-  align-self: center;
-  max-width: 100%;
-}
-
-.xiaoyuan-msg-system .xiaoyuan-msg-bubble {
-  background: transparent;
-  color: var(--text-muted);
-  font-size: 0.8em;
-  padding: 4px 12px;
-  text-align: center;
-  border: none;
-}
-
-.xiaoyuan-msg-bubble {
-  padding: 10px 14px;
-  line-height: 1.5;
-  overflow-wrap: break-word;
-  user-select: text;
-}
-
-.xiaoyuan-msg-user .xiaoyuan-msg-bubble {
-  background-color: var(--interactive-accent);
-  color: var(--text-on-accent);
-  border-radius: 14px;
-  border-bottom-right-radius: 3px;
-}
-
-.xiaoyuan-msg-assistant .xiaoyuan-msg-bubble {
-  background-color: var(--background-primary);
-  color: var(--text-normal);
-  border-radius: 14px;
-  border-bottom-left-radius: 3px;
-  border: 1px solid var(--background-modifier-border);
-}
-
-/* hover 时显示 actions 行 */
-.xiaoyuan-msg-actions {
-  display: flex;
-  gap: 4px;
-  margin-top: 3px;
-  opacity: 0;
-  transition: opacity 0.12s;
-}
-
-.xiaoyuan-msg:hover .xiaoyuan-msg-actions,
-.xiaoyuan-msg:focus-within .xiaoyuan-msg-actions {
-  opacity: 1;
-}
-
-.xiaoyuan-msg-action {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.75em;
-  padding: 2px 5px;
-  border-radius: 4px;
-  cursor: pointer;
-  color: var(--text-muted);
-  user-select: none;
-}
-
-.xiaoyuan-msg-action svg {
-  width: 14px;
-  height: 14px;
-}
-
-.xiaoyuan-msg-action:hover {
-  background-color: var(--background-modifier-hover);
-  color: var(--text-normal);
-}
-
-.xiaoyuan-attach-preview {
-  display: none;
-  flex-wrap: wrap;
-  gap: 4px;
-  padding: 6px 10px 0;
-}
-
-.xiaoyuan-attach-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  color: var(--text-muted);
-  cursor: pointer;
-}
-
-.xiaoyuan-attach-btn:hover {
-  background-color: var(--background-modifier-hover);
-  color: var(--text-normal);
-}
-
-.xiaoyuan-send-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
-  background-color: var(--interactive-accent);
-  color: var(--text-on-accent);
-  cursor: pointer;
-  font-size: 16px;
-  line-height: 1;
-}
-
-.xiaoyuan-send-btn:hover {
-  background-color: var(--interactive-accent-hover);
-}
-
-.xiaoyuan-send-btn.is-stop {
-  background-color: var(--background-modifier-error);
-  color: var(--text-on-accent);
-}
-
-.xiaoyuan-send-btn.is-stop:hover {
-  background-color: var(--background-modifier-error-hover);
-}
-
-.xiaoyuan-attach-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  border-radius: 12px;
-  background-color: var(--background-modifier-border);
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-.xiaoyuan-welcome {
-  background-color: var(--background-secondary);
-  color: var(--text-normal);
-  max-width: 100%;
-  align-self: flex-start;
-}
-
-.xiaoyuan-welcome .xiaoyuan-msg-bubble {
-  background-color: var(--background-primary);
-  color: var(--text-normal);
-  border-radius: 8px;
-  border: 1px solid var(--background-modifier-border);
-}
+/* ═══════════════════════════════════════════════════════
+   Chat Header
+   ═══════════════════════════════════════════════════════ */
 
 .xiaoyuan-chat-header {
   display: flex;
@@ -308,7 +37,8 @@
   flex-shrink: 0;
 }
 
-.xiaoyuan-chat-header-left {
+.xiaoyuan-chat-header-left,
+.xiaoyuan-chat-header-right {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -359,13 +89,6 @@
   background-color: var(--background-modifier-hover);
 }
 
-.xiaoyuan-chat-header-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-
 .xiaoyuan-mode-selector {
   color: var(--text-muted);
   font-size: 0.8em;
@@ -408,7 +131,449 @@
 }
 
 /* ═══════════════════════════════════════════════════════
-   Unified Popup Menu — all selectors (mode, agent, model, reasoning, session)
+   Message Bubbles
+   ═══════════════════════════════════════════════════════ */
+
+.xiaoyuan-msg {
+  display: flex;
+  flex-direction: column;
+  max-width: 95%;
+  position: relative;
+}
+
+.xiaoyuan-msg-user {
+  align-self: flex-end;
+}
+
+.xiaoyuan-msg-assistant {
+  align-self: flex-start;
+}
+
+.xiaoyuan-msg-system {
+  align-self: center;
+  max-width: 100%;
+}
+
+.xiaoyuan-msg-system .xiaoyuan-msg-bubble {
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.8em;
+  padding: 4px 12px;
+  text-align: center;
+  border: none;
+}
+
+.xiaoyuan-msg-bubble {
+  padding: 10px 14px;
+  line-height: 1.5;
+  overflow-wrap: break-word;
+  user-select: text;
+}
+
+.xiaoyuan-msg-user .xiaoyuan-msg-bubble {
+  background-color: color-mix(in srgb, var(--interactive-accent) 30%, var(--background-primary));
+  color: var(--text-normal);
+  font-weight: 500;
+  border-radius: 14px;
+  border-bottom-right-radius: 3px;
+}
+
+.xiaoyuan-msg-assistant .xiaoyuan-msg-bubble {
+  background-color: var(--background-primary);
+  color: var(--text-normal);
+  border-radius: 14px;
+  border-bottom-left-radius: 3px;
+  border: 1px solid var(--background-modifier-border);
+}
+
+.xiaoyuan-welcome {
+  background-color: var(--background-secondary);
+  color: var(--text-normal);
+  max-width: 100%;
+  align-self: flex-start;
+}
+
+.xiaoyuan-welcome .xiaoyuan-msg-bubble {
+  background-color: var(--background-primary);
+  color: var(--text-normal);
+  border-radius: 8px;
+  border: 1px solid var(--background-modifier-border);
+}
+
+/* ═══════════════════════════════════════════════════════
+   Message Actions (hover to show)
+   ═══════════════════════════════════════════════════════ */
+
+.xiaoyuan-msg-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 3px;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+.xiaoyuan-msg:hover .xiaoyuan-msg-actions,
+.xiaoyuan-msg:focus-within .xiaoyuan-msg-actions {
+  opacity: 1;
+}
+
+.xiaoyuan-msg-user .xiaoyuan-msg-actions {
+  flex-direction: row-reverse;
+}
+
+.xiaoyuan-msg-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75em;
+  padding: 2px 5px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-muted);
+  user-select: none;
+}
+
+.xiaoyuan-msg-action svg {
+  width: 14px;
+  height: 14px;
+}
+
+.xiaoyuan-msg-action:hover {
+  background-color: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.xiaoyuan-msg-time {
+  margin-left: auto;
+  font-size: 0.75em;
+  color: var(--text-muted);
+  user-select: none;
+  white-space: nowrap;
+}
+
+.xiaoyuan-msg-user .xiaoyuan-msg-time {
+  margin-right: 14px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   Message Content — Thinking, Diff, Streaming, Code, Markdown
+   ═══════════════════════════════════════════════════════ */
+
+/* Thinking Block */
+.xiaoyuan-thinking {
+  margin-bottom: 6px;
+}
+
+.xiaoyuan-thinking summary {
+  cursor: pointer;
+  font-size: 0.8em;
+  color: var(--text-muted);
+  font-weight: 500;
+  user-select: none;
+  margin-bottom: 2px;
+}
+
+.xiaoyuan-thinking-content {
+  font-size: 0.85em;
+  line-height: 1.5;
+  color: var(--text-muted);
+  padding-left: 1em;
+  border-left: 2px solid var(--background-modifier-border);
+}
+
+/* Streaming Content */
+.xy-stream-content {
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
+/* Diff Preview */
+.xiaoyuan-diffs {
+  margin-top: 8px;
+  border-top: 1px solid var(--background-modifier-border);
+  padding-top: 6px;
+  font-size: 12px;
+}
+
+.xiaoyuan-diffs-summary {
+  cursor: pointer;
+  color: var(--text-muted);
+  font-weight: 500;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.xiaoyuan-diffs-summary:hover {
+  background-color: var(--background-modifier-hover);
+}
+
+.xiaoyuan-diff-file {
+  margin: 4px 0;
+  padding: 4px;
+  border-radius: 4px;
+  background-color: var(--background-primary-alt);
+}
+
+.xiaoyuan-diff-file-header {
+  font-family: var(--font-monospace);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 4px;
+  color: var(--text-normal);
+}
+
+.xiaoyuan-diff-content {
+  overflow-x: auto;
+  margin-top: 2px;
+}
+
+.xiaoyuan-diff-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-monospace);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.xiaoyuan-diff-table td {
+  padding: 0 4px;
+  white-space: pre;
+}
+
+.xiaoyuan-diff-table td:first-child,
+.xiaoyuan-diff-table td:nth-child(2) {
+  color: var(--text-faint);
+  text-align: right;
+  width: 2.5em;
+  user-select: none;
+}
+
+.xiaoyuan-diff-table td:last-child {
+  width: 100%;
+}
+
+.xiaoyuan-diff-table .diff-context td:last-child {
+  color: var(--text-muted);
+}
+
+.xiaoyuan-diff-table .diff-added td:last-child {
+  color: var(--color-green);
+}
+
+.xiaoyuan-diff-table .diff-removed td:last-child {
+  color: var(--color-red);
+}
+
+.xiaoyuan-diff-table .diff-changed td:last-child {
+  color: var(--color-yellow);
+}
+
+.xiaoyuan-diff-table .diff-removed {
+  text-decoration: line-through;
+}
+
+/* Tool Log */
+.xy-tool-log {
+  margin-top: 6px;
+  padding-top: 4px;
+  border-top: 1px solid var(--background-modifier-border);
+  font-size: 0.8em;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.xy-tool-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--background-primary-alt);
+  color: var(--text-muted);
+  font-size: 0.9em;
+}
+
+/* Code Block Copy Button */
+.xy-copy-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  border-radius: 4px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 1;
+  line-height: 1.4;
+}
+
+pre:hover .xy-copy-btn {
+  opacity: 1;
+}
+
+.xy-copy-btn:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+/* Obsidian Markdown Render Container */
+.xy-obsidian-md { font-size: var(--editor-font-size); line-height: 1.6; }
+.xy-obsidian-md :is(h1,h2,h3,h4,h5,h6) { margin: .3em 0; }
+.xy-obsidian-md table { width: 100%; border-collapse: collapse; font-size: 0.8em; }
+.xy-obsidian-md th, .xy-obsidian-md td { border: 1px solid var(--background-modifier-border); padding: 4px 8px; }
+
+/* ═══════════════════════════════════════════════════════
+   Chat Input Area
+   ═══════════════════════════════════════════════════════ */
+
+.xiaoyuan-input-container {
+  border: none;
+  border-radius: 4px;
+  background-color: var(--background-primary);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  margin-top: 18px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  transition: outline 0.12s;
+}
+
+.xy-agent-build .xiaoyuan-input-container {
+  border: 1px solid var(--background-modifier-error);
+}
+
+.xy-agent-plan .xiaoyuan-input-container {
+  border: 1px solid var(--interactive-accent);
+}
+
+.xiaoyuan-chat-input {
+  width: 100%;
+  background: transparent;
+  color: var(--text-normal);
+  border: none;
+  resize: none;
+  min-height: calc(1.4em * 3 + 8px);
+  line-height: 1.4;
+  padding: 12px 14px 8px;
+  font-size: 0.8em;
+  font-family: inherit;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.xiaoyuan-chat-input:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.xiaoyuan-toolbar {
+  display: flex;
+  align-items: center;
+  padding: 5px 10px 5px 12px;
+  gap: 6px;
+}
+
+/* Toolbar selectors */
+.xiaoyuan-model-select,
+.xiaoyuan-level-select {
+  color: var(--text-muted);
+  font-size: 0.8em;
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 2px 6px 2px 18px;
+  position: relative;
+}
+
+.xiaoyuan-model-select::before,
+.xiaoyuan-level-select::before {
+  content: "▲";
+  position: absolute;
+  left: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.6em;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.xiaoyuan-model-select:hover,
+.xiaoyuan-level-select:hover {
+  color: var(--text-normal);
+  background-color: var(--background-modifier-hover);
+}
+
+/* ═══════════════════════════════════════════════════════
+   Attachments & Send Button
+   ═══════════════════════════════════════════════════════ */
+
+.xiaoyuan-attach-preview {
+  display: none;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 10px 0;
+}
+
+.xiaoyuan-attach-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.xiaoyuan-attach-btn:hover {
+  background-color: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.xiaoyuan-attach-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background-color: var(--background-modifier-border);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.xiaoyuan-send-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.xiaoyuan-send-btn:hover {
+  background-color: var(--interactive-accent-hover);
+}
+
+.xiaoyuan-send-btn.is-stop {
+  background-color: var(--background-modifier-error);
+  color: var(--text-on-accent);
+}
+
+.xiaoyuan-send-btn.is-stop:hover {
+  background-color: var(--background-modifier-error-hover);
+}
+
+/* ═══════════════════════════════════════════════════════
+   Unified Popup Menu
    ═══════════════════════════════════════════════════════ */
 
 .xy-popup {
@@ -419,6 +584,24 @@
   min-width: 80px;
   padding: 4px 0;
   z-index: 1000;
+}
+
+/* 选中文字浮动菜单 */
+.xy-selection-popup {
+  position: fixed;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 4px;
+  display: flex;
+  gap: 2px;
+  z-index: 1000;
+}
+
+.xy-selection-popup .xiaoyuan-msg-action {
+  opacity: 1;
+  padding: 4px 8px;
 }
 
 .xy-popup-item {
@@ -509,6 +692,33 @@
   display: none;
 }
 
+/* Session Popup Search */
+.xy-popup-search {
+  width: calc(100% - 16px);
+  margin: 4px 8px 2px;
+  padding: 4px 8px;
+  font-size: var(--font-ui-small, 13px);
+  background: transparent;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  color: var(--text-normal);
+  outline: none;
+  box-sizing: border-box;
+}
+
+.xy-popup-search:focus {
+  border-color: var(--interactive-accent);
+}
+
+.xy-popup-session-list {
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+/* ═══════════════════════════════════════════════════════
+   Modal
+   ═══════════════════════════════════════════════════════ */
+
 .xiaoyuan-modal-container {
   max-width: 700px;
   overflow-x: auto;
@@ -516,7 +726,6 @@
   display: flex;
   flex-direction: column;
 }
-
 
 .xiaoyuan-modal-header {
   display: flex;
@@ -587,7 +796,7 @@
   cursor: not-allowed;
 }
 
-/* 纯图标按钮（取消按钮外观） */
+/* 纯图标按钮 */
 .xy-icon-btn {
   background: none !important;
   background-color: transparent !important;
@@ -608,124 +817,11 @@
   background: var(--background-modifier-hover) !important;
 }
 
-/* ─── Thinking Block ──────────────────────────────── */
-
-.xiaoyuan-thinking {
-  margin-bottom: 6px;
-}
-
-.xiaoyuan-thinking summary {
-  cursor: pointer;
-  font-size: 0.8em;
-  color: var(--text-muted);
-  font-weight: 500;
-  user-select: none;
-  margin-bottom: 2px;
-}
-
-.xiaoyuan-thinking-content {
-  font-size: 0.85em;
-  line-height: 1.5;
-  color: var(--text-muted);
-  padding-left: 1em;
-  border-left: 2px solid var(--background-modifier-border);
-}
-
-/* ─── Diff Preview ─────────────────────────────────── */
-
-.xiaoyuan-diffs {
-  margin-top: 8px;
-  border-top: 1px solid var(--background-modifier-border);
-  padding-top: 6px;
-  font-size: 12px;
-}
-
-.xiaoyuan-diffs-summary {
-  cursor: pointer;
-  color: var(--text-muted);
-  font-weight: 500;
-  padding: 2px 4px;
-  border-radius: 4px;
-}
-
-.xiaoyuan-diffs-summary:hover {
-  background-color: var(--background-modifier-hover);
-}
-
-.xiaoyuan-diff-file {
-  margin: 4px 0;
-  padding: 4px;
-  border-radius: 4px;
-  background-color: var(--background-primary-alt);
-}
-
-.xiaoyuan-diff-file-header {
-  font-family: var(--font-monospace);
-  font-size: 11px;
-  font-weight: 600;
-  padding: 2px 4px;
-  color: var(--text-normal);
-}
-
-.xiaoyuan-diff-content {
-  overflow-x: auto;
-  margin-top: 2px;
-}
-
-.xiaoyuan-diff-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-family: var(--font-monospace);
-  font-size: 11px;
-  line-height: 1.4;
-}
-
-.xiaoyuan-diff-table td {
-  padding: 0 4px;
-  white-space: pre;
-}
-
-.xiaoyuan-diff-table td:first-child,
-.xiaoyuan-diff-table td:nth-child(2) {
-  color: var(--text-faint);
-  text-align: right;
-  width: 2.5em;
-  user-select: none;
-}
-
-.xiaoyuan-diff-table td:last-child {
-  width: 100%;
-}
-
-.xiaoyuan-diff-table .diff-context td:last-child {
-  color: var(--text-muted);
-}
-
-.xiaoyuan-diff-table .diff-added td:last-child {
-  color: var(--color-green);
-}
-
-.xiaoyuan-diff-table .diff-removed td:last-child {
-  color: var(--color-red);
-}
-
-.xiaoyuan-diff-table .diff-changed td:last-child {
-  color: var(--color-yellow);
-}
-
-.xiaoyuan-diff-table .diff-added {
-  color: var(--color-green);
-}
-
-.xiaoyuan-diff-table .diff-removed {
-  color: var(--color-red);
-  text-decoration: line-through;
-}
-
 /* ═══════════════════════════════════════════════════════
-   Settings — ported from xiaoyuan-Agent
+   Settings
    ═══════════════════════════════════════════════════════ */
 
+/* Status Card */
 .xy-settings-status {
   display: grid;
   gap: 6px;
@@ -793,7 +889,7 @@
   background: var(--background-modifier-hover);
 }
 
-/* Tab bar */
+/* Tab Bar */
 .xy-settings-tabs {
   display: flex;
   flex-wrap: wrap;
@@ -859,7 +955,7 @@
   flex-wrap: wrap;
 }
 
-/* API provider cards */
+/* API Provider Cards */
 .xy-api-provider-row {
   display: grid;
   gap: 8px;
@@ -955,101 +1051,3 @@
   cursor: pointer;
   flex-shrink: 0;
 }
-
-/* ─── Streaming & Tool Log ──────────────────────────── */
-
-.xy-stream-content {
-  white-space: pre-wrap;
-  line-height: 1.5;
-}
-
-.xy-tool-log {
-  margin-top: 6px;
-  padding-top: 4px;
-  border-top: 1px solid var(--background-modifier-border);
-  font-size: 0.8em;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-.xy-tool-entry {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 1px 6px;
-  border-radius: 4px;
-  background: var(--background-primary-alt);
-  color: var(--text-muted);
-  font-size: 0.9em;
-}
-
-/* ─── Session Popup Search ──────────────────────────── */
-
-.xy-popup-search {
-  width: calc(100% - 16px);
-  margin: 4px 8px 2px;
-  padding: 4px 8px;
-  font-size: var(--font-ui-small, 13px);
-  background: transparent;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 4px;
-  color: var(--text-normal);
-  outline: none;
-  box-sizing: border-box;
-}
-
-.xy-popup-search:focus {
-  border-color: var(--interactive-accent);
-}
-
-.xy-popup-session-list {
-  max-height: 260px;
-  overflow-y: auto;
-}
-
-/* ─── Code Block Copy Button ────────────────────────── */
-
-.xy-copy-btn {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  padding: 2px 8px;
-  font-size: 11px;
-  border-radius: 4px;
-  border: 1px solid var(--background-modifier-border);
-  background: var(--background-primary);
-  color: var(--text-muted);
-  cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.15s;
-  z-index: 1;
-  line-height: 1.4;
-}
-
-pre:hover .xy-copy-btn {
-  opacity: 1;
-}
-
-.xy-copy-btn:hover {
-  background: var(--background-modifier-hover);
-  color: var(--text-normal);
-}
-
-/* ─── Message timestamp ──────────────────────────── */
-
-.xiaoyuan-msg-time {
-  margin-left: auto;
-  font-size: 0.75em;
-  color: var(--text-muted);
-  user-select: none;
-  white-space: nowrap;
-}
-
-/* ─── Obsidian Markdown 渲染容器 ──────────────────── */
-
-.xy-obsidian-md { font-size: var(--editor-font-size); line-height: 1.6; }
-.xy-obsidian-md :is(h1,h2,h3,h4,h5,h6) { margin: .3em 0; }
-.xy-obsidian-md table { width: 100%; border-collapse: collapse; font-size: 0.8em; }
-.xy-obsidian-md th, .xy-obsidian-md td { border: 1px solid var(--background-modifier-border); padding: 4px 8px; }
-

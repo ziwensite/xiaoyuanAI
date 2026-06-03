@@ -1,4 +1,5 @@
-import * as fs from "fs";
+import * as fs from "fs/promises";
+import * as fsSync from "fs";
 import * as path from "path";
 import { Plugin, WorkspaceLeaf, Notice, Menu, MarkdownView } from "obsidian";
 import { XiaoyuanAISettings, DEFAULT_SETTINGS, VIEW_TYPE_XIAOYUAN_AI_CHAT } from "./types";
@@ -18,7 +19,7 @@ export default class XiaoyuanAIPlugin extends Plugin {
 
     if (this.settings.execMode === "cli") {
       const resolved = await resolveOpenCodePath(this.settings.opencode.cliPath);
-      if (!fs.existsSync(resolved)) {
+      if (!fsSync.existsSync(resolved)) {
         this.settings.execMode = "api";
         await this.saveSettings();
         new Notice("未检测到 opencode 程序，已自动切换为 API 模式");
@@ -103,14 +104,15 @@ export default class XiaoyuanAIPlugin extends Plugin {
   private async cleanTempFiles() {
     try {
       const tempDir = path.join(getVaultBasePath(this.app.vault), this.settings.chatHistoryPath, "temp");
-      if (!fs.existsSync(tempDir)) return;
+      try { await fs.access(tempDir); } catch { return; }
       const now = Date.now();
       const maxAge = 24 * 60 * 60 * 1000;
-      for (const name of fs.readdirSync(tempDir)) {
+      const names = await fs.readdir(tempDir);
+      for (const name of names) {
         const fp = path.join(tempDir, name);
-        const stat = fs.statSync(fp);
+        const stat = await fs.stat(fp);
         if (stat.isFile() && name.endsWith(".md") && now - stat.mtimeMs > maxAge) {
-          fs.unlinkSync(fp);
+          await fs.unlink(fp);
         }
       }
     } catch (e) { console.warn("清理临时文件失败:", e); }
@@ -149,7 +151,12 @@ export default class XiaoyuanAIPlugin extends Plugin {
   }
 
   async loadSettings() {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    const data = await this.loadData() || {};
+    this.settings = {
+      ...DEFAULT_SETTINGS,
+      ...data,
+      opencode: { ...DEFAULT_SETTINGS.opencode, ...data?.opencode },
+    };
     if (!this.settings.opencode.agent) this.settings.opencode.agent = "build";
     for (const p of this.settings.apiProviders) {
       if (p.apiKey) {
@@ -161,10 +168,7 @@ export default class XiaoyuanAIPlugin extends Plugin {
     const encoded = this.settings.apiProviders.map(p => ({
       ...p, apiKey: p.apiKey ? btoa(p.apiKey) : p.apiKey,
     }));
-    const original = this.settings.apiProviders;
-    this.settings.apiProviders = encoded;
-    await this.saveData(this.settings);
-    this.settings.apiProviders = original;
+    await this.saveData({ ...this.settings, apiProviders: encoded });
   }
 
   async onunload() {

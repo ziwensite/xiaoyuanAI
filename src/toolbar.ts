@@ -60,28 +60,13 @@ export function buildToolbarContent(container: HTMLElement, view: ToolbarHost): 
     e.stopPropagation();
     showPopup(trigger, async (popup) => {
       if (s.execMode === "cli") {
-        const syncItem = popup.createDiv({ cls: "xy-popup-item" });
-        syncItem.createSpan({ cls: "xy-popup-label" }).textContent = "⟳ 同步模型列表";
-        syncItem.addEventListener("click", (ev) => {
-          ev.stopPropagation();
-          popup.remove();
-          view.syncCLIModels();
-        });
         let models = s.opencodeModels || [];
         if (models.length === 0) {
           const loadingItem = popup.createDiv({ cls: "xy-popup-item" });
-          loadingItem.createSpan({ cls: "xy-popup-label" }).textContent = "正在同步...";
+          loadingItem.createSpan({ cls: "xy-popup-label" }).textContent = "正在同步模型列表...";
           await view.syncCLIModels().catch(() => {});
           models = s.opencodeModels || [];
           popup.empty();
-          // re-add sync button after rebuild
-          const syncItem2 = popup.createDiv({ cls: "xy-popup-item" });
-          syncItem2.createSpan({ cls: "xy-popup-label" }).textContent = "⟳ 同步模型列表";
-          syncItem2.addEventListener("click", (ev) => {
-            ev.stopPropagation();
-            popup.remove();
-            view.syncCLIModels();
-          });
         }
         if (models.length === 0) {
           const emptyItem = popup.createDiv({ cls: "xy-popup-item" });
@@ -124,6 +109,14 @@ export function buildToolbarContent(container: HTMLElement, view: ToolbarHost): 
             children.classList.toggle("is-collapsed", open);
           });
         }
+        popup.createDiv({ cls: "xy-popup-separator" });
+        const syncBtn = popup.createDiv({ cls: "xy-popup-item" });
+        syncBtn.createSpan({ cls: "xy-popup-label" }).textContent = "⟳ 同步模型列表";
+        syncBtn.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          popup.remove();
+          view.syncCLIModels();
+        });
       } else {
         const providers = s.apiProviders;
         const activeProvider = getActiveProvider(s);

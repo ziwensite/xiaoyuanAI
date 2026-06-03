@@ -731,7 +731,9 @@ async function callAIWithHTTPStreaming(prompt, settings, vaultDir, signal, onCon
           }
         }
       },
-      void 0,
+      () => {
+        idleResolve == null ? void 0 : idleResolve();
+      },
       () => {
         sseFailed = true;
         idleReject == null ? void 0 : idleReject(new Error("SSE \u8FDE\u63A5\u4E2D\u65AD"));
@@ -865,8 +867,10 @@ function registerProcessCleanup() {
     }
   };
   process.on("exit", cleanup);
-  process.on("SIGTERM", cleanup);
-  process.on("SIGINT", cleanup);
+  if (process.platform !== "win32") {
+    process.on("SIGTERM", cleanup);
+    process.on("SIGINT", cleanup);
+  }
 }
 function isServerAutoStarted() {
   return autoStartedProc !== null && (autoStartedProc == null ? void 0 : autoStartedProc.exitCode) === null;
@@ -980,7 +984,8 @@ __export(main_exports, {
   default: () => XiaoyuanAIPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var fs2 = __toESM(require("fs"));
+var fs2 = __toESM(require("fs/promises"));
+var fsSync = __toESM(require("fs"));
 var path2 = __toESM(require("path"));
 var import_obsidian5 = require("obsidian");
 init_types();
@@ -1108,7 +1113,9 @@ async function scanChatHistoryFolder(vault, chatHistoryPath) {
     const filePaths = await collectSessionFiles(vault, folderPath);
     const loaded = [];
     for (const filePath of filePaths) {
-      const sessionId = filePath.split("/").pop().replace(".md", "");
+      const name = filePath.split("/").pop();
+      if (!name) continue;
+      const sessionId = name.replace(".md", "");
       try {
         const content = await vault.adapter.read(filePath);
         const messages = parseMarkdownToMessages(content);
@@ -1311,28 +1318,14 @@ function buildToolbarContent(container, view) {
     e.stopPropagation();
     showPopup(trigger, async (popup) => {
       if (s.execMode === "cli") {
-        const syncItem = popup.createDiv({ cls: "xy-popup-item" });
-        syncItem.createSpan({ cls: "xy-popup-label" }).textContent = "\u27F3 \u540C\u6B65\u6A21\u578B\u5217\u8868";
-        syncItem.addEventListener("click", (ev) => {
-          ev.stopPropagation();
-          popup.remove();
-          view.syncCLIModels();
-        });
         let models = s.opencodeModels || [];
         if (models.length === 0) {
           const loadingItem = popup.createDiv({ cls: "xy-popup-item" });
-          loadingItem.createSpan({ cls: "xy-popup-label" }).textContent = "\u6B63\u5728\u540C\u6B65...";
+          loadingItem.createSpan({ cls: "xy-popup-label" }).textContent = "\u6B63\u5728\u540C\u6B65\u6A21\u578B\u5217\u8868...";
           await view.syncCLIModels().catch(() => {
           });
           models = s.opencodeModels || [];
           popup.empty();
-          const syncItem2 = popup.createDiv({ cls: "xy-popup-item" });
-          syncItem2.createSpan({ cls: "xy-popup-label" }).textContent = "\u27F3 \u540C\u6B65\u6A21\u578B\u5217\u8868";
-          syncItem2.addEventListener("click", (ev) => {
-            ev.stopPropagation();
-            popup.remove();
-            view.syncCLIModels();
-          });
         }
         if (models.length === 0) {
           const emptyItem = popup.createDiv({ cls: "xy-popup-item" });
@@ -1375,6 +1368,14 @@ function buildToolbarContent(container, view) {
             children.classList.toggle("is-collapsed", open);
           });
         }
+        popup.createDiv({ cls: "xy-popup-separator" });
+        const syncBtn = popup.createDiv({ cls: "xy-popup-item" });
+        syncBtn.createSpan({ cls: "xy-popup-label" }).textContent = "\u27F3 \u540C\u6B65\u6A21\u578B\u5217\u8868";
+        syncBtn.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          popup.remove();
+          view.syncCLIModels();
+        });
       } else {
         const providers = s.apiProviders;
         const activeProvider = getActiveProvider(s);
@@ -1474,6 +1475,7 @@ var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
     this.pendingDiffs = null;
     this.connectionStatusEl = null;
     this.attachments = [];
+    this.quoteText = "";
     this.plugin = plugin;
   }
   getViewType() {
@@ -1493,6 +1495,7 @@ var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
     this.buildHeader();
     this.messagesEl = this.viewContainer.createDiv({ cls: "xiaoyuan-chat-messages" });
     this.buildInputArea();
+    this.registerSelectionListener();
     if (this.plugin.settings.execMode === "cli") {
       this.syncCLIModels();
     } else {
@@ -1577,23 +1580,24 @@ var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
       showPopup(modeText, (popup) => {
         addPopupItem(popup, "API", s.execMode === "api", () => {
           s.execMode = "api";
-          this.plugin.saveSettings();
-          this.rebuildHeader();
-          this.rebuildToolbar();
-          this.addSystemMessage("\u2705 \u5DF2\u5207\u6362\u5230 API \u6A21\u5F0F");
-          new import_obsidian2.Notice("\u5DF2\u5207\u6362\u5230 API \u6A21\u5F0F");
+          this.plugin.saveSettings().then(() => {
+            this.rebuildHeader();
+            this.rebuildToolbar();
+            this.addSystemMessage("\u2705 \u5DF2\u5207\u6362\u5230 API \u6A21\u5F0F");
+            new import_obsidian2.Notice("\u5DF2\u5207\u6362\u5230 API \u6A21\u5F0F");
+          });
         });
         addPopupItem(popup, "CLI", s.execMode === "cli", () => {
           s.execMode = "cli";
-          this.plugin.saveSettings();
-          this.rebuildHeader();
-          this.rebuildToolbar();
-          this.addSystemMessage("\u2705 \u5DF2\u5207\u6362\u5230 CLI \u6A21\u5F0F");
-          new import_obsidian2.Notice("\u5DF2\u5207\u6362\u5230 CLI \u6A21\u5F0F");
+          this.plugin.saveSettings().then(() => {
+            this.rebuildHeader();
+            this.rebuildToolbar();
+            this.addSystemMessage("\u2705 \u5DF2\u5207\u6362\u5230 CLI \u6A21\u5F0F");
+            new import_obsidian2.Notice("\u5DF2\u5207\u6362\u5230 CLI \u6A21\u5F0F");
+          });
         });
       });
     });
-    right.appendChild(modeText);
     const settingsIcon = right.createSpan({ cls: "xiaoyuan-settings-icon" });
     (0, import_obsidian2.setIcon)(settingsIcon, "settings");
     (0, import_obsidian2.setTooltip)(settingsIcon, "\u8BBE\u7F6E");
@@ -1724,6 +1728,27 @@ var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
     const tip = mode === "cli" ? ok ? "opencode \u53EF\u7528" : "opencode \u4E0D\u53EF\u7528" : ok ? "API \u8FDE\u63A5\u6B63\u5E38" : "API \u672A\u8FDE\u63A5";
     (0, import_obsidian2.setTooltip)(this.connectionStatusEl, tip);
   }
+  registerSelectionListener() {
+    this.messagesEl.addEventListener("mouseup", (e) => {
+      setTimeout(() => {
+        const sel = window.getSelection();
+        if (!sel || !sel.toString().trim()) {
+          this.removeSelectionPopup();
+          return;
+        }
+        const range = sel.getRangeAt(0);
+        if (!this.messagesEl.contains(range.commonAncestorContainer)) return;
+        const rect = range.getBoundingClientRect();
+        this.showSelectionPopup(sel.toString().trim(), rect.left + rect.width / 2 - 60, rect.top - 36);
+      }, 10);
+    });
+    document.addEventListener("mousedown", (e) => {
+      var _a, _b;
+      if (!((_b = (_a = e.target) == null ? void 0 : _a.closest) == null ? void 0 : _b.call(_a, ".xy-selection-popup"))) {
+        this.removeSelectionPopup();
+      }
+    });
+  }
   // ─── Message rendering ───────────────────────────────────────────
   async renderMessageEl(id, role, content, streaming = false, thinking, timestamp) {
     const msgEl = createDiv({ cls: `xiaoyuan-msg xiaoyuan-msg-${role}` });
@@ -1731,25 +1756,6 @@ var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
     const bubbleEl = msgEl.createDiv({ cls: "xiaoyuan-msg-bubble" });
     if (role === "user") {
       bubbleEl.createSpan().textContent = content;
-      if (!streaming) {
-        const actionsEl = msgEl.createDiv({ cls: "xiaoyuan-msg-actions" });
-        const copyBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
-        (0, import_obsidian2.setIcon)(copyBtn, "copy");
-        (0, import_obsidian2.setTooltip)(copyBtn, "\u590D\u5236");
-        copyBtn.addEventListener("click", () => {
-          navigator.clipboard.writeText(content);
-          new import_obsidian2.Notice("\u5DF2\u590D\u5236");
-        });
-        const undoBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
-        (0, import_obsidian2.setIcon)(undoBtn, "undo");
-        (0, import_obsidian2.setTooltip)(undoBtn, "\u64A4\u9500\u6B64\u6D88\u606F");
-        undoBtn.addEventListener("click", () => {
-          this.undoMessage(id);
-        });
-        if (timestamp) {
-          actionsEl.createSpan({ cls: "xiaoyuan-msg-time", text: `${this.plugin.settings.execMode.toUpperCase()} \xB7 ${formatTime(timestamp)}` });
-        }
-      }
     } else {
       const s = this.plugin.settings;
       if (thinking && s.showThinking) {
@@ -1761,23 +1767,9 @@ var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
       const mdContainer = bubbleEl.createDiv({ cls: "xy-obsidian-md" });
       await this.renderObsidianMD(mdContainer, content.trim());
       this.enhanceCodeBlocks(bubbleEl);
-      if (!streaming) {
-        const actionsEl = msgEl.createDiv({ cls: "xiaoyuan-msg-actions" });
-        const copyBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
-        (0, import_obsidian2.setIcon)(copyBtn, "copy");
-        (0, import_obsidian2.setTooltip)(copyBtn, "\u590D\u5236");
-        copyBtn.addEventListener("click", () => {
-          navigator.clipboard.writeText(content);
-          new import_obsidian2.Notice("\u5DF2\u590D\u5236");
-        });
-        const openBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
-        (0, import_obsidian2.setIcon)(openBtn, "external-link");
-        (0, import_obsidian2.setTooltip)(openBtn, "\u5728\u7F16\u8F91\u5668\u4E2D\u6253\u5F00");
-        openBtn.addEventListener("click", () => this.openInEditor(content, timestamp));
-        if (timestamp) {
-          actionsEl.createSpan({ cls: "xiaoyuan-msg-time", text: `${this.plugin.settings.execMode.toUpperCase()} \xB7 ${formatTime(timestamp)}` });
-        }
-      }
+    }
+    if (!streaming) {
+      this.buildActionBar(msgEl, role, content, timestamp);
     }
     return msgEl;
   }
@@ -1889,6 +1881,142 @@ var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
     return msgEl;
   }
+  buildActionBar(msgEl, role, content, timestamp) {
+    const actionsEl = msgEl.createDiv({ cls: "xiaoyuan-msg-actions" });
+    if (role === "user") {
+      const followUpBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
+      (0, import_obsidian2.setIcon)(followUpBtn, "corner-up-right");
+      (0, import_obsidian2.setTooltip)(followUpBtn, "\u8FFD\u95EE");
+      followUpBtn.addEventListener("click", () => this.followUp(content));
+      const copyBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
+      (0, import_obsidian2.setIcon)(copyBtn, "copy");
+      (0, import_obsidian2.setTooltip)(copyBtn, "\u590D\u5236");
+      copyBtn.addEventListener("click", () => {
+        navigator.clipboard.writeText(content);
+        new import_obsidian2.Notice("\u5DF2\u590D\u5236");
+      });
+      const undoBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
+      (0, import_obsidian2.setIcon)(undoBtn, "undo");
+      (0, import_obsidian2.setTooltip)(undoBtn, "\u64A4\u9500\u6B64\u6D88\u606F");
+      undoBtn.addEventListener("click", () => {
+        this.undoMessage(msgEl.id);
+      });
+    } else {
+      const copyBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
+      (0, import_obsidian2.setIcon)(copyBtn, "copy");
+      (0, import_obsidian2.setTooltip)(copyBtn, "\u590D\u5236");
+      copyBtn.addEventListener("click", () => {
+        const sel = window.getSelection();
+        const selected = sel == null ? void 0 : sel.toString().trim();
+        navigator.clipboard.writeText(selected || content);
+        new import_obsidian2.Notice("\u5DF2\u590D\u5236");
+      });
+      const speakBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
+      let isSpeaking = false;
+      (0, import_obsidian2.setIcon)(speakBtn, "volume-2");
+      (0, import_obsidian2.setTooltip)(speakBtn, "\u6717\u8BFB");
+      speakBtn.addEventListener("click", () => {
+        if (isSpeaking) {
+          speechSynthesis.cancel();
+          isSpeaking = false;
+          (0, import_obsidian2.setIcon)(speakBtn, "volume-2");
+          (0, import_obsidian2.setTooltip)(speakBtn, "\u6717\u8BFB");
+        } else {
+          speechSynthesis.cancel();
+          this.speakText(content);
+          isSpeaking = true;
+          (0, import_obsidian2.setIcon)(speakBtn, "square");
+          (0, import_obsidian2.setTooltip)(speakBtn, "\u505C\u6B62");
+        }
+      });
+      const followUpBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
+      (0, import_obsidian2.setIcon)(followUpBtn, "corner-up-right");
+      (0, import_obsidian2.setTooltip)(followUpBtn, "\u8FFD\u95EE");
+      followUpBtn.addEventListener("click", () => this.followUp(content));
+      const editBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
+      (0, import_obsidian2.setIcon)(editBtn, "pencil");
+      (0, import_obsidian2.setTooltip)(editBtn, "\u5728\u7F16\u8F91\u5668\u4E2D\u7F16\u8F91");
+      editBtn.addEventListener("click", () => this.openInEditor(content, timestamp));
+    }
+    if (timestamp) {
+      actionsEl.createSpan({ cls: "xiaoyuan-msg-time", text: `${this.plugin.settings.execMode.toUpperCase()} \xB7 ${formatTime(timestamp)}` });
+    }
+  }
+  followUp(text) {
+    this.quoteText = text;
+    this.renderQuoteBar();
+    this.inputEl.focus();
+  }
+  speakText(text) {
+    const utterance = new SpeechSynthesisUtterance(text.replace(/[#*_`\[\]]/g, ""));
+    utterance.lang = "zh-CN";
+    utterance.rate = 1;
+    speechSynthesis.speak(utterance);
+  }
+  renderQuoteBar() {
+    this.attachPreviewEl.empty();
+    if (this.quoteText) {
+      this.attachPreviewEl.style.display = "flex";
+      const chip = this.attachPreviewEl.createDiv({ cls: "xiaoyuan-attach-chip xy-quote-chip" });
+      chip.textContent = "\u{1F4CE} \u5F15\u7528: " + (this.quoteText.length > 50 ? this.quoteText.slice(0, 50) + "..." : this.quoteText);
+      const removeBtn = chip.createSpan({ text: " \u2715" });
+      removeBtn.style.cursor = "pointer";
+      removeBtn.addEventListener("click", () => {
+        this.quoteText = "";
+        this.renderQuoteBar();
+      });
+    }
+    if (this.attachments.length > 0) {
+      this.attachPreviewEl.style.display = "flex";
+      for (let i = 0; i < this.attachments.length; i++) {
+        const att = this.attachments[i];
+        const chip = this.attachPreviewEl.createDiv({ cls: "xiaoyuan-attach-chip" });
+        chip.textContent = att.name.length > 20 ? att.name.slice(0, 17) + "..." : att.name;
+        const removeBtn = chip.createSpan({ text: " \xD7" });
+        removeBtn.style.cursor = "pointer";
+        removeBtn.addEventListener("click", () => {
+          this.attachments.splice(i, 1);
+          this.renderQuoteBar();
+        });
+      }
+    }
+    if (!this.quoteText && this.attachments.length === 0) {
+      this.attachPreviewEl.style.display = "none";
+    }
+  }
+  removeSelectionPopup() {
+    document.querySelectorAll(".xy-selection-popup").forEach((el) => el.remove());
+  }
+  showSelectionPopup(text, x, y) {
+    this.removeSelectionPopup();
+    const popup = document.body.createDiv({ cls: "xy-selection-popup" });
+    const copyBtn = popup.createSpan({ cls: "xiaoyuan-msg-action" });
+    (0, import_obsidian2.setIcon)(copyBtn, "copy");
+    (0, import_obsidian2.setTooltip)(copyBtn, "\u590D\u5236\u9009\u4E2D");
+    copyBtn.addEventListener("click", () => {
+      navigator.clipboard.writeText(text);
+      new import_obsidian2.Notice("\u5DF2\u590D\u5236");
+      this.removeSelectionPopup();
+    });
+    const speakBtn = popup.createSpan({ cls: "xiaoyuan-msg-action" });
+    (0, import_obsidian2.setIcon)(speakBtn, "volume-2");
+    (0, import_obsidian2.setTooltip)(speakBtn, "\u6717\u8BFB\u9009\u4E2D");
+    speakBtn.addEventListener("click", () => {
+      speechSynthesis.cancel();
+      this.speakText(text);
+      this.removeSelectionPopup();
+    });
+    const followUpBtn = popup.createSpan({ cls: "xiaoyuan-msg-action" });
+    (0, import_obsidian2.setIcon)(followUpBtn, "corner-up-right");
+    (0, import_obsidian2.setTooltip)(followUpBtn, "\u8FFD\u95EE\u9009\u4E2D");
+    followUpBtn.addEventListener("click", () => {
+      this.followUp(text);
+      this.removeSelectionPopup();
+    });
+    popup.style.left = `${x}px`;
+    popup.style.top = `${y}px`;
+    document.body.appendChild(popup);
+  }
   async truncateMessagesIfNeeded() {
     const s = this.plugin.settings;
     const threshold = Math.floor(s.maxTokens * 0.75);
@@ -1917,8 +2045,15 @@ var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
   // ─── Send / AI ───────────────────────────────────────────────────
   async sendMessage() {
     if (this.abortController) return;
-    const text = this.inputEl.value.trim();
+    let text = this.inputEl.value.trim();
     if (!text) return;
+    if (this.quoteText) {
+      text = `> ${this.quoteText}
+
+${text}`;
+      this.quoteText = "";
+      this.renderQuoteBar();
+    }
     await this.addMessage("user", text);
     this.updateSessionTitle();
     this.inputEl.value = "";
@@ -1933,7 +2068,7 @@ var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
       }
       const response = await this.callAI(text, this.abortController.signal, statusMsg);
       this.attachments = [];
-      this.renderAttachments();
+      this.renderQuoteBar();
       if (statusMsg) statusMsg.remove();
       if (this.plugin.settings.execMode === "cli") {
         const streamId = await this.finalizeStreamingMessage();
@@ -2140,11 +2275,12 @@ ${att.data}
     const contentEl = bubbleEl.createDiv({ cls: "xy-stream-content" });
     contentEl.textContent = content;
     this.messagesEl.appendChild(msgEl);
+    this.buildActionBar(msgEl, "assistant", content, Date.now());
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
     return id;
   }
   updateStreamingMessage(messageId, content) {
-    const msgEl = this.messagesEl.querySelector(`#${messageId}`);
+    const msgEl = this.messagesEl.querySelector(`[id="${messageId}"]`);
     if (!msgEl) return;
     const contentEl = msgEl.querySelector(".xy-stream-content");
     if (contentEl) contentEl.textContent = content;
@@ -2153,7 +2289,7 @@ ${att.data}
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
   }
   updateStreamingThinking(messageId, thinking) {
-    const msgEl = this.messagesEl.querySelector(`#${messageId}`);
+    const msgEl = this.messagesEl.querySelector(`[id="${messageId}"]`);
     if (!msgEl || !this.plugin.settings.showThinking) return;
     let tc = msgEl.querySelector(".xiaoyuan-thinking-content");
     const idx = this.messages.findIndex((m) => m.id === messageId);
@@ -2172,7 +2308,7 @@ ${att.data}
     }
   }
   addToolLogEntry(messageId, toolName, status) {
-    const msgEl = this.messagesEl.querySelector(`#${messageId}`);
+    const msgEl = this.messagesEl.querySelector(`[id="${messageId}"]`);
     if (!msgEl) return;
     let logEl = msgEl.querySelector(".xy-tool-log");
     if (!logEl) {
@@ -2192,7 +2328,7 @@ ${att.data}
   async finalizeStreamingMessage() {
     const lastMsg = this.messages[this.messages.length - 1];
     if (!lastMsg || lastMsg.role !== "assistant") return null;
-    const msgEl = this.messagesEl.querySelector(`#${lastMsg.id}`);
+    const msgEl = this.messagesEl.querySelector(`[id="${lastMsg.id}"]`);
     if (!msgEl) return null;
     const bubbleEl = msgEl.querySelector(".xiaoyuan-msg-bubble");
     if (!bubbleEl) return null;
@@ -2213,30 +2349,13 @@ ${att.data}
       tc.textContent = lastMsg.thinking.trim();
       bubbleEl.prepend(detailsEl);
     }
-    if (!msgEl.querySelector(".xiaoyuan-msg-actions")) {
-      const actionsEl = msgEl.createDiv({ cls: "xiaoyuan-msg-actions" });
-      const copyBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
-      (0, import_obsidian2.setIcon)(copyBtn, "copy");
-      (0, import_obsidian2.setTooltip)(copyBtn, "\u590D\u5236");
-      copyBtn.addEventListener("click", () => {
-        navigator.clipboard.writeText(lastMsg.content);
-        new import_obsidian2.Notice("\u5DF2\u590D\u5236");
-      });
-      const openBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
-      (0, import_obsidian2.setIcon)(openBtn, "external-link");
-      (0, import_obsidian2.setTooltip)(openBtn, "\u5728\u7F16\u8F91\u5668\u4E2D\u6253\u5F00");
-      openBtn.addEventListener("click", () => this.openInEditor(lastMsg.content, lastMsg.timestamp));
-      if (lastMsg.timestamp) {
-        actionsEl.createSpan({ cls: "xiaoyuan-msg-time", text: `${this.plugin.settings.execMode.toUpperCase()} \xB7 ${formatTime(lastMsg.timestamp)}` });
-      }
-    }
     this.enhanceCodeBlocks(bubbleEl);
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
     return lastMsg.id;
   }
   renderDiffs(messageId, diffs) {
     var _a, _b;
-    const msgEl = this.messagesEl.querySelector(`#${messageId}`);
+    const msgEl = this.messagesEl.querySelector(`[id="${messageId}"]`);
     if (!msgEl) return;
     const existing = msgEl.querySelector(".xiaoyuan-diffs");
     if (existing) existing.remove();
@@ -2559,7 +2678,7 @@ ${att.data}
       } catch (e) {
       }
     }
-    this.renderAttachments();
+    this.renderQuoteBar();
   }
   readFileAsBase64(file) {
     return new Promise((resolve, reject) => {
@@ -2569,26 +2688,6 @@ ${att.data}
       reader.readAsDataURL(file);
     });
   }
-  renderAttachments() {
-    this.attachPreviewEl.empty();
-    if (this.attachments.length === 0) {
-      this.attachPreviewEl.style.display = "none";
-      return;
-    }
-    this.attachPreviewEl.style.display = "flex";
-    for (let i = 0; i < this.attachments.length; i++) {
-      const att = this.attachments[i];
-      const chip = this.attachPreviewEl.createDiv({ cls: "xiaoyuan-attach-chip" });
-      chip.textContent = att.name.length > 20 ? att.name.slice(0, 17) + "..." : att.name;
-      const removeBtn = chip.createSpan({ text: " \xD7" });
-      removeBtn.style.cursor = "pointer";
-      removeBtn.addEventListener("click", () => {
-        this.attachments.splice(i, 1);
-        this.renderAttachments();
-      });
-    }
-  }
-  // ─── Popup helpers ───────────────────────────────────────────────
   // ─── UI helpers ──────────────────────────────────────────────────
   setProcessingState(processing) {
     if (processing) {
@@ -3295,7 +3394,7 @@ var XiaoyuanAISettingTab = class extends import_obsidian3.PluginSettingTab {
           const vaultDir = (await Promise.resolve().then(() => (init_server(), server_exports))).getVaultBasePath(this.app.vault);
           await ensureOpenCodeServer2(s.opencode.cliPath, s.opencode.hostname, s.opencode.port, vaultDir, true);
           const result = await fetchOpenCodeModelsFromCLI2(s.opencode.cliPath, vaultDir, s.opencode.port);
-          s.opencodeModels = result.models.map((m) => ({ label: m.id, value: m.id }));
+          s.opencodeModels = result.models.map((m) => ({ label: m.displayName, value: m.id }));
           s.opencodeModelCaps = result.caps;
           if (!s.opencode.model || !result.models.some((m) => m.id === s.opencode.model)) {
             s.opencode.model = result.defaultModel || ((_a = result.models[0]) == null ? void 0 : _a.id) || "";
@@ -3542,7 +3641,7 @@ var XiaoyuanAIPlugin = class extends import_obsidian5.Plugin {
     setVaultBasePath(this.app.vault.adapter.getBasePath());
     if (this.settings.execMode === "cli") {
       const resolved = await resolveOpenCodePath(this.settings.opencode.cliPath);
-      if (!fs2.existsSync(resolved)) {
+      if (!fsSync.existsSync(resolved)) {
         this.settings.execMode = "api";
         await this.saveSettings();
         new import_obsidian5.Notice("\u672A\u68C0\u6D4B\u5230 opencode \u7A0B\u5E8F\uFF0C\u5DF2\u81EA\u52A8\u5207\u6362\u4E3A API \u6A21\u5F0F");
@@ -3622,14 +3721,19 @@ ${content.slice(0, 3e3)}`);
   async cleanTempFiles() {
     try {
       const tempDir = path2.join(getVaultBasePath(this.app.vault), this.settings.chatHistoryPath, "temp");
-      if (!fs2.existsSync(tempDir)) return;
+      try {
+        await fs2.access(tempDir);
+      } catch (e) {
+        return;
+      }
       const now = Date.now();
       const maxAge = 24 * 60 * 60 * 1e3;
-      for (const name of fs2.readdirSync(tempDir)) {
+      const names = await fs2.readdir(tempDir);
+      for (const name of names) {
         const fp = path2.join(tempDir, name);
-        const stat = fs2.statSync(fp);
-        if (stat.isFile() && name.endsWith(".md") && now - stat.mtimeMs > maxAge) {
-          fs2.unlinkSync(fp);
+        const stat2 = await fs2.stat(fp);
+        if (stat2.isFile() && name.endsWith(".md") && now - stat2.mtimeMs > maxAge) {
+          await fs2.unlink(fp);
         }
       }
     } catch (e) {
@@ -3667,7 +3771,12 @@ ${content.slice(0, 3e3)}`);
     return (view == null ? void 0 : view.editor) || null;
   }
   async loadSettings() {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    const data = await this.loadData() || {};
+    this.settings = {
+      ...DEFAULT_SETTINGS,
+      ...data,
+      opencode: { ...DEFAULT_SETTINGS.opencode, ...data == null ? void 0 : data.opencode }
+    };
     if (!this.settings.opencode.agent) this.settings.opencode.agent = "build";
     for (const p of this.settings.apiProviders) {
       if (p.apiKey) {
@@ -3683,10 +3792,7 @@ ${content.slice(0, 3e3)}`);
       ...p,
       apiKey: p.apiKey ? btoa(p.apiKey) : p.apiKey
     }));
-    const original = this.settings.apiProviders;
-    this.settings.apiProviders = encoded;
-    await this.saveData(this.settings);
-    this.settings.apiProviders = original;
+    await this.saveData({ ...this.settings, apiProviders: encoded });
   }
   async onunload() {
     stopOpenCodeServer();

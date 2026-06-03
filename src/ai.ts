@@ -30,10 +30,6 @@ interface OpenCodeProvider {
 
 // Single-threaded (Obsidian plugin), no concurrency concern
 
-function stripAnsi(str: string): string {
-  return str.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, "");
-}
-
 type SpawnSpec = { command: string; args: string[] };
 
 function buildSpawn(bin: string, args: string[]): SpawnSpec {
@@ -622,7 +618,7 @@ export async function callAIWithHTTPStreaming(
           }
         }
       },
-      undefined,
+      () => { idleResolve?.(); },
       () => {
         sseFailed = true;
         idleReject?.(new Error("SSE 连接中断"));
@@ -776,8 +772,10 @@ function registerProcessCleanup(): void {
     try { autoStartedProc?.kill(); } catch {}
   };
   process.on("exit", cleanup);
-  process.on("SIGTERM", cleanup);
-  process.on("SIGINT", cleanup);
+  if (process.platform !== "win32") {
+    process.on("SIGTERM", cleanup);
+    process.on("SIGINT", cleanup);
+  }
 }
 
 export function isServerAutoStarted(): boolean {

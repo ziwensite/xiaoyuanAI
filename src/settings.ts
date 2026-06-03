@@ -772,7 +772,7 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
           const vaultDir = (await import("./server")).getVaultBasePath(this.app.vault);
           await ensureOpenCodeServer(s.opencode.cliPath, s.opencode.hostname, s.opencode.port, vaultDir, true);
           const result = await fetchOpenCodeModelsFromCLI(s.opencode.cliPath, vaultDir, s.opencode.port);
-          s.opencodeModels = result.models.map((m) => ({ label: m.id, value: m.id }));
+          s.opencodeModels = result.models.map((m) => ({ label: m.displayName, value: m.id }));
           s.opencodeModelCaps = result.caps;
           if (!s.opencode.model || !result.models.some((m) => m.id === s.opencode.model)) {
             s.opencode.model = result.defaultModel || result.models[0]?.id || "";
