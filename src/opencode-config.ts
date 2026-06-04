@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import type { XiaoyuanAISettings, ModelEntry, ModelCaps } from "./types";
 import { httpGetOpenCode } from "./opencode-client";
-import { resolveOpenCodePath, ensureOpenCodeServer, spawnWithTimeout, startTempOpenCodeServer, stopTempServer, isServerAutoStarted } from "./opencode-server";
+import { resolveOpenCodePath, ensureOpenCodeServer, spawnWithTimeout, startTempOpenCodeServer, stopTempServer } from "./opencode-server";
 
 interface OpenCodeModelDef {
   id: string;
@@ -234,10 +234,4 @@ export async function checkOpenCodeStatus(
   }
 }
 
-export function envWithProxy(settings: XiaoyuanAISettings): Record<string, string | undefined> {
-  if (!settings.proxyEnabled || !settings.proxyUrl) return {};
-  const url = settings.proxyUrl;
-  return { HTTP_PROXY: url, HTTPS_PROXY: url, http_proxy: url, https_proxy: url };
-}
-
-export { isServerAutoStarted, resolveOpenCodePath, spawnWithTimeout, startTempOpenCodeServer, stopTempServer };
+export { resolveOpenCodePath, spawnWithTimeout, startTempOpenCodeServer, stopTempServer };

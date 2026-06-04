@@ -105,7 +105,7 @@ export default class XiaoyuanAIPlugin extends Plugin {
 
   private async cleanTempFiles() {
     try {
-      const tempDir = path.join(getVaultBasePath(this.app.vault), this.settings.chatHistoryPath, "temp");
+      const tempDir = path.join(getVaultBasePath(), this.settings.chatHistoryPath, "temp");
       try { await fs.access(tempDir); } catch { return; }
       const now = Date.now();
       const maxAge = 24 * 60 * 60 * 1000;
@@ -122,7 +122,7 @@ export default class XiaoyuanAIPlugin extends Plugin {
 
   private async autoStartServer(): Promise<void> {
     try {
-      const vaultDir = getVaultBasePath(this.app.vault);
+      const vaultDir = getVaultBasePath();
       await ensureOpenCodeServer(
         this.settings.opencode.cliPath,
         this.settings.opencode.hostname,

@@ -1,4 +1,4 @@
-﻿import { ItemView, WorkspaceLeaf, Notice, setIcon, setTooltip, TFile, MarkdownRenderer } from "obsidian";
+﻿import { ItemView, WorkspaceLeaf, Notice, setIcon, setTooltip, MarkdownRenderer } from "obsidian";
 import type XiaoyuanAIPlugin from "./main";
 import {
   ChatMessage,
@@ -7,8 +7,7 @@ import {
   Attachment,
 } from "./types";
 import { VIEW_TYPE_XIAOYUAN_AI_CHAT, getActiveProvider } from "./constants";
-import { callAIWithHTTPStreaming, getVaultBasePath, estimateTokens, ensureOpenCodeServer, syncMCPServers } from "./ai";
-import { callAIWithAPI } from "./api-client";
+import { callAIWithHTTPStreaming, callAISession, getVaultBasePath, estimateTokens, ensureOpenCodeServer, syncMCPServers } from "./ai";
 import { fetchOpenCodeModelsFromCLI } from "./opencode-config";
 import { checkConnection } from "./connection-checker";
 import {
@@ -24,11 +23,12 @@ import {
 } from "./session";
 import { showPopup, addPopupItem } from "./popup";
 import { buildToolbarContent as toolbarBuildToolbarContent } from "./toolbar";
-import { buildActionBar, speakText } from "./action-bar";
+import { buildActionBar } from "./action-bar";
 import { registerSelectionListener } from "./selection-popup";
 import { renderQuoteBar } from "./quote-bar";
 import { pickFiles, handleFiles } from "./attachment";
 import { openInEditor } from "./open-in-editor";
+import { SpeakController } from "./speak-controller";
 
 export class XiaoyuanAIChatView extends ItemView {
   plugin: XiaoyuanAIPlugin;
@@ -50,6 +50,8 @@ export class XiaoyuanAIChatView extends ItemView {
   private attachments: Attachment[] = [];
   private attachPreviewEl!: HTMLDivElement;
   private quoteText = "";
+  speakController = new SpeakController();
+  private speakIndicator!: HTMLSpanElement;
 
   constructor(leaf: WorkspaceLeaf, plugin: XiaoyuanAIPlugin) {
     super(leaf);
@@ -66,10 +68,13 @@ export class XiaoyuanAIChatView extends ItemView {
     contentEl.addClass("xiaoyuan-chat-container");
     this.viewContainer = contentEl.createDiv({ cls: "xiaoyuan-chat" });
     this.buildHeader();
+    this.speakController.onChange = (speaking) => {
+      this.speakIndicator.style.display = speaking ? "" : "none";
+    };
     this.thinkingBarEl = this.viewContainer.createDiv({ cls: "xiaoyuan-thinking-bar" });
     this.messagesEl = this.viewContainer.createDiv({ cls: "xiaoyuan-chat-messages" });
     this.buildInputArea();
-    registerSelectionListener(this.messagesEl, (text) => this.followUp(text));
+    registerSelectionListener(this.messagesEl, (text) => this.quote(text), (text) => this.speakController.start(text));
     if (this.plugin.settings.execMode === "cli") {
       this.syncCLIModels();
     } else {
@@ -79,6 +84,7 @@ export class XiaoyuanAIChatView extends ItemView {
   }
 
   async onClose() {
+    this.speakController.stop();
     if (this.abortController) {
       this.abortController.abort();
       this.abortController = null;
@@ -120,6 +126,11 @@ export class XiaoyuanAIChatView extends ItemView {
     const headerEl = this.viewContainer.createDiv({ cls: "xiaoyuan-chat-header" });
     const left = headerEl.createSpan({ cls: "xiaoyuan-chat-header-left" });
     const right = headerEl.createSpan({ cls: "xiaoyuan-chat-header-right" });
+
+    this.speakIndicator = left.createSpan({ cls: "xy-speak-indicator" });
+    setTooltip(this.speakIndicator, "停止朗读");
+    this.speakIndicator.style.display = "none";
+    this.speakIndicator.addEventListener("click", () => this.speakController.stop());
 
     const newChatBtn = left.createSpan({ cls: "xiaoyuan-new-chat-icon" });
     setIcon(newChatBtn, "message-square-plus");
@@ -283,9 +294,9 @@ export class XiaoyuanAIChatView extends ItemView {
     const s = this.plugin.settings;
     try {
       if (s.opencode.autoStart) {
-        await ensureOpenCodeServer(s.opencode.cliPath, s.opencode.hostname, s.opencode.port, getVaultBasePath(this.app.vault), true).catch((e) => { console.warn("opencode 自动启动失败:", e); });
+        await ensureOpenCodeServer(s.opencode.cliPath, s.opencode.hostname, s.opencode.port, getVaultBasePath(), true).catch((e) => { console.warn("opencode 自动启动失败:", e); });
       }
-      const result = await fetchOpenCodeModelsFromCLI(s.opencode.cliPath, getVaultBasePath(this.app.vault), s.opencode.port);
+      const result = await fetchOpenCodeModelsFromCLI(s.opencode.cliPath, getVaultBasePath(), s.opencode.port);
       s.opencodeModels = result.models.map((m) => ({ label: m.displayName, value: m.id }));
       s.opencodeModelCaps = result.caps;
       if (result.defaultModel && !s.opencode.model) {
@@ -304,7 +315,7 @@ export class XiaoyuanAIChatView extends ItemView {
         new Notice(`已同步 ${result.models.length} 个模型`);
       }
       this.updateConnectionStatusUI(true);
-      syncMCPServers(s, getVaultBasePath(this.app.vault)).catch(() => {});
+      syncMCPServers(s, getVaultBasePath()).catch(() => {});
     } catch (err: unknown) {
       this.updateConnectionStatusUI(false);
       new Notice(`同步模型失败：${err instanceof Error ? err.message : String(err)}`);
@@ -312,7 +323,7 @@ export class XiaoyuanAIChatView extends ItemView {
   }
 
   private async checkConnectionStatus() {
-    const ok = await checkConnection(this.plugin.settings, getVaultBasePath(this.app.vault));
+    const ok = await checkConnection(this.plugin.settings, getVaultBasePath());
     this.updateConnectionStatusUI(ok);
   }
 
@@ -357,7 +368,8 @@ export class XiaoyuanAIChatView extends ItemView {
         execMode: this.plugin.settings.execMode,
         undoMessage: (id) => this.undoMessage(id),
         openInEditor: (c, ts) => this.openInEditor(c, ts),
-        followUp: (text) => this.followUp(text),
+        quote: (text) => this.quote(text),
+        onSpeak: (text) => this.speakController.start(text),
       });
     }
 
@@ -412,7 +424,7 @@ export class XiaoyuanAIChatView extends ItemView {
     await openInEditor(content, this.app.vault, this.app.workspace, this.plugin.settings.chatHistoryPath, ts);
   }
 
-  private followUp(text: string) {
+  private quote(text: string) {
     this.quoteText = text;
     this.renderQuoteBar();
     this.inputEl.focus();
@@ -598,7 +610,7 @@ private async truncateMessagesIfNeeded(): Promise<void> {
     }
 
       if (s.execMode === "cli") {
-        const vaultDir = getVaultBasePath(this.app.vault);
+        const vaultDir = getVaultBasePath();
         if (s.opencode.autoStart) {
           try {
             await ensureOpenCodeServer(s.opencode.cliPath, s.opencode.hostname, s.opencode.port, vaultDir, true);
@@ -655,73 +667,36 @@ private async truncateMessagesIfNeeded(): Promise<void> {
     const provider = getActiveProvider(s);
     if (!provider || !provider.apiKey) throw new Error("API Key 未配置。请在设置中填写。");
 
-    const apiUrl = provider.baseUrl.includes("/chat/completions") ? provider.baseUrl : provider.baseUrl + "/chat/completions";
-
     const modeIdentity = "\n\n当前模式：API | 模型：" + provider.model + " | 提供商：" + provider.name;
-    const resp = await callAIWithAPI(apiUrl, provider.apiKey, provider.model, [
-      { role: "system", content: s.systemPrompt + modeIdentity },
+    const messages = [
+      { role: "system" as const, content: s.systemPrompt + modeIdentity },
       ...this.messages.map((m) => ({ role: m.role, content: m.content })),
-      { role: "user", content: enrichedMessage },
-    ], s.maxTokens, s.temperature, true, signal, s.apiReasoningEffort);
+      { role: "user" as const, content: enrichedMessage },
+    ];
+    const prompt = messages
+      .map((m) => `${m.role === "system" ? "[系统]" : m.role === "user" ? "[用户]" : "[助手]"}: ${m.content}`)
+      .join("\n\n");
 
-    return this.processStreamResponse(resp);
-  }
-
-  private async processStreamResponse(resp: Response): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = resp.body?.getReader();
-      if (!reader) { reject(new Error("无法读取响应流")); return; }
-
-      const decoder = new TextDecoder("utf-8");
-      let fullContent = "";
-      let fullThinking = "";
-      let messageId = "";
-      let closed = false;
-
-      const finish = (err?: Error) => {
-        if (closed) return;
-        closed = true;
-        try { reader.releaseLock(); } catch {}
-        if (err) reject(err);
-        else resolve(fullContent || fullThinking || "（无响应）");
-      };
-
-      const readChunk = async () => {
-        try {
-          const { done, value } = await reader.read();
-          if (done) { finish(); return; }
-
-          const chunk = decoder.decode(value, { stream: true });
-          for (const line of chunk.split("\n")) {
-            const trimmedLine = line.trim();
-            if (!trimmedLine || !trimmedLine.startsWith("data:")) continue;
-            const dataStr = trimmedLine.slice(5).trim();
-            if (dataStr === "[DONE]") { finish(); return; }
-            try {
-              const data = JSON.parse(dataStr);
-              const delta = data.choices?.[0]?.delta;
-              const content = delta?.content;
-              const reasoning = delta?.reasoning_content;
-              if (reasoning) fullThinking += reasoning;
-              if (content) fullContent += content;
-              if (reasoning || content) {
-                if (!messageId) {
-                  messageId = this.addStreamingMessage(fullContent, fullThinking);
-                } else {
-                  if (content) this.updateStreamingMessage(messageId, fullContent);
-                  if (reasoning) this.updateStreamingThinking(messageId, fullThinking);
-                }
-              }
-
-            } catch {}
-          }
-          readChunk();
-        } catch (err) {
-          finish(err instanceof Error ? err : new Error("流式响应处理失败"));
+    const vaultDir = getVaultBasePath();
+    let streamingId = "";
+    const updateThinking = (text: string) => {
+      if (streamingId) {
+        this.updateStreamingThinking(streamingId, text);
+      } else {
+        streamingId = this.addStreamingMessage("", text);
+      }
+    };
+    return callAISession({
+      prompt, settings: s, vaultDir, signal,
+      onThinking: updateThinking,
+      onTextUpdate: (text) => {
+        if (statusMsg) { statusMsg.remove(); statusMsg = null; }
+        if (!streamingId) {
+          streamingId = this.addStreamingMessage(text, "");
+        } else {
+          this.updateStreamingMessage(streamingId, text);
         }
-      };
-
-      readChunk();
+      },
     });
   }
 
@@ -742,11 +717,12 @@ private addStreamingMessage(content: string, thinking?: string): string {
     contentEl.textContent = content;
     this.messagesEl.appendChild(msgEl);
     buildActionBar(msgEl, "assistant", content, now, {
-    execMode: this.plugin.settings.execMode,
-    undoMessage: (id) => this.undoMessage(id),
-    openInEditor: (c, ts) => this.openInEditor(c, ts),
-    followUp: (text) => this.followUp(text),
-  });
+      execMode: this.plugin.settings.execMode,
+      undoMessage: (id) => this.undoMessage(id),
+      openInEditor: (c, ts) => this.openInEditor(c, ts),
+      quote: (text) => this.quote(text),
+      onSpeak: (text) => this.speakController.start(text),
+    });
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
     return id;
   }

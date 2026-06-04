@@ -19,17 +19,6 @@ export async function callAIWithAPI(
   return resp;
 }
 
-export async function callAIWithAPIJson(
-  apiEndpoint: string, apiKey: string, model: string,
-  messages: { role: "system" | "user" | "assistant"; content: string }[],
-  maxTokens: number, temperature: number,
-  reasoningEffort?: string,
-): Promise<string> {
-  const resp = await callAIWithAPI(apiEndpoint, apiKey, model, messages, maxTokens, temperature, false, undefined, reasoningEffort);
-  const data = await resp.json();
-  return data.choices?.[0]?.message?.content || "（无响应）";
-}
-
 function ensureApiUrl(baseUrl: string): string {
   const trimmed = baseUrl.replace(/\/+$/, "");
   return trimmed.endsWith("/chat/completions") ? trimmed : trimmed + "/chat/completions";

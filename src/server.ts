@@ -1,9 +1,9 @@
-let cachedBasePath = "";
+export let vaultBasePath = "";
 
 export function setVaultBasePath(path: string) {
-  cachedBasePath = path;
+  vaultBasePath = path;
 }
 
-export function getVaultBasePath(_vault?: any): string {
-  return cachedBasePath;
+export function getVaultBasePath(): string {
+  return vaultBasePath;
 }

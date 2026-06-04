@@ -3,6 +3,7 @@ import type XiaoyuanAIPlugin from "./main";
 import { callAISession, getVaultBasePath } from "./ai";
 import { OPERATION_PROMPTS, OPERATION_LABELS, OPERATIONS, OPERATION_ICONS } from "./constants";
 import type { Operation } from "./types";
+import { simpleHash } from "./open-in-editor";
 
 function makeDraggable(handle: HTMLElement, modalEl: HTMLElement) {
   handle.addEventListener("mousedown", (e) => {
@@ -133,7 +134,7 @@ export class TextOperationModal extends Modal {
     try {
       const s = this.plugin.settings;
       const prompt = OPERATION_PROMPTS[operation] + textToProcess;
-      const vaultDir = getVaultBasePath(this.app.vault);
+      const vaultDir = getVaultBasePath();
       const result = await callAISession({
         prompt, settings: s, vaultDir,
         onThinking: (text) => { this.contentAreaEl.textContent = `思考中... ${text}`; },
@@ -155,7 +156,7 @@ export class TextOperationModal extends Modal {
     try {
       const s = this.plugin.settings;
       const prompt = OPERATION_PROMPTS[this.operation] + this.inputText;
-      const vaultDir = getVaultBasePath(this.app.vault);
+      const vaultDir = getVaultBasePath();
       const result = await callAISession({
         prompt, settings: s, vaultDir,
         onThinking: (text) => { this.contentAreaEl.textContent = `思考中... ${text}`; },
@@ -179,7 +180,7 @@ export class TextOperationModal extends Modal {
       const tempRel = `${this.plugin.settings.chatHistoryPath}/temp`;
       try { await vault.createFolder(tempRel); } catch {}
       const dateStr = String(Date.now()).slice(-8);
-      const hash = this.simpleHash(content);
+      const hash = simpleHash(content);
       const fileRel = `${tempRel}/ai-result-${dateStr}-${hash}.md`;
       const existing = vault.getAbstractFileByPath(fileRel);
       let file: TFile;
@@ -193,15 +194,6 @@ export class TextOperationModal extends Modal {
     } catch (err: unknown) {
       new Notice(`打开失败: ${err instanceof Error ? err.message : String(err)}`);
     }
-  }
-
-  private simpleHash(s: string): string {
-    let h = 0;
-    for (let i = 0; i < s.length; i++) {
-      h = ((h << 5) - h) + s.charCodeAt(i);
-      h |= 0;
-    }
-    return (h >>> 0).toString(36);
   }
 
   onClose() { this.contentEl.empty(); }

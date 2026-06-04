@@ -1,9 +1,9 @@
 import { setIcon, setTooltip, Notice } from "obsidian";
-import { speakText } from "./action-bar";
 
 export function registerSelectionListener(
   messagesEl: HTMLElement,
-  onFollowUp: (text: string) => void,
+  onQuote: (text: string) => void,
+  onSpeak: (text: string) => void,
 ) {
   messagesEl.addEventListener("mouseup", () => {
     setTimeout(() => {
@@ -12,7 +12,7 @@ export function registerSelectionListener(
       const range = sel.getRangeAt(0);
       if (!messagesEl.contains(range.commonAncestorContainer)) return;
       const rect = range.getBoundingClientRect();
-      showSelectionPopup(sel.toString().trim(), rect.left + rect.width / 2 - 60, rect.top - 36, onFollowUp);
+      showSelectionPopup(sel.toString().trim(), rect.left + rect.width / 2 - 60, rect.top - 36, onQuote, onSpeak);
     }, 10);
   });
   document.addEventListener("mousedown", (e) => {
@@ -26,7 +26,7 @@ function removeSelectionPopup() {
   document.querySelectorAll(".xy-selection-popup").forEach((el) => el.remove());
 }
 
-function showSelectionPopup(text: string, x: number, y: number, onFollowUp: (text: string) => void) {
+function showSelectionPopup(text: string, x: number, y: number, onQuote: (text: string) => void, onSpeak: (text: string) => void) {
   removeSelectionPopup();
   const popup = document.body.createDiv({ cls: "xy-selection-popup" });
 
@@ -43,16 +43,15 @@ function showSelectionPopup(text: string, x: number, y: number, onFollowUp: (tex
   setIcon(speakBtn, "volume-2");
   setTooltip(speakBtn, "朗读选中");
   speakBtn.addEventListener("click", () => {
-    speechSynthesis.cancel();
-    speakText(text);
+    onSpeak(text);
     removeSelectionPopup();
   });
 
-  const followUpBtn = popup.createSpan({ cls: "xiaoyuan-msg-action" });
-  setIcon(followUpBtn, "corner-up-right");
-  setTooltip(followUpBtn, "追问选中");
-  followUpBtn.addEventListener("click", () => {
-    onFollowUp(text);
+  const quoteBtn = popup.createSpan({ cls: "xiaoyuan-msg-action" });
+  setIcon(quoteBtn, "quote");
+  setTooltip(quoteBtn, "引用选中");
+  quoteBtn.addEventListener("click", () => {
+    onQuote(text);
     removeSelectionPopup();
   });
 

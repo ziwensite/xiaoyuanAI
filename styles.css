@@ -282,9 +282,6 @@
   color: var(--text-normal);
 }
 
-.xiaoyuan-msg-action.is-speaking svg {
-  animation: xy-voice-wave 0.6s ease-in-out infinite;
-}
 
 @keyframes xy-voice-wave {
   0%, 100% {
@@ -537,6 +534,33 @@ pre:hover .xy-copy-btn {
   gap: 6px;
 }
 
+/* 朗读状态指示器 (头部行最左侧) */
+.xy-speak-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--interactive-accent);
+  font-size: 0.95em;
+  margin-right: 4px;
+  transition: background 0.12s;
+}
+.xy-speak-indicator:hover {
+  background: var(--background-modifier-hover);
+}
+.xy-speak-indicator::before {
+  content: "🔊";
+  display: inline-block;
+  animation: xy-speak-pulse 1s ease-in-out infinite;
+}
+@keyframes xy-speak-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.15); opacity: 0.6; }
+}
+
 /* Toolbar selectors */
 .xiaoyuan-model-select,
 .xiaoyuan-level-select {
@@ -602,6 +626,11 @@ pre:hover .xy-copy-btn {
   background-color: var(--background-modifier-border);
   font-size: 11px;
   color: var(--text-muted);
+}
+
+.xy-quote-chip {
+  background-color: var(--background-modifier-hover);
+  border: 1px solid var(--background-modifier-border-hover);
 }
 
 .xiaoyuan-send-btn {
@@ -1060,13 +1089,6 @@ pre:hover .xy-copy-btn {
   font-size: 12px;
   margin: 0 0 12px;
 }
-
-.xy-settings-hint {
-  color: var(--text-faint);
-  font-size: 11px;
-  margin-top: 12px;
-}
-
 .xy-status-dot {
   display: inline-block;
   width: 8px;

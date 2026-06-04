@@ -1,4 +1,3 @@
-import { getVaultBasePath } from "./server";
 import { checkOpenCodeStatus } from "./opencode-config";
 import { ensureOpenCodeServer } from "./opencode-server";
 import { getActiveProvider } from "./constants";

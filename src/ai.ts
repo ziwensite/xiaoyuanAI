@@ -1,4 +1,3 @@
-import { getVaultBasePath } from "./server";
 import { getActiveProvider } from "./constants";
 import type { XiaoyuanAISettings, FileDiff, ModelCaps, ModelEntry } from "./types";
 import { requestOpenCode, readServerConn, connectSSE, combineSignals } from "./opencode-client";
@@ -6,7 +5,7 @@ import { ensureOpenCodeServer, stopOpenCodeServer } from "./opencode-server";
 import { callAIWithAPI, ensureApiUrl, processAPISSEStream } from "./api-client";
 
 export { stopOpenCodeServer, ensureOpenCodeServer } from "./opencode-server";
-export { fetchOpenCodeModelsFromCLI, fetchOpenCodeAgents, checkOpenCodeStatus, envWithProxy } from "./opencode-config";
+export { fetchOpenCodeModelsFromCLI, fetchOpenCodeAgents, checkOpenCodeStatus } from "./opencode-config";
 export { getVaultBasePath } from "./server";
 
 function parseDiffText(text: string): FileDiff[] {
@@ -256,5 +255,3 @@ export async function syncMCPServers(
   }
   mcpSyncDone = true;
 }
-
-export { readServerConn };

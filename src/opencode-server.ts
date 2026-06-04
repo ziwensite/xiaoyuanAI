@@ -170,7 +170,3 @@ export function stopOpenCodeServer(): void {
     autoStartedProc = null;
   }
 }
-
-export function isServerAutoStarted(): boolean {
-  return autoStartedProc !== null && autoStartedProc?.exitCode === null;
-}

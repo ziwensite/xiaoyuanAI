@@ -82,7 +82,7 @@ private async refreshStatusCard() {
     const s = this.s();
 
     try {
-      const vaultDir = (await import("./server")).getVaultBasePath(this.app.vault);
+      const vaultDir = (await import("./server")).getVaultBasePath();
       const ok = await checkConnection(s, vaultDir);
       this.updateRow(card, 0, ok ? "已连接" : (s.execMode === "cli" ? "未连接" : "未配置"));
 
@@ -116,7 +116,7 @@ private async refreshStatusCard() {
       if (s.execMode === "cli") {
         const { fetchOpenCodeModelsFromCLI, fetchOpenCodeAgents } = await import("./ai");
         const { getVaultBasePath } = await import("./server");
-        const vaultDir = getVaultBasePath(this.app.vault);
+        const vaultDir = getVaultBasePath();
         try {
           const result = await fetchOpenCodeModelsFromCLI(s.opencode.cliPath, vaultDir, s.opencode.port);
           s.opencodeModels = result.models.map((m) => ({ label: m.displayName, value: m.id }));
@@ -203,7 +203,7 @@ private async refreshStatusCard() {
           if (val && s.execMode === "cli") {
             const { ensureOpenCodeServer } = await import("./ai");
             const { getVaultBasePath } = await import("./server");
-            ensureOpenCodeServer(s.opencode.cliPath, s.opencode.hostname, s.opencode.port, getVaultBasePath(this.app.vault), true).catch(() => {});
+            ensureOpenCodeServer(s.opencode.cliPath, s.opencode.hostname, s.opencode.port, getVaultBasePath(), true).catch(() => {});
           }
         });
       }), "play");
@@ -250,7 +250,7 @@ private async refreshStatusCard() {
           const { fetchOpenCodeModelsFromCLI } = await import("./ai");
           const { getVaultBasePath } = await import("./server");
           try {
-            const result = await fetchOpenCodeModelsFromCLI(s.opencode.cliPath, getVaultBasePath(this.app.vault), s.opencode.port);
+            const result = await fetchOpenCodeModelsFromCLI(s.opencode.cliPath, getVaultBasePath(), s.opencode.port);
             s.opencodeModels = result.models.map((m) => ({ label: m.displayName, value: m.id }));
             s.opencodeModelCaps = result.caps;
             if (result.defaultModel && !s.opencode.model) {
@@ -260,7 +260,7 @@ private async refreshStatusCard() {
             new Notice(result.models.length === 0 ? "未找到模型" : `已同步 ${result.models.length} 个模型`);
             this.display();
             const { fetchOpenCodeAgents } = await import("./ai");
-            s.opencodeAgents = await fetchOpenCodeAgents(s.opencode.cliPath, getVaultBasePath(this.app.vault), s.opencode.port).catch(() => s.opencodeAgents);
+            s.opencodeAgents = await fetchOpenCodeAgents(s.opencode.cliPath, getVaultBasePath(), s.opencode.port).catch(() => s.opencodeAgents);
             await this.plugin.saveSettings();
           } catch (err: unknown) { new Notice(`同步失败：${err instanceof Error ? err.message : String(err)}`); }
         });
@@ -309,7 +309,7 @@ private async refreshStatusCard() {
             try {
               const { fetchOpenCodeAgents } = await import("./ai");
               const { getVaultBasePath } = await import("./server");
-              const vaultDir = getVaultBasePath(this.app.vault);
+              const vaultDir = getVaultBasePath();
               const agents = await fetchOpenCodeAgents(s.opencode.cliPath, vaultDir, s.opencode.port);
               s.opencodeAgents = agents;
               await this.plugin.saveSettings();
@@ -667,7 +667,7 @@ ${text}
 
 请直接输出 AGENTS.md 的完整内容，不要多余解释。`,
               settings: s,
-              vaultDir: getVaultBasePath(this.app.vault),
+              vaultDir: getVaultBasePath(),
             });
             await this.app.vault.create("AGENTS.md", result.trim());
             new Notice("AGENTS.md 已生成");
@@ -731,7 +731,7 @@ ${text}
 
 只返回纯 JSON 数组 [{name, description}]，不要其他文字。\n\n${content}`,
               settings: s,
-              vaultDir: getVaultBasePath(this.app.vault),
+              vaultDir: getVaultBasePath(),
             });
             const skills = JSON.parse(result);
             if (!Array.isArray(skills)) throw new Error("AI 返回格式错误");
@@ -893,7 +893,7 @@ ${text}
         popup.remove();
         try {
           const { fetchOpenCodeModelsFromCLI, ensureOpenCodeServer } = await import("./ai");
-          const vaultDir = (await import("./server")).getVaultBasePath(this.app.vault);
+          const vaultDir = (await import("./server")).getVaultBasePath();
           await ensureOpenCodeServer(s.opencode.cliPath, s.opencode.hostname, s.opencode.port, vaultDir, true);
           const result = await fetchOpenCodeModelsFromCLI(s.opencode.cliPath, vaultDir, s.opencode.port);
           s.opencodeModels = result.models.map((m) => ({ label: m.displayName, value: m.id }));

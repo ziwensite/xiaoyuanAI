@@ -9,7 +9,8 @@ export interface ActionBarOptions {
   execMode: string;
   undoMessage: (id: string) => void;
   openInEditor: (content: string, timestamp?: number) => void;
-  followUp: (text: string) => void;
+  quote: (text: string) => void;
+  onSpeak: (text: string) => void;
 }
 
 export function buildActionBar(
@@ -22,11 +23,6 @@ export function buildActionBar(
   const actionsEl = msgEl.createDiv({ cls: "xiaoyuan-msg-actions" });
 
   if (role === "user") {
-    const followUpBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
-    setIcon(followUpBtn, "corner-up-right");
-    setTooltip(followUpBtn, "追问");
-    followUpBtn.addEventListener("click", () => options.followUp(content));
-
     const copyBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
     setIcon(copyBtn, "copy");
     setTooltip(copyBtn, "复制");
@@ -34,6 +30,16 @@ export function buildActionBar(
       navigator.clipboard.writeText(content);
       new Notice("已复制");
     });
+
+    const speakBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
+    setIcon(speakBtn, "volume-2");
+    setTooltip(speakBtn, "朗读");
+    speakBtn.addEventListener("click", () => options.onSpeak(content));
+
+    const quoteBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
+    setIcon(quoteBtn, "quote");
+    setTooltip(quoteBtn, "引用");
+    quoteBtn.addEventListener("click", () => options.quote(content));
 
     const undoBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
     setIcon(undoBtn, "undo");
@@ -53,28 +59,14 @@ export function buildActionBar(
     });
 
     const speakBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
-    let isSpeaking = false;
     setIcon(speakBtn, "volume-2");
     setTooltip(speakBtn, "朗读");
-    speakBtn.addEventListener("click", () => {
-      if (isSpeaking) {
-        speechSynthesis.cancel();
-        isSpeaking = false;
-        setIcon(speakBtn, "volume-2");
-        setTooltip(speakBtn, "朗读");
-      } else {
-        speechSynthesis.cancel();
-        speakText(content);
-        isSpeaking = true;
-        setIcon(speakBtn, "square");
-        setTooltip(speakBtn, "停止");
-      }
-    });
+    speakBtn.addEventListener("click", () => options.onSpeak(content));
 
-    const followUpBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
-    setIcon(followUpBtn, "corner-up-right");
-    setTooltip(followUpBtn, "追问");
-    followUpBtn.addEventListener("click", () => options.followUp(content));
+    const quoteBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
+    setIcon(quoteBtn, "quote");
+    setTooltip(quoteBtn, "引用");
+    quoteBtn.addEventListener("click", () => options.quote(content));
 
     const editBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
     setIcon(editBtn, "pencil");
@@ -85,11 +77,4 @@ export function buildActionBar(
   if (timestamp) {
     actionsEl.createSpan({ cls: "xiaoyuan-msg-time", text: `${options.execMode.toUpperCase()} · ${formatTime(timestamp)}` });
   }
-}
-
-export function speakText(text: string) {
-  const utterance = new SpeechSynthesisUtterance(text.replace(/[#*_`\[\]]/g, ""));
-  utterance.lang = "zh-CN";
-  utterance.rate = 1.0;
-  speechSynthesis.speak(utterance);
 }
