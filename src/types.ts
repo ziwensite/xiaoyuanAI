@@ -75,6 +75,11 @@ export interface McpServerConfig {
 export type ReasoningEffort = "none" | "minimal" | "low" | "medium" | "high" | "xhigh";
 export type ReasoningEffortAPI = "none" | "low" | "medium" | "high";
 export type PermissionMode = "read-only" | "workspace-write" | "danger-full-access";
+export interface SkillEntry {
+  name: string;
+  description: string;
+}
+
 export interface XiaoyuanAISettings {
   execMode: "api" | "cli";
 
@@ -104,6 +109,7 @@ export interface XiaoyuanAISettings {
   opencodeModels?: { label: string; value: string }[];
   opencodeModelCaps?: Record<string, ModelCaps>;
   opencodeAgents?: { name: string; description?: string }[];
+  skills: SkillEntry[];
 }
 
 export const DEFAULT_OPENCODE_SETTINGS: OpenCodeSettings = {
@@ -142,6 +148,7 @@ export const DEFAULT_SETTINGS: XiaoyuanAISettings = {
   showDiffPreview: true,
   showThinking: true,
   maxAttachmentSize: 10,
+  skills: [],
 };
 
 export function getActiveProvider(s: { apiProviders: ApiProviderConfig[]; activeApiProviderId: string }): ApiProviderConfig | undefined {

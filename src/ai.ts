@@ -376,12 +376,6 @@ function filterAgents(agents: any[]): { name: string; description?: string }[] {
     .map((a: any) => ({ name: a.name, description: a.description }));
 }
 
-export function envWithProxy(settings: XiaoyuanAISettings): Record<string, string | undefined> {
-  if (!settings.proxyEnabled || !settings.proxyUrl) return {};
-  const url = settings.proxyUrl;
-  return { HTTP_PROXY: url, HTTPS_PROXY: url, http_proxy: url, https_proxy: url };
-}
-
 // ─── HTTP API for opencode serve ─────────────────────────────────
 
 type ServerConn = { url: string; authHeader: string };
@@ -672,17 +666,6 @@ export async function callAIWithAPI(
   return resp;
 }
 
-export async function callAIWithAPIJson(
-  apiEndpoint: string, apiKey: string, model: string,
-  messages: { role: "system" | "user" | "assistant"; content: string }[],
-  maxTokens: number, temperature: number,
-  reasoningEffort?: string,
-): Promise<string> {
-  const resp = await callAIWithAPI(apiEndpoint, apiKey, model, messages, maxTokens, temperature, false, undefined, reasoningEffort);
-  const data = await resp.json();
-  return data.choices?.[0]?.message?.content || "（无响应）";
-}
-
 export function estimateTokens(text: string): number {
   let tokens = 0;
   for (const ch of text) {
@@ -776,10 +759,6 @@ function registerProcessCleanup(): void {
     process.on("SIGTERM", cleanup);
     process.on("SIGINT", cleanup);
   }
-}
-
-export function isServerAutoStarted(): boolean {
-  return autoStartedProc !== null && autoStartedProc?.exitCode === null;
 }
 
 export async function ensureOpenCodeServer(

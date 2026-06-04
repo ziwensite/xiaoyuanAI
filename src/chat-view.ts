@@ -33,7 +33,7 @@ export class XiaoyuanAIChatView extends ItemView {
   private viewContainer!: HTMLDivElement;
   private messagesEl!: HTMLDivElement;
   private thinkingBarEl!: HTMLDivElement;
-  private inputEl!: HTMLTextAreaElement;
+  public inputEl!: HTMLTextAreaElement;
   private sendBtn!: HTMLSpanElement;
   private sessionSelector!: HTMLSpanElement;
   private toolbarEl!: HTMLDivElement;
@@ -209,7 +209,12 @@ export class XiaoyuanAIChatView extends ItemView {
 
     this.inputEl.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); this.sendMessage(); }
+      if (e.key === "Escape") {
+        document.querySelectorAll(".xy-skill-popup").forEach((el) => el.remove());
+      }
     });
+
+    this.inputEl.addEventListener("input", () => this.handleSkillInput());
 
     container.addEventListener("dragenter", (e) => {
       e.preventDefault();
@@ -226,6 +231,30 @@ export class XiaoyuanAIChatView extends ItemView {
       container.removeClass("xy-drag-over");
       if (e.dataTransfer?.files?.length) this.handleFiles(e.dataTransfer.files);
     });
+  }
+
+  private handleSkillInput() {
+    document.querySelectorAll(".xy-skill-popup").forEach((el) => el.remove());
+    const text = this.inputEl.value;
+    if (!text.startsWith("/") || text.length < 2) return;
+
+    const query = text.slice(1);
+    const matched = this.plugin.settings.skills.filter((s) =>
+      s.name.toLowerCase().includes(query.toLowerCase())
+    );
+    if (matched.length === 0) return;
+
+    const popup = this.inputEl.parentElement!.createDiv({ cls: "xy-skill-popup" });
+    for (const skill of matched) {
+      const item = popup.createDiv({ cls: "xy-skill-popup-item" });
+      item.createSpan({ cls: "xy-skill-popup-name", text: skill.name });
+      item.createSpan({ cls: "xy-skill-popup-desc", text: skill.description });
+      item.addEventListener("click", () => {
+        this.inputEl.value = "/" + skill.name + " ";
+        this.inputEl.focus();
+        popup.remove();
+      });
+    }
   }
 
   private updateAgentBorderClass() {
@@ -722,6 +751,17 @@ export class XiaoyuanAIChatView extends ItemView {
       this.quoteText = "";
       this.renderQuoteBar();
     }
+
+    const skillMatch = text.match(/^\/(\S+)\s*(.*)/);
+    if (skillMatch) {
+      const skillName = skillMatch[1];
+      const skill = this.plugin.settings.skills.find((s) => s.name === skillName);
+      if (skill) {
+        text = skillMatch[2] || skill.description;
+        text = `[Skill: ${skill.name} - ${skill.description}]\n\n${text}`;
+      }
+    }
+
     await this.addMessage("user", text);
     this.updateSessionTitle();
     this.inputEl.value = "";
@@ -910,6 +950,7 @@ export class XiaoyuanAIChatView extends ItemView {
                   if (reasoning) this.updateStreamingThinking(messageId, fullThinking);
                 }
               }
+
             } catch {}
           }
           readChunk();

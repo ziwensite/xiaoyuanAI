@@ -81,8 +81,8 @@ export class TextOperationModal extends Modal {
     copyBtn.addEventListener("click", () => { navigator.clipboard.writeText(this.contentAreaEl.textContent || ""); new Notice("已复制"); });
 
     const openBtn = leftGroup.createEl("button", { cls: "xy-icon-btn" });
-    setIcon(openBtn, "external-link");
-    setTooltip(openBtn, "在编辑器中打开");
+    setIcon(openBtn, "pencil");
+    setTooltip(openBtn, "在编辑器中编辑");
     openBtn.addEventListener("click", () => this.openInEditor());
 
     this.toolsBtn = leftGroup.createEl("button", { cls: "xy-icon-btn" });

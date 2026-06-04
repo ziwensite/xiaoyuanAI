@@ -1,10 +1,10 @@
-import { App, PluginSettingTab, Setting, Notice, setIcon } from "obsidian";
+import { App, PluginSettingTab, Setting, Notice, setIcon, TFile } from "obsidian";
 import type XiaoyuanAIPlugin from "./main";
 import { XiaoyuanAIChatView } from "./chat-view";
-import { VIEW_TYPE_XIAOYUAN_AI_CHAT, type XiaoyuanAISettings, type ApiProviderConfig, type ReasoningEffort, type ReasoningEffortAPI, type PermissionMode } from "./types";
+import { VIEW_TYPE_XIAOYUAN_AI_CHAT, getActiveProvider, type XiaoyuanAISettings, type ApiProviderConfig, type ReasoningEffort, type ReasoningEffortAPI, type PermissionMode } from "./types";
 import { showPopup, addPopupItem } from "./popup";
 
-type TabId = "cli" | "api" | "general" | "mcp";
+type TabId = "cli" | "api" | "general" | "mcp" | "skills";
 
 export class XiaoyuanAISettingTab extends PluginSettingTab {
   plugin: XiaoyuanAIPlugin;
@@ -96,7 +96,7 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
         }
         this.updateRow(card, 0, ok ? "已连接" : "未连接");
       } else {
-        const active = this.activeProvider();
+        const active = getActiveProvider(s);
         if (active && active.baseUrl && active.apiKey) {
           this.updateRow(card, 0, "已连接");
         } else {
@@ -104,7 +104,7 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
         }
       }
 
-      this.updateRow(card, 1, s.execMode === "cli" ? (s.opencode.model || "未选择") : (this.activeProvider()?.model || "未选择"));
+      this.updateRow(card, 1, s.execMode === "cli" ? (s.opencode.model || "未选择") : (getActiveProvider(s)?.model || "未选择"));
       this.updateRow(card, 2, s.proxyEnabled ? s.proxyUrl : "已关闭");
     } catch {
       this.updateRow(card, 0, "检测失败");
@@ -119,18 +119,12 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
     }
   }
 
-  private activeProvider(): ApiProviderConfig | undefined {
-    const s = this.s();
-    if (s.activeApiProviderId) return s.apiProviders.find(p => p.id === s.activeApiProviderId);
-    return s.apiProviders[0];
-  }
-
   private buildStatusCard(container: HTMLElement) {
     const s = this.s();
     const card = container.createDiv({ cls: "xy-settings-status" });
 
     this.addStatusRow(card, "activity", "连接状态", "检测中...");
-    this.addStatusRow(card, "box", "当前模型", s.execMode === "cli" ? (s.opencode.model || "未选择") : (this.activeProvider()?.model || "未选择"));
+    this.addStatusRow(card, "box", "当前模型", s.execMode === "cli" ? (s.opencode.model || "未选择") : (getActiveProvider(s)?.model || "未选择"));
     this.addStatusRow(card, "waypoints", "代理", s.proxyEnabled ? s.proxyUrl : "已关闭");
 
     const actions = card.createDiv({ cls: "xy-settings-status-actions" });
@@ -166,6 +160,7 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
       { id: "cli", icon: "terminal-square", label: "CLI 设置" },
       { id: "api", icon: "key-round", label: "API 设置" },
       { id: "mcp", icon: "blocks", label: "MCP 工具" },
+      { id: "skills", icon: "wand-sparkles", label: "Skills" },
     ];
     const bar = container.createDiv({ cls: "xy-settings-tabs" });
     for (const t of tabs) {
@@ -191,6 +186,7 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
       case "api": this.buildAPITab(container); break;
       case "general": this.buildGeneralTab(container); break;
       case "mcp": this.buildMCPTab(container); break;
+      case "skills": this.buildSkillsTab(container); break;
     }
   }
 
@@ -653,6 +649,152 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
       return resp.ok;
     } catch {
       return false;
+    }
+  }
+
+  // ─── Skills 设置 ──────────────────────────────────────────────────
+
+  private buildSkillsTab(container: HTMLElement) {
+    const s = this.s();
+
+// ── Setting 1: AGENTS.MD ────────────────────────────────────
+
+    this.decorateSetting(new Setting(container)
+      .setName("AGENTS.MD")
+      .setDesc("点击下方创建按钮，AI 自动生成。路径为 /AGENTS.md")
+      .addButton((btn) => {
+        btn.setButtonText("创建");
+        btn.onClick(async () => {
+          const file = this.app.vault.getAbstractFileByPath("AGENTS.md");
+          if (file && file instanceof TFile) {
+            new Notice("AGENTS.md 已存在，请使用「修改」按钮编辑");
+            return;
+          }
+          const text = inputEl.value.trim();
+          if (!text) { new Notice("请先输入描述"); return; }
+          btn.setDisabled(true);
+          btn.setButtonText("生成中...");
+          try {
+            const { callAISession } = await import("./ai");
+            const { getVaultBasePath } = await import("./server");
+            const result = await callAISession({
+              prompt: `根据以下要求创建一份 AGENTS.md 文件内容，定义可复用的 AI skill/agent。
+
+用户要求：
+${text}
+
+请直接输出 AGENTS.md 的完整内容，不要多余解释。`,
+              settings: s,
+              vaultDir: getVaultBasePath(this.app.vault),
+            });
+            await this.app.vault.create("AGENTS.md", result.trim());
+            new Notice("AGENTS.md 已生成");
+            inputEl.value = "";
+            btn.setDisabled(false);
+            btn.setButtonText("创建");
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : String(e);
+            if (msg.includes("configure") || msg.includes("connection") || msg.includes("API") || msg.includes("key")) {
+              new Notice("请先配置 AI 连接");
+            } else {
+              new Notice(`创建失败: ${msg}`);
+            }
+            btn.setDisabled(false);
+            btn.setButtonText("创建");
+          }
+        });
+      })
+      .addButton((btn) => {
+        btn.setButtonText("修改");
+        btn.onClick(() => {
+          const file = this.app.vault.getAbstractFileByPath("AGENTS.md");
+          if (!file || !(file instanceof TFile)) {
+            new Notice("AGENTS.md 不存在，请先创建");
+            return;
+          }
+          this.app.workspace.openLinkText("AGENTS.md", "/");
+        });
+      }),
+    "wand-sparkles");
+
+    const inputEl: HTMLTextAreaElement = container.createEl("textarea", {
+      cls: "xy-skills-generate-input",
+      attr: { placeholder: "描述你想要创建的AGENTS.MD（自然语言、参考链接均可），点击上方创建按钮，AI 自动生成。比如：\n帮助写作、翻译等" },
+    });
+
+    // ── Setting 2: Skills列表 ──────────────────────────────────
+
+    this.decorateSetting(new Setting(container)
+      .setName("Skills列表")
+      .setDesc("从 AGENTS.md 更新 skill 列表")
+      .addButton((btn) => {
+        btn.setButtonText("↻");
+        btn.setTooltip("从 AGENTS.md 更新");
+        btn.onClick(async () => {
+          btn.setDisabled(true);
+          try {
+            const file = this.app.vault.getAbstractFileByPath("AGENTS.md");
+            if (!file || !(file instanceof TFile)) {
+              new Notice("AGENTS.md 不存在，请先创建");
+              btn.setDisabled(false);
+              return;
+            }
+            const content = await this.app.vault.read(file);
+            const { callAISession } = await import("./ai");
+            const { getVaultBasePath } = await import("./server");
+            const result = await callAISession({
+              prompt: `从以下内容中提取所有 skill/agent，每个包含：
+- name：英文名称，照搬原文不要修改
+- description：简要描述
+
+只返回纯 JSON 数组 [{name, description}]，不要其他文字。\n\n${content}`,
+              settings: s,
+              vaultDir: getVaultBasePath(this.app.vault),
+            });
+            const skills = JSON.parse(result);
+            if (!Array.isArray(skills)) throw new Error("AI 返回格式错误");
+            s.skills = skills;
+            await this.plugin.saveSettings();
+            new Notice(`已同步 ${skills.length} 个 skill`);
+            this.display();
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : String(e);
+            if (msg.includes("configure") || msg.includes("connection") || msg.includes("API") || msg.includes("key")) {
+              new Notice("请先配置 AI 连接");
+            } else {
+              new Notice(`更新失败: ${msg}`);
+            }
+            btn.setDisabled(false);
+          }
+        });
+      }),
+    "list");
+
+    if (s.skills.length > 0) {
+      const table = container.createEl("table", { cls: "xy-skills-table" });
+      const thead = table.createEl("thead");
+      const headerRow = thead.createEl("tr");
+      headerRow.createEl("th", { text: "名称" });
+      headerRow.createEl("th", { text: "描述" });
+      headerRow.createEl("th", { text: "执行" });
+
+      const tbody = table.createEl("tbody");
+      for (const skill of s.skills) {
+        const row = tbody.createEl("tr");
+        row.createEl("td", { text: skill.name });
+        row.createEl("td", { text: skill.description });
+        const actionCell = row.createEl("td");
+        const execBtn = actionCell.createEl("button", { text: "\u25B6" });
+        execBtn.style.cssText = "padding: 0 6px; font-size: 12px;";
+        execBtn.addEventListener("click", () => {
+          const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_XIAOYUAN_AI_CHAT).first();
+          if (leaf?.view instanceof XiaoyuanAIChatView) {
+            (this.app.setting as any).close?.();
+            leaf.view.inputEl.value = "/" + skill.name + " ";
+            leaf.view.inputEl.focus();
+          }
+        });
+      }
     }
   }
 

@@ -73,7 +73,8 @@ var init_types = __esm({
       chatHistoryPath: "_chatHistory",
       showDiffPreview: true,
       showThinking: true,
-      maxAttachmentSize: 10
+      maxAttachmentSize: 10,
+      skills: []
     };
     CHAT_SESSIONS_KEY = "xiaoyuan-chat-sessions";
     CURRENT_SESSION_KEY = "xiaoyuan-current-session";
@@ -138,16 +139,13 @@ var ai_exports = {};
 __export(ai_exports, {
   callAISession: () => callAISession,
   callAIWithAPI: () => callAIWithAPI,
-  callAIWithAPIJson: () => callAIWithAPIJson,
   callAIWithHTTPStreaming: () => callAIWithHTTPStreaming,
   checkOpenCodeStatus: () => checkOpenCodeStatus,
   ensureOpenCodeServer: () => ensureOpenCodeServer,
-  envWithProxy: () => envWithProxy,
   estimateTokens: () => estimateTokens,
   fetchOpenCodeAgents: () => fetchOpenCodeAgents,
   fetchOpenCodeModelsFromCLI: () => fetchOpenCodeModelsFromCLI,
   getVaultBasePath: () => getVaultBasePath,
-  isServerAutoStarted: () => isServerAutoStarted,
   processAPISSEStream: () => processAPISSEStream,
   readServerConn: () => readServerConn,
   resetMCPSyncDone: () => resetMCPSyncDone,
@@ -486,11 +484,6 @@ async function fetchOpenCodeAgents(opencodePath, vaultDir, port = 16226) {
 function filterAgents(agents) {
   return agents.filter((a) => a.mode === "primary" && !a.hidden).map((a) => ({ name: a.name, description: a.description }));
 }
-function envWithProxy(settings) {
-  if (!settings.proxyEnabled || !settings.proxyUrl) return {};
-  const url = settings.proxyUrl;
-  return { HTTP_PROXY: url, HTTPS_PROXY: url, http_proxy: url, https_proxy: url };
-}
 function readServerConn(vaultDir, configuredPort) {
   try {
     const lockPath = path.join(vaultDir, ".opencode", "server.lock.json");
@@ -785,12 +778,6 @@ async function callAIWithAPI(apiEndpoint, apiKey, model, messages, maxTokens, te
   }
   return resp;
 }
-async function callAIWithAPIJson(apiEndpoint, apiKey, model, messages, maxTokens, temperature, reasoningEffort) {
-  var _a, _b, _c;
-  const resp = await callAIWithAPI(apiEndpoint, apiKey, model, messages, maxTokens, temperature, false, void 0, reasoningEffort);
-  const data = await resp.json();
-  return ((_c = (_b = (_a = data.choices) == null ? void 0 : _a[0]) == null ? void 0 : _b.message) == null ? void 0 : _c.content) || "\uFF08\u65E0\u54CD\u5E94\uFF09";
-}
 function estimateTokens(text) {
   let tokens = 0;
   for (const ch of text) {
@@ -871,9 +858,6 @@ function registerProcessCleanup() {
     process.on("SIGTERM", cleanup);
     process.on("SIGINT", cleanup);
   }
-}
-function isServerAutoStarted() {
-  return autoStartedProc !== null && (autoStartedProc == null ? void 0 : autoStartedProc.exitCode) === null;
 }
 async function ensureOpenCodeServer(cliPath, hostname, port, vaultDir, autoStart) {
   if (ensureServerPromise) return ensureServerPromise;
@@ -1624,7 +1608,11 @@ var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
         e.preventDefault();
         this.sendMessage();
       }
+      if (e.key === "Escape") {
+        document.querySelectorAll(".xy-skill-popup").forEach((el) => el.remove());
+      }
     });
+    this.inputEl.addEventListener("input", () => this.handleSkillInput());
     container.addEventListener("dragenter", (e) => {
       e.preventDefault();
       container.addClass("xy-drag-over");
@@ -1641,6 +1629,27 @@ var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
       container.removeClass("xy-drag-over");
       if ((_b = (_a = e.dataTransfer) == null ? void 0 : _a.files) == null ? void 0 : _b.length) this.handleFiles(e.dataTransfer.files);
     });
+  }
+  handleSkillInput() {
+    document.querySelectorAll(".xy-skill-popup").forEach((el) => el.remove());
+    const text = this.inputEl.value;
+    if (!text.startsWith("/") || text.length < 2) return;
+    const query = text.slice(1);
+    const matched = this.plugin.settings.skills.filter(
+      (s) => s.name.toLowerCase().includes(query.toLowerCase())
+    );
+    if (matched.length === 0) return;
+    const popup = this.inputEl.parentElement.createDiv({ cls: "xy-skill-popup" });
+    for (const skill of matched) {
+      const item = popup.createDiv({ cls: "xy-skill-popup-item" });
+      item.createSpan({ cls: "xy-skill-popup-name", text: skill.name });
+      item.createSpan({ cls: "xy-skill-popup-desc", text: skill.description });
+      item.addEventListener("click", () => {
+        this.inputEl.value = "/" + skill.name + " ";
+        this.inputEl.focus();
+        popup.remove();
+      });
+    }
   }
   updateAgentBorderClass() {
     const agent = this.plugin.settings.opencode.agent;
@@ -2102,6 +2111,17 @@ updated: ${dateOnly}
 ${text}`;
       this.quoteText = "";
       this.renderQuoteBar();
+    }
+    const skillMatch = text.match(/^\/(\S+)\s*(.*)/);
+    if (skillMatch) {
+      const skillName = skillMatch[1];
+      const skill = this.plugin.settings.skills.find((s) => s.name === skillName);
+      if (skill) {
+        text = skillMatch[2] || skill.description;
+        text = `[Skill: ${skill.name} - ${skill.description}]
+
+${text}`;
+      }
     }
     await this.addMessage("user", text);
     this.updateSessionTitle();
@@ -2849,14 +2869,14 @@ var XiaoyuanAISettingTab = class extends import_obsidian3.PluginSettingTab {
         }
         this.updateRow(card, 0, ok ? "\u5DF2\u8FDE\u63A5" : "\u672A\u8FDE\u63A5");
       } else {
-        const active = this.activeProvider();
+        const active = getActiveProvider(s);
         if (active && active.baseUrl && active.apiKey) {
           this.updateRow(card, 0, "\u5DF2\u8FDE\u63A5");
         } else {
           this.updateRow(card, 0, "\u672A\u914D\u7F6E");
         }
       }
-      this.updateRow(card, 1, s.execMode === "cli" ? s.opencode.model || "\u672A\u9009\u62E9" : ((_a = this.activeProvider()) == null ? void 0 : _a.model) || "\u672A\u9009\u62E9");
+      this.updateRow(card, 1, s.execMode === "cli" ? s.opencode.model || "\u672A\u9009\u62E9" : ((_a = getActiveProvider(s)) == null ? void 0 : _a.model) || "\u672A\u9009\u62E9");
       this.updateRow(card, 2, s.proxyEnabled ? s.proxyUrl : "\u5DF2\u5173\u95ED");
     } catch (e) {
       this.updateRow(card, 0, "\u68C0\u6D4B\u5931\u8D25");
@@ -2869,17 +2889,12 @@ var XiaoyuanAISettingTab = class extends import_obsidian3.PluginSettingTab {
       if (valEl) valEl.textContent = value;
     }
   }
-  activeProvider() {
-    const s = this.s();
-    if (s.activeApiProviderId) return s.apiProviders.find((p) => p.id === s.activeApiProviderId);
-    return s.apiProviders[0];
-  }
   buildStatusCard(container) {
     var _a;
     const s = this.s();
     const card = container.createDiv({ cls: "xy-settings-status" });
     this.addStatusRow(card, "activity", "\u8FDE\u63A5\u72B6\u6001", "\u68C0\u6D4B\u4E2D...");
-    this.addStatusRow(card, "box", "\u5F53\u524D\u6A21\u578B", s.execMode === "cli" ? s.opencode.model || "\u672A\u9009\u62E9" : ((_a = this.activeProvider()) == null ? void 0 : _a.model) || "\u672A\u9009\u62E9");
+    this.addStatusRow(card, "box", "\u5F53\u524D\u6A21\u578B", s.execMode === "cli" ? s.opencode.model || "\u672A\u9009\u62E9" : ((_a = getActiveProvider(s)) == null ? void 0 : _a.model) || "\u672A\u9009\u62E9");
     this.addStatusRow(card, "waypoints", "\u4EE3\u7406", s.proxyEnabled ? s.proxyUrl : "\u5DF2\u5173\u95ED");
     const actions = card.createDiv({ cls: "xy-settings-status-actions" });
     const refreshBtn = actions.createEl("button", { cls: "xy-status-btn", text: "\u5237\u65B0" });
@@ -2911,7 +2926,8 @@ var XiaoyuanAISettingTab = class extends import_obsidian3.PluginSettingTab {
       { id: "general", icon: "settings", label: "\u901A\u7528" },
       { id: "cli", icon: "terminal-square", label: "CLI \u8BBE\u7F6E" },
       { id: "api", icon: "key-round", label: "API \u8BBE\u7F6E" },
-      { id: "mcp", icon: "blocks", label: "MCP \u5DE5\u5177" }
+      { id: "mcp", icon: "blocks", label: "MCP \u5DE5\u5177" },
+      { id: "skills", icon: "wand-sparkles", label: "Skills" }
     ];
     const bar = container.createDiv({ cls: "xy-settings-tabs" });
     for (const t of tabs) {
@@ -2942,6 +2958,9 @@ var XiaoyuanAISettingTab = class extends import_obsidian3.PluginSettingTab {
         break;
       case "mcp":
         this.buildMCPTab(container);
+        break;
+      case "skills":
+        this.buildSkillsTab(container);
         break;
     }
   }
@@ -3352,6 +3371,144 @@ var XiaoyuanAISettingTab = class extends import_obsidian3.PluginSettingTab {
       return false;
     }
   }
+  // ─── Skills 设置 ──────────────────────────────────────────────────
+  buildSkillsTab(container) {
+    const s = this.s();
+    this.decorateSetting(
+      new import_obsidian3.Setting(container).setName("AGENTS.MD").setDesc("\u70B9\u51FB\u4E0B\u65B9\u521B\u5EFA\u6309\u94AE\uFF0CAI \u81EA\u52A8\u751F\u6210\u3002\u8DEF\u5F84\u4E3A /AGENTS.md").addButton((btn) => {
+        btn.setButtonText("\u521B\u5EFA");
+        btn.onClick(async () => {
+          const file = this.app.vault.getAbstractFileByPath("AGENTS.md");
+          if (file && file instanceof import_obsidian3.TFile) {
+            new import_obsidian3.Notice("AGENTS.md \u5DF2\u5B58\u5728\uFF0C\u8BF7\u4F7F\u7528\u300C\u4FEE\u6539\u300D\u6309\u94AE\u7F16\u8F91");
+            return;
+          }
+          const text = inputEl.value.trim();
+          if (!text) {
+            new import_obsidian3.Notice("\u8BF7\u5148\u8F93\u5165\u63CF\u8FF0");
+            return;
+          }
+          btn.setDisabled(true);
+          btn.setButtonText("\u751F\u6210\u4E2D...");
+          try {
+            const { callAISession: callAISession2 } = await Promise.resolve().then(() => (init_ai(), ai_exports));
+            const { getVaultBasePath: getVaultBasePath2 } = await Promise.resolve().then(() => (init_server(), server_exports));
+            const result = await callAISession2({
+              prompt: `\u6839\u636E\u4EE5\u4E0B\u8981\u6C42\u521B\u5EFA\u4E00\u4EFD AGENTS.md \u6587\u4EF6\u5185\u5BB9\uFF0C\u5B9A\u4E49\u53EF\u590D\u7528\u7684 AI skill/agent\u3002
+
+\u7528\u6237\u8981\u6C42\uFF1A
+${text}
+
+\u8BF7\u76F4\u63A5\u8F93\u51FA AGENTS.md \u7684\u5B8C\u6574\u5185\u5BB9\uFF0C\u4E0D\u8981\u591A\u4F59\u89E3\u91CA\u3002`,
+              settings: s,
+              vaultDir: getVaultBasePath2(this.app.vault)
+            });
+            await this.app.vault.create("AGENTS.md", result.trim());
+            new import_obsidian3.Notice("AGENTS.md \u5DF2\u751F\u6210");
+            inputEl.value = "";
+            btn.setDisabled(false);
+            btn.setButtonText("\u521B\u5EFA");
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : String(e);
+            if (msg.includes("configure") || msg.includes("connection") || msg.includes("API") || msg.includes("key")) {
+              new import_obsidian3.Notice("\u8BF7\u5148\u914D\u7F6E AI \u8FDE\u63A5");
+            } else {
+              new import_obsidian3.Notice(`\u521B\u5EFA\u5931\u8D25: ${msg}`);
+            }
+            btn.setDisabled(false);
+            btn.setButtonText("\u521B\u5EFA");
+          }
+        });
+      }).addButton((btn) => {
+        btn.setButtonText("\u4FEE\u6539");
+        btn.onClick(() => {
+          const file = this.app.vault.getAbstractFileByPath("AGENTS.md");
+          if (!file || !(file instanceof import_obsidian3.TFile)) {
+            new import_obsidian3.Notice("AGENTS.md \u4E0D\u5B58\u5728\uFF0C\u8BF7\u5148\u521B\u5EFA");
+            return;
+          }
+          this.app.workspace.openLinkText("AGENTS.md", "/");
+        });
+      }),
+      "wand-sparkles"
+    );
+    const inputEl = container.createEl("textarea", {
+      cls: "xy-skills-generate-input",
+      attr: { placeholder: "\u63CF\u8FF0\u4F60\u60F3\u8981\u521B\u5EFA\u7684AGENTS.MD\uFF08\u81EA\u7136\u8BED\u8A00\u3001\u53C2\u8003\u94FE\u63A5\u5747\u53EF\uFF09\uFF0C\u70B9\u51FB\u4E0A\u65B9\u521B\u5EFA\u6309\u94AE\uFF0CAI \u81EA\u52A8\u751F\u6210\u3002\u6BD4\u5982\uFF1A\n\u5E2E\u52A9\u5199\u4F5C\u3001\u7FFB\u8BD1\u7B49" }
+    });
+    this.decorateSetting(
+      new import_obsidian3.Setting(container).setName("Skills\u5217\u8868").setDesc("\u4ECE AGENTS.md \u66F4\u65B0 skill \u5217\u8868").addButton((btn) => {
+        btn.setButtonText("\u21BB");
+        btn.setTooltip("\u4ECE AGENTS.md \u66F4\u65B0");
+        btn.onClick(async () => {
+          btn.setDisabled(true);
+          try {
+            const file = this.app.vault.getAbstractFileByPath("AGENTS.md");
+            if (!file || !(file instanceof import_obsidian3.TFile)) {
+              new import_obsidian3.Notice("AGENTS.md \u4E0D\u5B58\u5728\uFF0C\u8BF7\u5148\u521B\u5EFA");
+              btn.setDisabled(false);
+              return;
+            }
+            const content = await this.app.vault.read(file);
+            const { callAISession: callAISession2 } = await Promise.resolve().then(() => (init_ai(), ai_exports));
+            const { getVaultBasePath: getVaultBasePath2 } = await Promise.resolve().then(() => (init_server(), server_exports));
+            const result = await callAISession2({
+              prompt: `\u4ECE\u4EE5\u4E0B\u5185\u5BB9\u4E2D\u63D0\u53D6\u6240\u6709 skill/agent\uFF0C\u6BCF\u4E2A\u5305\u542B\uFF1A
+- name\uFF1A\u82F1\u6587\u540D\u79F0\uFF0C\u7167\u642C\u539F\u6587\u4E0D\u8981\u4FEE\u6539
+- description\uFF1A\u7B80\u8981\u63CF\u8FF0
+
+\u53EA\u8FD4\u56DE\u7EAF JSON \u6570\u7EC4 [{name, description}]\uFF0C\u4E0D\u8981\u5176\u4ED6\u6587\u5B57\u3002
+
+${content}`,
+              settings: s,
+              vaultDir: getVaultBasePath2(this.app.vault)
+            });
+            const skills = JSON.parse(result);
+            if (!Array.isArray(skills)) throw new Error("AI \u8FD4\u56DE\u683C\u5F0F\u9519\u8BEF");
+            s.skills = skills;
+            await this.plugin.saveSettings();
+            new import_obsidian3.Notice(`\u5DF2\u540C\u6B65 ${skills.length} \u4E2A skill`);
+            this.display();
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : String(e);
+            if (msg.includes("configure") || msg.includes("connection") || msg.includes("API") || msg.includes("key")) {
+              new import_obsidian3.Notice("\u8BF7\u5148\u914D\u7F6E AI \u8FDE\u63A5");
+            } else {
+              new import_obsidian3.Notice(`\u66F4\u65B0\u5931\u8D25: ${msg}`);
+            }
+            btn.setDisabled(false);
+          }
+        });
+      }),
+      "list"
+    );
+    if (s.skills.length > 0) {
+      const table = container.createEl("table", { cls: "xy-skills-table" });
+      const thead = table.createEl("thead");
+      const headerRow = thead.createEl("tr");
+      headerRow.createEl("th", { text: "\u540D\u79F0" });
+      headerRow.createEl("th", { text: "\u63CF\u8FF0" });
+      headerRow.createEl("th", { text: "\u6267\u884C" });
+      const tbody = table.createEl("tbody");
+      for (const skill of s.skills) {
+        const row = tbody.createEl("tr");
+        row.createEl("td", { text: skill.name });
+        row.createEl("td", { text: skill.description });
+        const actionCell = row.createEl("td");
+        const execBtn = actionCell.createEl("button", { text: "\u25B6" });
+        execBtn.style.cssText = "padding: 0 6px; font-size: 12px;";
+        execBtn.addEventListener("click", () => {
+          var _a, _b;
+          const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_XIAOYUAN_AI_CHAT).first();
+          if ((leaf == null ? void 0 : leaf.view) instanceof XiaoyuanAIChatView) {
+            (_b = (_a = this.app.setting).close) == null ? void 0 : _b.call(_a);
+            leaf.view.inputEl.value = "/" + skill.name + " ";
+            leaf.view.inputEl.focus();
+          }
+        });
+      }
+    }
+  }
   // ─── 通用设置 ─────────────────────────────────────────────────────
   buildGeneralTab(container) {
     const s = this.s();
@@ -3556,8 +3713,8 @@ var TextOperationModal = class extends import_obsidian4.Modal {
       new import_obsidian4.Notice("\u5DF2\u590D\u5236");
     });
     const openBtn = leftGroup.createEl("button", { cls: "xy-icon-btn" });
-    (0, import_obsidian4.setIcon)(openBtn, "external-link");
-    (0, import_obsidian4.setTooltip)(openBtn, "\u5728\u7F16\u8F91\u5668\u4E2D\u6253\u5F00");
+    (0, import_obsidian4.setIcon)(openBtn, "pencil");
+    (0, import_obsidian4.setTooltip)(openBtn, "\u5728\u7F16\u8F91\u5668\u4E2D\u7F16\u8F91");
     openBtn.addEventListener("click", () => this.openInEditor());
     this.toolsBtn = leftGroup.createEl("button", { cls: "xy-icon-btn" });
     (0, import_obsidian4.setIcon)(this.toolsBtn, "sparkles");

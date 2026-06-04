@@ -827,18 +827,6 @@ pre:hover .xy-copy-btn {
   gap: 6px;
 }
 
-.xiaoyuan-btn-primary {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 16px;
-  border-radius: 6px;
-  border: none;
-  background-color: var(--interactive-accent);
-  color: var(--text-on-accent);
-  cursor: pointer;
-}
-
 .xiaoyuan-btn-secondary {
   display: inline-flex;
   align-items: center;
@@ -1063,30 +1051,7 @@ pre:hover .xy-copy-btn {
   min-width: 0;
 }
 
-.xy-api-provider-label {
-  color: var(--text-muted);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.xy-api-provider-input,
-.xy-api-provider-textarea {
-  width: 100%;
-  min-width: 0;
-}
-
-.xy-api-provider-textarea {
-  min-height: 58px;
-  resize: vertical;
-}
-
-.xy-api-provider-content {
-  display: grid;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-.xy-mcp-disabled {
+  .xy-mcp-disabled {
   color: var(--text-faint);
 }
 
@@ -1109,4 +1074,100 @@ pre:hover .xy-copy-btn {
   border-radius: 50%;
   cursor: pointer;
   flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════════
+   Skills Table (Settings)
+   ═══════════════════════════════════════════════════════ */
+
+.xy-skills-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+}
+
+.xy-skills-table th,
+.xy-skills-table td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  font-size: 13px;
+}
+
+.xy-skills-table th {
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.xy-skills-table td:last-child {
+  width: 40px;
+  text-align: center;
+}
+
+/* ═══════════════════════════════════════════════════════
+   Skill Popup (Chat Input)
+   ═══════════════════════════════════════════════════════ */
+
+.xy-skill-popup {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  max-height: 200px;
+  overflow-y: auto;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+}
+
+.xy-skill-popup-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.xy-skill-popup-item:last-child {
+  border-bottom: none;
+}
+
+.xy-skill-popup-item:hover {
+  background: var(--background-modifier-hover);
+}
+
+.xy-skill-popup-name {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-normal);
+  flex-shrink: 0;
+}
+
+.xy-skill-popup-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ═══════════════════════════════════════════════════════
+   Skills Generate (Settings)
+   ═══════════════════════════════════════════════════════ */
+
+.xy-skills-generate-input {
+  width: calc(100% - 20px);
+  min-height: 70px;
+  margin: 4px 10px 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-size: 13px;
+  resize: vertical;
+  box-sizing: border-box;
 }
