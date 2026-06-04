@@ -1,8 +1,10 @@
 import { App, PluginSettingTab, Setting, Notice, setIcon, TFile } from "obsidian";
 import type XiaoyuanAIPlugin from "./main";
 import { XiaoyuanAIChatView } from "./chat-view";
-import { VIEW_TYPE_XIAOYUAN_AI_CHAT, getActiveProvider, type XiaoyuanAISettings, type ApiProviderConfig, type ReasoningEffort, type ReasoningEffortAPI, type PermissionMode } from "./types";
+import { VIEW_TYPE_XIAOYUAN_AI_CHAT, getActiveProvider } from "./constants";
+import type { XiaoyuanAISettings, ApiProviderConfig, ReasoningEffort, ReasoningEffortAPI, PermissionMode } from "./types";
 import { showPopup, addPopupItem } from "./popup";
+import { checkConnection } from "./connection-checker";
 
 type TabId = "cli" | "api" | "general" | "mcp" | "skills";
 
@@ -74,35 +76,15 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
 
   // ─── ② Status Card ───────────────────────────────────────────────
 
-  private async refreshStatusCard() {
+private async refreshStatusCard() {
     const card = this.containerEl.querySelector(".xy-settings-status") as HTMLDivElement | null;
     if (!card) return;
     const s = this.s();
 
     try {
-      const { checkOpenCodeStatus, ensureOpenCodeServer } = await import("./ai");
       const vaultDir = (await import("./server")).getVaultBasePath(this.app.vault);
-
-      if (s.execMode === "cli") {
-        let ok = false;
-        const status = await checkOpenCodeStatus(s.opencode.cliPath, vaultDir, s.opencode.port, s.opencode.hostname);
-        if (status.ok) {
-          ok = true;
-        } else if (s.opencode.autoStart) {
-          try {
-            await ensureOpenCodeServer(s.opencode.cliPath, s.opencode.hostname, s.opencode.port, vaultDir, true);
-            ok = true;
-} catch (e) { console.warn("opencode 自动启动失败:", e); }
-        }
-        this.updateRow(card, 0, ok ? "已连接" : "未连接");
-      } else {
-        const active = getActiveProvider(s);
-        if (active && active.baseUrl && active.apiKey) {
-          this.updateRow(card, 0, "已连接");
-        } else {
-          this.updateRow(card, 0, "未配置");
-        }
-      }
+      const ok = await checkConnection(s, vaultDir);
+      this.updateRow(card, 0, ok ? "已连接" : (s.execMode === "cli" ? "未连接" : "未配置"));
 
       this.updateRow(card, 1, s.execMode === "cli" ? (s.opencode.model || "未选择") : (getActiveProvider(s)?.model || "未选择"));
       this.updateRow(card, 2, s.proxyEnabled ? s.proxyUrl : "已关闭");
@@ -204,7 +186,7 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
       ), "terminal-square");
     (async () => {
       try {
-        const { resolveOpenCodePath } = await import("./ai");
+        const { resolveOpenCodePath } = await import("./opencode-server");
         const detected = await resolveOpenCodePath(s.opencode.cliPath);
         if (detected && detected !== s.opencode.cliPath) pathSetting.setDesc(`已检测到: ${detected}`);
       } catch {}

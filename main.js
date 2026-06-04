@@ -34,14 +34,14 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 ));
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-// src/types.ts
+// src/constants.ts
 function getActiveProvider(s) {
   if (s.activeApiProviderId) return s.apiProviders.find((p) => p.id === s.activeApiProviderId);
   return s.apiProviders[0];
 }
-var DEFAULT_OPENCODE_SETTINGS, DEFAULT_SETTINGS, CHAT_SESSIONS_KEY, CURRENT_SESSION_KEY, VIEW_TYPE_XIAOYUAN_AI_CHAT, OPERATION_PROMPTS, OPERATIONS, OPERATION_ICONS, OPERATION_LABELS;
-var init_types = __esm({
-  "src/types.ts"() {
+var DEFAULT_OPENCODE_SETTINGS, DEFAULT_SETTINGS, CHAT_SESSIONS_KEY, CURRENT_SESSION_KEY, VIEW_TYPE_XIAOYUAN_AI_CHAT, OPERATIONS, OPERATION_PROMPTS, OPERATION_ICONS, OPERATION_LABELS;
+var init_constants = __esm({
+  "src/constants.ts"() {
     "use strict";
     DEFAULT_OPENCODE_SETTINGS = {
       cliPath: "opencode",
@@ -79,14 +79,6 @@ var init_types = __esm({
     CHAT_SESSIONS_KEY = "xiaoyuan-chat-sessions";
     CURRENT_SESSION_KEY = "xiaoyuan-current-session";
     VIEW_TYPE_XIAOYUAN_AI_CHAT = "xiaoyuan-chat-view";
-    OPERATION_PROMPTS = {
-      polish: "\u4F60\u662F\u4E00\u4E2A\u6587\u5B57\u6DA6\u8272\u52A9\u624B\u3002\u8BF7\u6DA6\u8272\u4EE5\u4E0B\u6587\u672C\uFF0C\u6539\u8FDB\u8868\u8FBE\u3001\u8BED\u6CD5\u548C\u6D41\u7545\u5EA6\uFF0C\u4FDD\u6301\u539F\u610F\u4E0D\u53D8\u3002\u53EA\u8F93\u51FA\u6DA6\u8272\u540E\u7684\u7ED3\u679C\uFF0C\u4E0D\u8981\u6DFB\u52A0\u4EFB\u4F55\u89E3\u91CA\uFF1A\n\n",
-      summarize: "\u4F60\u662F\u4E00\u4E2A\u603B\u7ED3\u52A9\u624B\u3002\u8BF7\u5BF9\u4EE5\u4E0B\u6587\u672C\u8FDB\u884C\u7B80\u6D01\u7684\u603B\u7ED3\uFF0C\u63D0\u53D6\u5173\u952E\u8981\u70B9\u3002\u7528\u4E2D\u6587\u603B\u7ED3\uFF0C\u53EA\u8F93\u51FA\u603B\u7ED3\u5185\u5BB9\uFF1A\n\n",
-      complete: "\u4F60\u662F\u4E00\u4E2A\u5199\u4F5C\u52A9\u624B\u3002\u8BF7\u6839\u636E\u4E0A\u4E0B\u6587\uFF0C\u81EA\u7136\u5730\u8865\u5168\u4EE5\u4E0B\u5185\u5BB9\uFF0C\u4FDD\u6301\u98CE\u683C\u4E00\u81F4\uFF1A\n\n",
-      expand: "\u4F60\u662F\u4E00\u4E2A\u5199\u4F5C\u52A9\u624B\u3002\u8BF7\u6269\u5199\u4EE5\u4E0B\u5185\u5BB9\uFF0C\u589E\u52A0\u7EC6\u8282\u3001\u4F8B\u5B50\u548C\u6DF1\u5EA6\uFF0C\u4FDD\u7559\u539F\u6587\u7684\u6838\u5FC3\u89C2\u70B9\uFF1A\n\n",
-      translate: "\u4F60\u662F\u4E00\u4E2A\u7FFB\u8BD1\u52A9\u624B\u3002\u8BF7\u5C06\u4EE5\u4E0B\u6587\u672C\u7FFB\u8BD1\u6210\u4E2D\u6587\uFF0C\u4FDD\u6301\u4E13\u4E1A\u6027\u548C\u6D41\u7545\u5EA6\uFF1A\n\n",
-      continue: "\u4F60\u662F\u4E00\u4E2A\u5199\u4F5C\u52A9\u624B\u3002\u8BF7\u6839\u636E\u4EE5\u4E0B\u5185\u5BB9\u81EA\u7136\u5730\u7EED\u5199\uFF0C\u4FDD\u6301\u98CE\u683C\u4E00\u81F4\uFF1A\n\n"
-    };
     OPERATIONS = [
       "polish",
       "summarize",
@@ -95,6 +87,14 @@ var init_types = __esm({
       "continue",
       "translate"
     ];
+    OPERATION_PROMPTS = {
+      polish: "\u4F60\u662F\u4E00\u4E2A\u6587\u5B57\u6DA6\u8272\u52A9\u624B\u3002\u8BF7\u6DA6\u8272\u4EE5\u4E0B\u6587\u672C\uFF0C\u6539\u8FDB\u8868\u8FBE\u3001\u8BED\u6CD5\u548C\u6D41\u7545\u5EA6\uFF0C\u4FDD\u6301\u539F\u610F\u4E0D\u53D8\u3002\u53EA\u8F93\u51FA\u6DA6\u8272\u540E\u7684\u7ED3\u679C\uFF0C\u4E0D\u8981\u6DFB\u52A0\u4EFB\u4F55\u89E3\u91CA\uFF1A\n\n",
+      summarize: "\u4F60\u662F\u4E00\u4E2A\u603B\u7ED3\u52A9\u624B\u3002\u8BF7\u5BF9\u4EE5\u4E0B\u6587\u672C\u8FDB\u884C\u7B80\u6D01\u7684\u603B\u7ED3\uFF0C\u63D0\u53D6\u5173\u952E\u8981\u70B9\u3002\u7528\u4E2D\u6587\u603B\u7ED3\uFF0C\u53EA\u8F93\u51FA\u603B\u7ED3\u5185\u5BB9\uFF1A\n\n",
+      complete: "\u4F60\u662F\u4E00\u4E2A\u5199\u4F5C\u52A9\u624B\u3002\u8BF7\u6839\u636E\u4E0A\u4E0B\u6587\uFF0C\u81EA\u7136\u5730\u8865\u5168\u4EE5\u4E0B\u5185\u5BB9\uFF0C\u4FDD\u6301\u98CE\u683C\u4E00\u81F4\uFF1A\n\n",
+      expand: "\u4F60\u662F\u4E00\u4E2A\u5199\u4F5C\u52A9\u624B\u3002\u8BF7\u6269\u5199\u4EE5\u4E0B\u5185\u5BB9\uFF0C\u589E\u52A0\u7EC6\u8282\u3001\u4F8B\u5B50\u548C\u6DF1\u5EA6\uFF0C\u4FDD\u7559\u539F\u6587\u7684\u6838\u5FC3\u89C2\u70B9\uFF1A\n\n",
+      translate: "\u4F60\u662F\u4E00\u4E2A\u7FFB\u8BD1\u52A9\u624B\u3002\u8BF7\u5C06\u4EE5\u4E0B\u6587\u672C\u7FFB\u8BD1\u6210\u4E2D\u6587\uFF0C\u4FDD\u6301\u4E13\u4E1A\u6027\u548C\u6D41\u7545\u5EA6\uFF1A\n\n",
+      continue: "\u4F60\u662F\u4E00\u4E2A\u5199\u4F5C\u52A9\u624B\u3002\u8BF7\u6839\u636E\u4EE5\u4E0B\u5185\u5BB9\u81EA\u7136\u5730\u7EED\u5199\uFF0C\u4FDD\u6301\u98CE\u683C\u4E00\u81F4\uFF1A\n\n"
+    };
     OPERATION_ICONS = {
       polish: "pencil",
       summarize: "file-text",
@@ -114,48 +114,177 @@ var init_types = __esm({
   }
 });
 
-// src/server.ts
-var server_exports = {};
-__export(server_exports, {
-  getVaultBasePath: () => getVaultBasePath,
-  setVaultBasePath: () => setVaultBasePath
-});
-function setVaultBasePath(path3) {
-  cachedBasePath = path3;
+// src/opencode-client.ts
+function readServerConn(vaultDir, configuredPort) {
+  try {
+    const lockPath = path.join(vaultDir, ".opencode", "server.lock.json");
+    if (fs.existsSync(lockPath)) {
+      const lock = JSON.parse(fs.readFileSync(lockPath, "utf-8"));
+      const authHeader = lock.password ? `Basic ${Buffer.from(`opencode:${lock.password}`).toString("base64")}` : "";
+      return { url: `http://127.0.0.1:${lock.port}`, authHeader };
+    }
+  } catch (e) {
+  }
+  return null;
 }
-function getVaultBasePath(_vault) {
-  return cachedBasePath;
+function httpGetOpenCode(baseUrl, path5, directory) {
+  const url = new URL(path5, baseUrl.replace(/\/+$/, ""));
+  url.searchParams.set("directory", directory);
+  return new Promise((resolve, reject) => {
+    http.get(url.toString(), (res) => {
+      const chunks = [];
+      res.on("data", (chunk) => chunks.push(chunk));
+      res.on("end", () => {
+        var _a, _b, _c;
+        const body = Buffer.concat(chunks).toString();
+        if (!res.statusCode || res.statusCode >= 300) {
+          reject(new Error(`OpenCode API ${path5}: ${res.statusCode} ${res.statusMessage || ""}${body ? ` - ${body.slice(0, 200)}` : ""}`));
+          return;
+        }
+        let parsed;
+        try {
+          parsed = JSON.parse(body);
+        } catch (e) {
+          reject(new Error(`OpenCode API ${path5}: JSON \u89E3\u6790\u5931\u8D25 \u2014 ${e.message}`));
+          return;
+        }
+        if (parsed && typeof parsed === "object" && "error" in parsed && parsed.error) {
+          const errMsg = ((_a = parsed.error) == null ? void 0 : _a.message) || ((_c = (_b = parsed.error) == null ? void 0 : _b.data) == null ? void 0 : _c.message) || JSON.stringify(parsed.error);
+          reject(new Error(`OpenCode API \u9519\u8BEF: ${errMsg}`));
+          return;
+        }
+        if (parsed && typeof parsed === "object" && "data" in parsed) {
+          resolve(parsed.data);
+        } else {
+          resolve(parsed);
+        }
+      });
+    }).on("error", reject);
+  });
 }
-var cachedBasePath;
-var init_server = __esm({
-  "src/server.ts"() {
+function requestOpenCode(base, apiPath, method, body, authHeader) {
+  const u = new URL(apiPath, base.replace(/\/+$/, ""));
+  return new Promise((resolve, reject) => {
+    const opts = {
+      hostname: u.hostname,
+      port: Number(u.port) || 16226,
+      path: u.pathname + u.search,
+      method,
+      headers: { "Content-Type": "application/json" }
+    };
+    if (authHeader) opts.headers["Authorization"] = authHeader;
+    const req = http.request(opts, (res) => {
+      const chunks = [];
+      res.on("data", (ch) => chunks.push(ch));
+      res.on("end", () => {
+        const raw = Buffer.concat(chunks).toString();
+        if (!res.statusCode || res.statusCode >= 300) {
+          reject(new Error(`OpenCode ${method} ${apiPath}: ${res.statusCode} ${raw.slice(0, 200)}`));
+          return;
+        }
+        if (res.statusCode === 204) {
+          resolve({});
+          return;
+        }
+        try {
+          resolve(JSON.parse(raw));
+        } catch (e) {
+          reject(new Error(`OpenCode ${method} ${apiPath}: JSON parse error \u2014 ${e.message}`));
+        }
+      });
+    });
+    req.on("error", reject);
+    req.setTimeout(1e4, () => {
+      req.destroy();
+      reject(new Error(`OpenCode ${method} ${apiPath}: timeout`));
+    });
+    if (body !== void 0) req.write(JSON.stringify(body));
+    req.end();
+  });
+}
+function connectSSE(base, authHeader, sessionId, signal, onEvent, onDone, onError) {
+  const handleDone = onDone || (() => {
+  });
+  const handleError = onError || (() => {
+  });
+  const u = new URL("/event", base.replace(/\/+$/, ""));
+  const opts = {
+    hostname: u.hostname,
+    port: Number(u.port) || 16226,
+    path: u.pathname + u.search,
+    method: "GET",
+    headers: {}
+  };
+  if (authHeader) opts.headers["Authorization"] = authHeader;
+  const req = http.request(opts, (res) => {
+    const dec = new TextDecoder();
+    let buf = "";
+    res.on("data", (chunk) => {
+      if (signal.aborted) {
+        res.destroy();
+        return;
+      }
+      buf += dec.decode(chunk, { stream: true });
+      const lines = buf.split(/\r?\n/);
+      buf = lines.pop() || "";
+      for (const line of lines) {
+        if (!line.startsWith("data:")) continue;
+        const payload = line.slice(5).trim();
+        if (!payload) continue;
+        try {
+          onEvent(JSON.parse(payload));
+        } catch (e) {
+        }
+      }
+    });
+    res.on("end", handleDone);
+    res.on("error", (err) => handleError(err instanceof Error ? err : new Error(String(err))));
+  });
+  req.on("error", (err) => handleError(err instanceof Error ? err : new Error(String(err))));
+  req.setTimeout(15e3, () => {
+    const err = new Error("SSE \u8FDE\u63A5\u8D85\u65F6");
+    req.destroy();
+    handleError(err);
+  });
+  signal.addEventListener("abort", () => req.destroy(), { once: true });
+  req.end();
+}
+function combineSignals(...sigs) {
+  const ctrl = new AbortController();
+  for (const s of sigs) {
+    if (!s) continue;
+    if (s.aborted) {
+      ctrl.abort(s.reason);
+      return ctrl.signal;
+    }
+    s.addEventListener("abort", () => ctrl.abort(s.reason), { once: true });
+  }
+  return ctrl.signal;
+}
+var http, path, fs;
+var init_opencode_client = __esm({
+  "src/opencode-client.ts"() {
     "use strict";
-    cachedBasePath = "";
+    http = __toESM(require("http"));
+    path = __toESM(require("path"));
+    fs = __toESM(require("fs"));
   }
 });
 
-// src/ai.ts
-var ai_exports = {};
-__export(ai_exports, {
-  callAISession: () => callAISession,
-  callAIWithAPI: () => callAIWithAPI,
-  callAIWithHTTPStreaming: () => callAIWithHTTPStreaming,
-  checkOpenCodeStatus: () => checkOpenCodeStatus,
+// src/opencode-server.ts
+var opencode_server_exports = {};
+__export(opencode_server_exports, {
   ensureOpenCodeServer: () => ensureOpenCodeServer,
-  estimateTokens: () => estimateTokens,
-  fetchOpenCodeAgents: () => fetchOpenCodeAgents,
-  fetchOpenCodeModelsFromCLI: () => fetchOpenCodeModelsFromCLI,
-  getVaultBasePath: () => getVaultBasePath,
-  processAPISSEStream: () => processAPISSEStream,
-  readServerConn: () => readServerConn,
-  resetMCPSyncDone: () => resetMCPSyncDone,
+  isServerAutoStarted: () => isServerAutoStarted,
   resolveOpenCodePath: () => resolveOpenCodePath,
+  spawnWithTimeout: () => spawnWithTimeout,
+  startTempOpenCodeServer: () => startTempOpenCodeServer,
   stopOpenCodeServer: () => stopOpenCodeServer,
-  syncMCPServers: () => syncMCPServers
+  stopTempServer: () => stopTempServer
 });
 function buildSpawn(bin, args) {
   if (process.platform !== "win32") return { command: bin, args };
-  const ext = path.extname(bin).toLowerCase();
+  const ext = path2.extname(bin).toLowerCase();
   if (ext === ".cmd" || ext === ".bat") {
     return { command: "cmd.exe", args: ["/c", bin, ...args] };
   }
@@ -163,25 +292,6 @@ function buildSpawn(bin, args) {
     return { command: bin, args };
   }
   return { command: "cmd.exe", args: ["/c", bin, ...args] };
-}
-async function resolveOpenCodePath(hint) {
-  if (hint && hint !== "opencode") return hint;
-  try {
-    const isWin = process.platform === "win32";
-    const out = (0, import_child_process.execSync)(isWin ? "where opencode" : "which opencode", { encoding: "utf-8", timeout: 3e3, windowsHide: true });
-    const first = out.trim().split(/\r?\n/)[0];
-    if (first) return first;
-  } catch (e) {
-  }
-  const commonPaths = [
-    path.join(process.env.APPDATA || "", "npm", "opencode.cmd"),
-    path.join(process.env.LOCALAPPDATA || "", "opencode", "opencode.exe"),
-    "/usr/local/bin/opencode"
-  ];
-  for (const p of commonPaths) {
-    if (fs.existsSync(p)) return p;
-  }
-  return hint;
 }
 function spawnWithTimeout(bin, args, cwd, timeoutMs = 8e3) {
   return new Promise((resolve, reject) => {
@@ -217,91 +327,24 @@ function spawnWithTimeout(bin, args, cwd, timeoutMs = 8e3) {
     }
   });
 }
-async function checkOpenCodeStatus(opencodePath, vaultDir, port = 16226, hostname = "127.0.0.1") {
+async function resolveOpenCodePath(hint) {
+  if (hint && hint !== "opencode") return hint;
   try {
-    const effectiveBin = await resolveOpenCodePath(opencodePath);
-    const serverUrl = `http://${hostname}:${port}`;
-    try {
-      await httpGetOpenCode(serverUrl, "/global/health", vaultDir);
-      return { ok: true, version: "", bin: effectiveBin };
-    } catch (e) {
-      const out = await spawnWithTimeout(effectiveBin, ["--version"], vaultDir, 5e3).catch(() => "");
-      return { ok: false, version: out.trim(), bin: effectiveBin, error: "opencode serve \u672A\u8FD0\u884C\n\u8BF7\u6267\u884C opencode serve \u542F\u52A8\u670D\u52A1\uFF0C\u6216\u5F00\u542F\u8BBE\u7F6E\u4E2D\u7684\u300C\u81EA\u52A8\u542F\u52A8\u300D" };
-    }
-  } catch (err) {
-    return { ok: false, version: "", bin: opencodePath, error: err instanceof Error ? err.message : String(err) };
+    const isWin = process.platform === "win32";
+    const out = (0, import_child_process.execSync)(isWin ? "where opencode" : "which opencode", { encoding: "utf-8", timeout: 3e3, windowsHide: true });
+    const first = out.trim().split(/\r?\n/)[0];
+    if (first) return first;
+  } catch (e) {
   }
-}
-function httpGetOpenCode(baseUrl, path3, directory) {
-  const url = new URL(path3, baseUrl.replace(/\/+$/, ""));
-  url.searchParams.set("directory", directory);
-  return new Promise((resolve, reject) => {
-    http.get(url.toString(), (res) => {
-      const chunks = [];
-      res.on("data", (chunk) => chunks.push(chunk));
-      res.on("end", () => {
-        var _a, _b, _c;
-        const body = Buffer.concat(chunks).toString();
-        if (!res.statusCode || res.statusCode >= 300) {
-          reject(new Error(`OpenCode API ${path3}: ${res.statusCode} ${res.statusMessage || ""}${body ? ` - ${body.slice(0, 200)}` : ""}`));
-          return;
-        }
-        let parsed;
-        try {
-          parsed = JSON.parse(body);
-        } catch (e) {
-          reject(new Error(`OpenCode API ${path3}: JSON \u89E3\u6790\u5931\u8D25 \u2014 ${e.message}`));
-          return;
-        }
-        if (parsed && typeof parsed === "object" && "error" in parsed && parsed.error) {
-          const errMsg = ((_a = parsed.error) == null ? void 0 : _a.message) || ((_c = (_b = parsed.error) == null ? void 0 : _b.data) == null ? void 0 : _c.message) || JSON.stringify(parsed.error);
-          reject(new Error(`OpenCode API \u9519\u8BEF: ${errMsg}`));
-          return;
-        }
-        if (parsed && typeof parsed === "object" && "data" in parsed) {
-          resolve(parsed.data);
-        } else {
-          resolve(parsed);
-        }
-      });
-    }).on("error", reject);
-  });
-}
-function flattenProviders(providers) {
-  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n;
-  const result = /* @__PURE__ */ new Map();
-  const caps = {};
-  for (const p of providers) {
-    if (p.configured === false) continue;
-    const providerName = p.name || p.id;
-    const rawModels = p.models || {};
-    const entries = Array.isArray(rawModels) ? rawModels.map((m) => ({ id: m.id || m.name || "", name: m.name || m.id || "", enabled: m.enabled, capabilities: m.capabilities })) : Object.values(rawModels).map((m) => ({ id: m.id || m.name || "", name: m.name || m.id || "", enabled: m.enabled, capabilities: m.capabilities }));
-    for (const m of entries) {
-      if (!m.id) continue;
-      if (m.enabled === false) continue;
-      const modelId = m.id.includes("/") ? m.id : `${p.id}/${m.id}`;
-      const displayName = `${providerName} \xB7 ${m.name || m.id}`;
-      if (!result.has(modelId)) {
-        result.set(modelId, { id: modelId, displayName });
-        const c = m.capabilities || {};
-        caps[modelId] = {
-          text: (_b = (_a = c.input) == null ? void 0 : _a.text) != null ? _b : true,
-          image: (_d = (_c = c.input) == null ? void 0 : _c.image) != null ? _d : false,
-          pdf: (_f = (_e = c.input) == null ? void 0 : _e.pdf) != null ? _f : false,
-          audio: (_h = (_g = c.input) == null ? void 0 : _g.audio) != null ? _h : false,
-          video: (_j = (_i = c.input) == null ? void 0 : _i.video) != null ? _j : false,
-          reasoning: (_k = c.reasoning) != null ? _k : false,
-          toolcall: (_l = c.toolcall) != null ? _l : false,
-          attachment: (_m = c.attachment) != null ? _m : false,
-          temperature: (_n = c.temperature) != null ? _n : true
-        };
-      }
-    }
+  const commonPaths = [
+    path2.join(process.env.APPDATA || "", "npm", "opencode.cmd"),
+    path2.join(process.env.LOCALAPPDATA || "", "opencode", "opencode.exe"),
+    "/usr/local/bin/opencode"
+  ];
+  for (const p of commonPaths) {
+    if (fs2.existsSync(p)) return p;
   }
-  return {
-    models: [...result.values()].sort((a, b) => a.displayName.localeCompare(b.displayName)),
-    caps
-  };
+  return hint;
 }
 async function startTempOpenCodeServer(bin, vaultDir, port, hostname = "127.0.0.1") {
   const args = ["serve", `--hostname=${hostname}`, `--port=${port}`];
@@ -358,6 +401,171 @@ function stopTempServer(proc) {
   } catch (e) {
   }
 }
+function registerProcessCleanup() {
+  if (processCleanupRegistered) return;
+  processCleanupRegistered = true;
+  const cleanup = () => {
+    try {
+      autoStartedProc == null ? void 0 : autoStartedProc.kill();
+    } catch (e) {
+    }
+  };
+  process.on("exit", cleanup);
+  if (process.platform !== "win32") {
+    process.on("SIGTERM", cleanup);
+    process.on("SIGINT", cleanup);
+  }
+}
+async function ensureOpenCodeServer(cliPath, hostname, port, vaultDir, autoStart) {
+  if (ensureServerPromise) return ensureServerPromise;
+  const serverUrl = `http://${hostname || "127.0.0.1"}:${port || 16226}`;
+  try {
+    await httpGetOpenCode(serverUrl, "/global/health", vaultDir);
+    return serverUrl;
+  } catch (e) {
+  }
+  if (!autoStart) throw new Error("opencode serve \u672A\u8FD0\u884C\uFF0C\u4E14\u81EA\u52A8\u542F\u52A8\u672A\u5F00\u542F");
+  ensureServerPromise = (async () => {
+    if (autoStartedProc && autoStartedProc.exitCode === null) {
+      stopTempServer(autoStartedProc);
+      autoStartedProc = null;
+    }
+    const effectiveBin = await resolveOpenCodePath(cliPath);
+    const temp = await startTempOpenCodeServer(effectiveBin, vaultDir, port, hostname);
+    autoStartedProc = temp.proc;
+    registerProcessCleanup();
+    return temp.url;
+  })();
+  try {
+    return await ensureServerPromise;
+  } finally {
+    ensureServerPromise = null;
+  }
+}
+function stopOpenCodeServer() {
+  if (autoStartedProc) {
+    stopTempServer(autoStartedProc);
+    autoStartedProc = null;
+  }
+}
+function isServerAutoStarted() {
+  return autoStartedProc !== null && (autoStartedProc == null ? void 0 : autoStartedProc.exitCode) === null;
+}
+var import_child_process, path2, fs2, OPENCODE_START_TIMEOUT_MS, autoStartedProc, processCleanupRegistered, ensureServerPromise;
+var init_opencode_server = __esm({
+  "src/opencode-server.ts"() {
+    "use strict";
+    import_child_process = require("child_process");
+    path2 = __toESM(require("path"));
+    fs2 = __toESM(require("fs"));
+    init_opencode_client();
+    OPENCODE_START_TIMEOUT_MS = 15e3;
+    autoStartedProc = null;
+    processCleanupRegistered = false;
+    ensureServerPromise = null;
+  }
+});
+
+// src/api-client.ts
+async function callAIWithAPI(apiEndpoint, apiKey, model, messages, maxTokens, temperature, stream = false, signal, reasoningEffort) {
+  const body = { model, messages, max_tokens: maxTokens, temperature, stream };
+  if (reasoningEffort && reasoningEffort !== "none") {
+    body.reasoning_effort = reasoningEffort;
+  }
+  const resp = await fetch(apiEndpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify(body),
+    signal
+  });
+  if (!resp.ok) {
+    const errText = await resp.text().catch(() => "");
+    throw new Error(`API ${resp.status}: ${errText.slice(0, 200)}`);
+  }
+  return resp;
+}
+function ensureApiUrl(baseUrl) {
+  const trimmed = baseUrl.replace(/\/+$/, "");
+  return trimmed.endsWith("/chat/completions") ? trimmed : trimmed + "/chat/completions";
+}
+async function processAPISSEStream(resp, onThinking, onTextUpdate) {
+  var _a;
+  const reader = (_a = resp.body) == null ? void 0 : _a.getReader();
+  if (!reader) throw new Error("\u65E0\u6CD5\u8BFB\u53D6\u54CD\u5E94\u6D41");
+  const decoder = new TextDecoder("utf-8");
+  let fullContent = "";
+  let fullThinking = "";
+  const read = async () => {
+    var _a2, _b;
+    const { done, value } = await reader.read();
+    if (done) return fullContent || fullThinking || "\uFF08\u65E0\u54CD\u5E94\uFF09";
+    const chunk = decoder.decode(value, { stream: true });
+    for (const line of chunk.split("\n")) {
+      const trimmed = line.trim();
+      if (!trimmed || !trimmed.startsWith("data:")) continue;
+      const dataStr = trimmed.slice(5).trim();
+      if (dataStr === "[DONE]") continue;
+      try {
+        const data = JSON.parse(dataStr);
+        const delta = (_b = (_a2 = data.choices) == null ? void 0 : _a2[0]) == null ? void 0 : _b.delta;
+        if (delta == null ? void 0 : delta.reasoning_content) {
+          fullThinking += delta.reasoning_content;
+          onThinking == null ? void 0 : onThinking(fullThinking);
+        }
+        if (delta == null ? void 0 : delta.content) {
+          fullContent += delta.content;
+          onTextUpdate == null ? void 0 : onTextUpdate(fullContent);
+        }
+      } catch (e) {
+      }
+    }
+    return read();
+  };
+  return read();
+}
+var init_api_client = __esm({
+  "src/api-client.ts"() {
+    "use strict";
+  }
+});
+
+// src/opencode-config.ts
+function flattenProviders(providers) {
+  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n;
+  const result = /* @__PURE__ */ new Map();
+  const caps = {};
+  for (const p of providers) {
+    if (p.configured === false) continue;
+    const providerName = p.name || p.id;
+    const rawModels = p.models || {};
+    const entries = Array.isArray(rawModels) ? rawModels.map((m) => ({ id: m.id || m.name || "", name: m.name || m.id || "", enabled: m.enabled, capabilities: m.capabilities })) : Object.values(rawModels).map((m) => ({ id: m.id || m.name || "", name: m.name || m.id || "", enabled: m.enabled, capabilities: m.capabilities }));
+    for (const m of entries) {
+      if (!m.id) continue;
+      if (m.enabled === false) continue;
+      const modelId = m.id.includes("/") ? m.id : `${p.id}/${m.id}`;
+      const displayName = `${providerName} \xB7 ${m.name || m.id}`;
+      if (!result.has(modelId)) {
+        result.set(modelId, { id: modelId, displayName });
+        const c = m.capabilities || {};
+        caps[modelId] = {
+          text: (_b = (_a = c.input) == null ? void 0 : _a.text) != null ? _b : true,
+          image: (_d = (_c = c.input) == null ? void 0 : _c.image) != null ? _d : false,
+          pdf: (_f = (_e = c.input) == null ? void 0 : _e.pdf) != null ? _f : false,
+          audio: (_h = (_g = c.input) == null ? void 0 : _g.audio) != null ? _h : false,
+          video: (_j = (_i = c.input) == null ? void 0 : _i.video) != null ? _j : false,
+          reasoning: (_k = c.reasoning) != null ? _k : false,
+          toolcall: (_l = c.toolcall) != null ? _l : false,
+          attachment: (_m = c.attachment) != null ? _m : false,
+          temperature: (_n = c.temperature) != null ? _n : true
+        };
+      }
+    }
+  }
+  return {
+    models: [...result.values()].sort((a, b) => a.displayName.localeCompare(b.displayName)),
+    caps
+  };
+}
 async function fetchModelsViaServer(bin, vaultDir, configuredPort) {
   var _a, _b, _c, _d;
   const serverUrl = `http://127.0.0.1:${configuredPort}`;
@@ -373,6 +581,7 @@ async function fetchModelsViaServer(bin, vaultDir, configuredPort) {
   const tempPort = configuredPort === 16226 ? 16227 : configuredPort + 1;
   try {
     temp = await startTempOpenCodeServer(bin, vaultDir, tempPort);
+    if (!temp) throw new Error("\u542F\u52A8\u4E34\u65F6\u670D\u52A1\u5668\u5931\u8D25");
     const response = await httpGetOpenCode(temp.url, "/config/providers", vaultDir);
     const providers = (_d = (_c = response == null ? void 0 : response.providers) != null ? _c : response) != null ? _d : [];
     const r = flattenProviders(providers);
@@ -383,13 +592,13 @@ async function fetchModelsViaServer(bin, vaultDir, configuredPort) {
 }
 function findOpenCodeConfigFiles(vaultDir) {
   const candidates = [
-    path.join(vaultDir, ".opencode.json"),
-    path.join(vaultDir, ".opencode", "config.json"),
-    path.join(process.env.APPDATA || "", "opencode", "config.json"),
-    path.join(process.env.USERPROFILE || "", ".opencode.json"),
-    path.join(process.env.USERPROFILE || "", ".opencode", "config.json"),
-    path.join(process.env.USERPROFILE || "", ".config", "opencode", "config.json"),
-    path.join(process.env.LOCALAPPDATA || "", "opencode", "config.json")
+    path3.join(vaultDir, ".opencode.json"),
+    path3.join(vaultDir, ".opencode", "config.json"),
+    path3.join(process.env.APPDATA || "", "opencode", "config.json"),
+    path3.join(process.env.USERPROFILE || "", ".opencode.json"),
+    path3.join(process.env.USERPROFILE || "", ".opencode", "config.json"),
+    path3.join(process.env.USERPROFILE || "", ".config", "opencode", "config.json"),
+    path3.join(process.env.LOCALAPPDATA || "", "opencode", "config.json")
   ];
   const seen = /* @__PURE__ */ new Set();
   const results = [];
@@ -397,7 +606,7 @@ function findOpenCodeConfigFiles(vaultDir) {
     if (seen.has(p)) continue;
     seen.add(p);
     try {
-      const content = fs.readFileSync(p, "utf-8");
+      const content = fs3.readFileSync(p, "utf-8");
       results.push(JSON.parse(content));
     } catch (e) {
     }
@@ -484,58 +693,74 @@ async function fetchOpenCodeAgents(opencodePath, vaultDir, port = 16226) {
 function filterAgents(agents) {
   return agents.filter((a) => a.mode === "primary" && !a.hidden).map((a) => ({ name: a.name, description: a.description }));
 }
-function readServerConn(vaultDir, configuredPort) {
+async function checkOpenCodeStatus(opencodePath, vaultDir, port = 16226, hostname = "127.0.0.1") {
   try {
-    const lockPath = path.join(vaultDir, ".opencode", "server.lock.json");
-    if (fs.existsSync(lockPath)) {
-      const lock = JSON.parse(fs.readFileSync(lockPath, "utf-8"));
-      const authHeader = lock.password ? `Basic ${Buffer.from(`opencode:${lock.password}`).toString("base64")}` : "";
-      return { url: `http://127.0.0.1:${lock.port}`, authHeader };
+    const effectiveBin = await resolveOpenCodePath(opencodePath);
+    const serverUrl = `http://${hostname}:${port}`;
+    try {
+      await httpGetOpenCode(serverUrl, "/global/health", vaultDir);
+      return { ok: true, version: "", bin: effectiveBin };
+    } catch (e) {
+      const out = await spawnWithTimeout(effectiveBin, ["--version"], vaultDir, 5e3).catch(() => "");
+      return { ok: false, version: out.trim(), bin: effectiveBin, error: "opencode serve \u672A\u8FD0\u884C\n\u8BF7\u6267\u884C opencode serve \u542F\u52A8\u670D\u52A1\uFF0C\u6216\u5F00\u542F\u8BBE\u7F6E\u4E2D\u7684\u300C\u81EA\u52A8\u542F\u52A8\u300D" };
     }
-  } catch (e) {
+  } catch (err) {
+    return { ok: false, version: "", bin: opencodePath, error: err instanceof Error ? err.message : String(err) };
   }
-  return null;
 }
-function requestOpenCode(base, apiPath, method, body, authHeader) {
-  const u = new URL(apiPath, base.replace(/\/+$/, ""));
-  return new Promise((resolve, reject) => {
-    const opts = {
-      hostname: u.hostname,
-      port: Number(u.port) || 16226,
-      path: u.pathname + u.search,
-      method,
-      headers: { "Content-Type": "application/json" }
-    };
-    if (authHeader) opts.headers["Authorization"] = authHeader;
-    const req = http.request(opts, (res) => {
-      const chunks = [];
-      res.on("data", (ch) => chunks.push(ch));
-      res.on("end", () => {
-        const raw = Buffer.concat(chunks).toString();
-        if (!res.statusCode || res.statusCode >= 300) {
-          reject(new Error(`OpenCode ${method} ${apiPath}: ${res.statusCode} ${raw.slice(0, 200)}`));
-          return;
-        }
-        if (res.statusCode === 204) {
-          resolve({});
-          return;
-        }
-        try {
-          resolve(JSON.parse(raw));
-        } catch (e) {
-          reject(new Error(`OpenCode ${method} ${apiPath}: JSON parse error \u2014 ${e.message}`));
-        }
-      });
-    });
-    req.on("error", reject);
-    req.setTimeout(1e4, () => {
-      req.destroy();
-      reject(new Error(`OpenCode ${method} ${apiPath}: timeout`));
-    });
-    if (body !== void 0) req.write(JSON.stringify(body));
-    req.end();
-  });
+function envWithProxy(settings) {
+  if (!settings.proxyEnabled || !settings.proxyUrl) return {};
+  const url = settings.proxyUrl;
+  return { HTTP_PROXY: url, HTTPS_PROXY: url, http_proxy: url, https_proxy: url };
 }
+var fs3, path3;
+var init_opencode_config = __esm({
+  "src/opencode-config.ts"() {
+    "use strict";
+    fs3 = __toESM(require("fs"));
+    path3 = __toESM(require("path"));
+    init_opencode_client();
+    init_opencode_server();
+  }
+});
+
+// src/server.ts
+var server_exports = {};
+__export(server_exports, {
+  getVaultBasePath: () => getVaultBasePath,
+  setVaultBasePath: () => setVaultBasePath
+});
+function setVaultBasePath(path5) {
+  cachedBasePath = path5;
+}
+function getVaultBasePath(_vault) {
+  return cachedBasePath;
+}
+var cachedBasePath;
+var init_server = __esm({
+  "src/server.ts"() {
+    "use strict";
+    cachedBasePath = "";
+  }
+});
+
+// src/ai.ts
+var ai_exports = {};
+__export(ai_exports, {
+  callAISession: () => callAISession,
+  callAIWithHTTPStreaming: () => callAIWithHTTPStreaming,
+  checkOpenCodeStatus: () => checkOpenCodeStatus,
+  ensureOpenCodeServer: () => ensureOpenCodeServer,
+  envWithProxy: () => envWithProxy,
+  estimateTokens: () => estimateTokens,
+  fetchOpenCodeAgents: () => fetchOpenCodeAgents,
+  fetchOpenCodeModelsFromCLI: () => fetchOpenCodeModelsFromCLI,
+  getVaultBasePath: () => getVaultBasePath,
+  readServerConn: () => readServerConn,
+  resetMCPSyncDone: () => resetMCPSyncDone,
+  stopOpenCodeServer: () => stopOpenCodeServer,
+  syncMCPServers: () => syncMCPServers
+});
 function parseDiffText(text) {
   var _a;
   const result = [];
@@ -562,65 +787,6 @@ function parseDiffText(text) {
     result.push({ file, before: beforeLines.join("\n"), after: afterLines.join("\n"), additions: addCount, deletions: delCount });
   }
   return result;
-}
-function combineSignals(...sigs) {
-  const ctrl = new AbortController();
-  for (const s of sigs) {
-    if (!s) continue;
-    if (s.aborted) {
-      ctrl.abort(s.reason);
-      return ctrl.signal;
-    }
-    s.addEventListener("abort", () => ctrl.abort(s.reason), { once: true });
-  }
-  return ctrl.signal;
-}
-function connectSSE(base, authHeader, sessionId, signal, onEvent, onDone, onError) {
-  const handleDone = onDone || (() => {
-  });
-  const handleError = onError || (() => {
-  });
-  const u = new URL("/event", base.replace(/\/+$/, ""));
-  const opts = {
-    hostname: u.hostname,
-    port: Number(u.port) || 16226,
-    path: u.pathname + u.search,
-    method: "GET",
-    headers: {}
-  };
-  if (authHeader) opts.headers["Authorization"] = authHeader;
-  const req = http.request(opts, (res) => {
-    const dec = new TextDecoder();
-    let buf = "";
-    res.on("data", (chunk) => {
-      if (signal.aborted) {
-        res.destroy();
-        return;
-      }
-      buf += dec.decode(chunk, { stream: true });
-      const lines = buf.split(/\r?\n/);
-      buf = lines.pop() || "";
-      for (const line of lines) {
-        if (!line.startsWith("data:")) continue;
-        const payload = line.slice(5).trim();
-        if (!payload) continue;
-        try {
-          onEvent(JSON.parse(payload));
-        } catch (e) {
-        }
-      }
-    });
-    res.on("end", handleDone);
-    res.on("error", (err) => handleError(err instanceof Error ? err : new Error(String(err))));
-  });
-  req.on("error", (err) => handleError(err instanceof Error ? err : new Error(String(err))));
-  req.setTimeout(15e3, () => {
-    const err = new Error("SSE \u8FDE\u63A5\u8D85\u65F6");
-    req.destroy();
-    handleError(err);
-  });
-  signal.addEventListener("abort", () => req.destroy(), { once: true });
-  req.end();
 }
 async function callAIWithHTTPStreaming(prompt, settings, vaultDir, signal, onConnected, onThinking, onTextUpdate, onDiffs, onToolProgress) {
   var _a, _b, _c, _d;
@@ -761,68 +927,12 @@ async function callAIWithHTTPStreaming(prompt, settings, vaultDir, signal, onCon
     }
   }
 }
-async function callAIWithAPI(apiEndpoint, apiKey, model, messages, maxTokens, temperature, stream = false, signal, reasoningEffort) {
-  const body = { model, messages, max_tokens: maxTokens, temperature, stream };
-  if (reasoningEffort && reasoningEffort !== "none") {
-    body.reasoning_effort = reasoningEffort;
-  }
-  const resp = await fetch(apiEndpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify(body),
-    signal
-  });
-  if (!resp.ok) {
-    const errText = await resp.text().catch(() => "");
-    throw new Error(`API ${resp.status}: ${errText.slice(0, 200)}`);
-  }
-  return resp;
-}
 function estimateTokens(text) {
   let tokens = 0;
   for (const ch of text) {
     tokens += ch.charCodeAt(0) > 127 ? 1.5 : 0.25;
   }
   return Math.ceil(tokens);
-}
-function ensureApiUrl(baseUrl) {
-  const trimmed = baseUrl.replace(/\/+$/, "");
-  return trimmed.endsWith("/chat/completions") ? trimmed : trimmed + "/chat/completions";
-}
-async function processAPISSEStream(resp, onThinking, onTextUpdate) {
-  var _a;
-  const reader = (_a = resp.body) == null ? void 0 : _a.getReader();
-  if (!reader) throw new Error("\u65E0\u6CD5\u8BFB\u53D6\u54CD\u5E94\u6D41");
-  const decoder = new TextDecoder("utf-8");
-  let fullContent = "";
-  let fullThinking = "";
-  const read = async () => {
-    var _a2, _b;
-    const { done, value } = await reader.read();
-    if (done) return fullContent || fullThinking || "\uFF08\u65E0\u54CD\u5E94\uFF09";
-    const chunk = decoder.decode(value, { stream: true });
-    for (const line of chunk.split("\n")) {
-      const trimmed = line.trim();
-      if (!trimmed || !trimmed.startsWith("data:")) continue;
-      const dataStr = trimmed.slice(5).trim();
-      if (dataStr === "[DONE]") continue;
-      try {
-        const data = JSON.parse(dataStr);
-        const delta = (_b = (_a2 = data.choices) == null ? void 0 : _a2[0]) == null ? void 0 : _b.delta;
-        if (delta == null ? void 0 : delta.reasoning_content) {
-          fullThinking += delta.reasoning_content;
-          onThinking == null ? void 0 : onThinking(fullThinking);
-        }
-        if (delta == null ? void 0 : delta.content) {
-          fullContent += delta.content;
-          onTextUpdate == null ? void 0 : onTextUpdate(fullContent);
-        }
-      } catch (e) {
-      }
-    }
-    return read();
-  };
-  return read();
 }
 async function callAISession(options) {
   const { prompt, settings, vaultDir, signal, onThinking, onTextUpdate } = options;
@@ -843,53 +953,6 @@ async function callAISession(options) {
     settings.apiReasoningEffort
   );
   return processAPISSEStream(resp, onThinking, onTextUpdate);
-}
-function registerProcessCleanup() {
-  if (processCleanupRegistered) return;
-  processCleanupRegistered = true;
-  const cleanup = () => {
-    try {
-      autoStartedProc == null ? void 0 : autoStartedProc.kill();
-    } catch (e) {
-    }
-  };
-  process.on("exit", cleanup);
-  if (process.platform !== "win32") {
-    process.on("SIGTERM", cleanup);
-    process.on("SIGINT", cleanup);
-  }
-}
-async function ensureOpenCodeServer(cliPath, hostname, port, vaultDir, autoStart) {
-  if (ensureServerPromise) return ensureServerPromise;
-  const serverUrl = `http://${hostname || "127.0.0.1"}:${port || 16226}`;
-  try {
-    await httpGetOpenCode(serverUrl, "/global/health", vaultDir);
-    return serverUrl;
-  } catch (e) {
-  }
-  if (!autoStart) throw new Error("opencode serve \u672A\u8FD0\u884C\uFF0C\u4E14\u81EA\u52A8\u542F\u52A8\u672A\u5F00\u542F");
-  ensureServerPromise = (async () => {
-    if (autoStartedProc && autoStartedProc.exitCode === null) {
-      stopTempServer(autoStartedProc);
-      autoStartedProc = null;
-    }
-    const effectiveBin = await resolveOpenCodePath(cliPath);
-    const temp = await startTempOpenCodeServer(effectiveBin, vaultDir, port, hostname);
-    autoStartedProc = temp.proc;
-    registerProcessCleanup();
-    return temp.url;
-  })();
-  try {
-    return await ensureServerPromise;
-  } finally {
-    ensureServerPromise = null;
-  }
-}
-function stopOpenCodeServer() {
-  if (autoStartedProc) {
-    stopTempServer(autoStartedProc);
-    autoStartedProc = null;
-  }
 }
 function resetMCPSyncDone() {
   mcpSyncDone = false;
@@ -944,20 +1007,17 @@ async function syncMCPServers(settings, vaultDir) {
   }
   mcpSyncDone = true;
 }
-var import_child_process, http, fs, path, OPENCODE_START_TIMEOUT_MS, autoStartedProc, processCleanupRegistered, ensureServerPromise, mcpSyncDone;
+var mcpSyncDone;
 var init_ai = __esm({
   "src/ai.ts"() {
     "use strict";
-    import_child_process = require("child_process");
-    http = __toESM(require("http"));
-    fs = __toESM(require("fs"));
-    path = __toESM(require("path"));
+    init_constants();
+    init_opencode_client();
+    init_opencode_server();
+    init_api_client();
+    init_opencode_server();
+    init_opencode_config();
     init_server();
-    init_types();
-    OPENCODE_START_TIMEOUT_MS = 15e3;
-    autoStartedProc = null;
-    processCleanupRegistered = false;
-    ensureServerPromise = null;
     mcpSyncDone = false;
   }
 });
@@ -968,32 +1028,70 @@ __export(main_exports, {
   default: () => XiaoyuanAIPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var fs2 = __toESM(require("fs/promises"));
+var fs4 = __toESM(require("fs/promises"));
 var fsSync = __toESM(require("fs"));
-var path2 = __toESM(require("path"));
-var import_obsidian5 = require("obsidian");
-init_types();
+var path4 = __toESM(require("path"));
+var import_obsidian9 = require("obsidian");
+init_constants();
 
 // src/chat-view.ts
-var import_obsidian2 = require("obsidian");
-init_types();
+var import_obsidian6 = require("obsidian");
+init_constants();
 init_ai();
+init_api_client();
+init_opencode_config();
+
+// src/connection-checker.ts
+init_opencode_config();
+init_opencode_server();
+init_constants();
+async function checkConnection(settings, vaultDir) {
+  if (settings.execMode === "cli") {
+    let ok = false;
+    const status = await checkOpenCodeStatus(settings.opencode.cliPath, vaultDir, settings.opencode.port, settings.opencode.hostname);
+    if (status.ok) {
+      ok = true;
+    } else if (settings.opencode.autoStart) {
+      try {
+        await ensureOpenCodeServer(settings.opencode.cliPath, settings.opencode.hostname, settings.opencode.port, vaultDir, true);
+        ok = true;
+      } catch (e) {
+      }
+    }
+    return ok;
+  }
+  const provider = getActiveProvider(settings);
+  if (!provider || !provider.baseUrl || !provider.apiKey) return false;
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8e3);
+    const modelsUrl = provider.baseUrl.replace(/\/+$/, "") + "/models";
+    const resp = await fetch(modelsUrl, {
+      headers: { Authorization: `Bearer ${provider.apiKey}` },
+      signal: controller.signal
+    });
+    clearTimeout(timer);
+    return resp.ok;
+  } catch (e) {
+    return false;
+  }
+}
 
 // src/session.ts
-init_types();
+init_constants();
 function getChatHistoryPath(chatHistoryPath) {
   return chatHistoryPath || ".chatHistory";
 }
 function getSessionFilePath(chatHistoryPath, sessionId) {
   return `${getChatHistoryPath(chatHistoryPath)}/${sessionId}.md`;
 }
-async function ensureChatHistoryFolder(vault, path3) {
-  const folder = vault.getFolderByPath(path3);
+async function ensureChatHistoryFolder(vault, path5) {
+  const folder = vault.getFolderByPath(path5);
   if (folder) return;
   try {
-    await vault.createFolder(path3);
+    await vault.createFolder(path5);
   } catch (e) {
-    if (vault.getFolderByPath(path3)) return;
+    if (vault.getFolderByPath(path5)) return;
     throw e;
   }
 }
@@ -1015,7 +1113,7 @@ function parseMarkdownToMessages(content) {
       const hMatch = line.match(headerRegex);
       if (hMatch) {
         role = hMatch[1] === "\u4F60" ? "user" : "assistant";
-        ts = hMatch[2];
+        ts = new Date(hMatch[2]).getTime();
         continue;
       }
       if (line.trim() === "> [!thinking] \u601D\u8003\u8FC7\u7A0B") {
@@ -1044,18 +1142,26 @@ function parseMarkdownToMessages(content) {
   }
   return messages;
 }
+function formatDate(ts) {
+  const d = new Date(ts);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+function formatTime(ts) {
+  const d = new Date(ts);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
 function sessionToMarkdown(session, messages, execMode) {
-  const now = window.moment().format("YYYY-MM-DD");
+  const now = Date.now();
   const created = (session == null ? void 0 : session.createdAt) || now;
   let content = `---
 title: ${(session == null ? void 0 : session.title) || "\u65B0\u5BF9\u8BDD"}
-created: ${created}
-updated: ${now}
+created: ${formatDate(created)}
+updated: ${formatDate(now)}
 ---
 
 `;
   messages.forEach((msg) => {
-    const ts = msg.timestamp ? ` (${execMode.toUpperCase()} \xB7 ${msg.timestamp}):` : ":";
+    const ts = msg.timestamp ? ` (${execMode.toUpperCase()} \xB7 ${formatTime(msg.timestamp)}):` : ":";
     content += `**${msg.role === "user" ? "\u4F60" : "\u5C0F\u5143"}**${ts}
 
 ${msg.content}
@@ -1103,10 +1209,10 @@ async function scanChatHistoryFolder(vault, chatHistoryPath) {
         const messages = parseMarkdownToMessages(content);
         const match = content.match(/title:\s*(.+)/);
         const title = match ? match[1].trim() : ((_b = (_a = messages[0]) == null ? void 0 : _a.content) == null ? void 0 : _b.slice(0, 30)) || "\u5386\u53F2\u5BF9\u8BDD";
-        const matchCreated = content.match(/created:\s*(\d{4}-\d{2}-\d{2})/);
-        const createdAt = matchCreated ? matchCreated[1] : "";
-        const matchUpdated = content.match(/updated:\s*(\d{4}-\d{2}-\d{2})/);
-        const updatedAt = matchUpdated ? matchUpdated[1] : "";
+        const matchCreated = content.match(/created:\s*(.+)/);
+        const createdAt = matchCreated ? new Date(matchCreated[1]).getTime() : Date.now();
+        const matchUpdated = content.match(/updated:\s*(.+)/);
+        const updatedAt = matchUpdated ? new Date(matchUpdated[1]).getTime() : Date.now();
         loaded.push({
           id: sessionId,
           title,
@@ -1117,7 +1223,7 @@ async function scanChatHistoryFolder(vault, chatHistoryPath) {
         console.warn(`\u8BFB\u53D6\u4F1A\u8BDD\u6587\u4EF6 ${filePath} \u5931\u8D25:`, e);
       }
     }
-    loaded.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    loaded.sort((a, b) => b.updatedAt - a.updatedAt);
     return loaded;
   } catch (e) {
     console.warn("\u626B\u63CF\u5386\u53F2\u4F1A\u8BDD\u6587\u4EF6\u5939\u5931\u8D25:", e);
@@ -1259,7 +1365,7 @@ function addPopupItem(parent, label, checked, onClick) {
 
 // src/toolbar.ts
 var import_obsidian = require("obsidian");
-init_types();
+init_constants();
 function buildToolbarContent(container, view) {
   var _a, _b;
   const s = view.plugin.settings;
@@ -1445,8 +1551,245 @@ function buildToolbarContent(container, view) {
   return sendBtn;
 }
 
+// src/action-bar.ts
+var import_obsidian2 = require("obsidian");
+function formatTime2(ts) {
+  const d = new Date(ts);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+function buildActionBar(msgEl, role, content, timestamp, options) {
+  const actionsEl = msgEl.createDiv({ cls: "xiaoyuan-msg-actions" });
+  if (role === "user") {
+    const followUpBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
+    (0, import_obsidian2.setIcon)(followUpBtn, "corner-up-right");
+    (0, import_obsidian2.setTooltip)(followUpBtn, "\u8FFD\u95EE");
+    followUpBtn.addEventListener("click", () => options.followUp(content));
+    const copyBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
+    (0, import_obsidian2.setIcon)(copyBtn, "copy");
+    (0, import_obsidian2.setTooltip)(copyBtn, "\u590D\u5236");
+    copyBtn.addEventListener("click", () => {
+      navigator.clipboard.writeText(content);
+      new import_obsidian2.Notice("\u5DF2\u590D\u5236");
+    });
+    const undoBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
+    (0, import_obsidian2.setIcon)(undoBtn, "undo");
+    (0, import_obsidian2.setTooltip)(undoBtn, "\u64A4\u9500\u6B64\u6D88\u606F");
+    undoBtn.addEventListener("click", () => {
+      options.undoMessage(msgEl.id);
+    });
+  } else {
+    const copyBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
+    (0, import_obsidian2.setIcon)(copyBtn, "copy");
+    (0, import_obsidian2.setTooltip)(copyBtn, "\u590D\u5236");
+    copyBtn.addEventListener("click", () => {
+      const sel = window.getSelection();
+      const selected = sel == null ? void 0 : sel.toString().trim();
+      navigator.clipboard.writeText(selected || content);
+      new import_obsidian2.Notice("\u5DF2\u590D\u5236");
+    });
+    const speakBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
+    let isSpeaking = false;
+    (0, import_obsidian2.setIcon)(speakBtn, "volume-2");
+    (0, import_obsidian2.setTooltip)(speakBtn, "\u6717\u8BFB");
+    speakBtn.addEventListener("click", () => {
+      if (isSpeaking) {
+        speechSynthesis.cancel();
+        isSpeaking = false;
+        (0, import_obsidian2.setIcon)(speakBtn, "volume-2");
+        (0, import_obsidian2.setTooltip)(speakBtn, "\u6717\u8BFB");
+      } else {
+        speechSynthesis.cancel();
+        speakText(content);
+        isSpeaking = true;
+        (0, import_obsidian2.setIcon)(speakBtn, "square");
+        (0, import_obsidian2.setTooltip)(speakBtn, "\u505C\u6B62");
+      }
+    });
+    const followUpBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
+    (0, import_obsidian2.setIcon)(followUpBtn, "corner-up-right");
+    (0, import_obsidian2.setTooltip)(followUpBtn, "\u8FFD\u95EE");
+    followUpBtn.addEventListener("click", () => options.followUp(content));
+    const editBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
+    (0, import_obsidian2.setIcon)(editBtn, "pencil");
+    (0, import_obsidian2.setTooltip)(editBtn, "\u5728\u7F16\u8F91\u5668\u4E2D\u7F16\u8F91");
+    editBtn.addEventListener("click", () => options.openInEditor(content, timestamp));
+  }
+  if (timestamp) {
+    actionsEl.createSpan({ cls: "xiaoyuan-msg-time", text: `${options.execMode.toUpperCase()} \xB7 ${formatTime2(timestamp)}` });
+  }
+}
+function speakText(text) {
+  const utterance = new SpeechSynthesisUtterance(text.replace(/[#*_`\[\]]/g, ""));
+  utterance.lang = "zh-CN";
+  utterance.rate = 1;
+  speechSynthesis.speak(utterance);
+}
+
+// src/selection-popup.ts
+var import_obsidian3 = require("obsidian");
+function registerSelectionListener(messagesEl, onFollowUp) {
+  messagesEl.addEventListener("mouseup", () => {
+    setTimeout(() => {
+      const sel = window.getSelection();
+      if (!sel || !sel.toString().trim()) {
+        removeSelectionPopup();
+        return;
+      }
+      const range = sel.getRangeAt(0);
+      if (!messagesEl.contains(range.commonAncestorContainer)) return;
+      const rect = range.getBoundingClientRect();
+      showSelectionPopup(sel.toString().trim(), rect.left + rect.width / 2 - 60, rect.top - 36, onFollowUp);
+    }, 10);
+  });
+  document.addEventListener("mousedown", (e) => {
+    var _a, _b;
+    if (!((_b = (_a = e.target) == null ? void 0 : _a.closest) == null ? void 0 : _b.call(_a, ".xy-selection-popup"))) {
+      removeSelectionPopup();
+    }
+  });
+}
+function removeSelectionPopup() {
+  document.querySelectorAll(".xy-selection-popup").forEach((el) => el.remove());
+}
+function showSelectionPopup(text, x, y, onFollowUp) {
+  removeSelectionPopup();
+  const popup = document.body.createDiv({ cls: "xy-selection-popup" });
+  const copyBtn = popup.createSpan({ cls: "xiaoyuan-msg-action" });
+  (0, import_obsidian3.setIcon)(copyBtn, "copy");
+  (0, import_obsidian3.setTooltip)(copyBtn, "\u590D\u5236\u9009\u4E2D");
+  copyBtn.addEventListener("click", () => {
+    navigator.clipboard.writeText(text);
+    new import_obsidian3.Notice("\u5DF2\u590D\u5236");
+    removeSelectionPopup();
+  });
+  const speakBtn = popup.createSpan({ cls: "xiaoyuan-msg-action" });
+  (0, import_obsidian3.setIcon)(speakBtn, "volume-2");
+  (0, import_obsidian3.setTooltip)(speakBtn, "\u6717\u8BFB\u9009\u4E2D");
+  speakBtn.addEventListener("click", () => {
+    speechSynthesis.cancel();
+    speakText(text);
+    removeSelectionPopup();
+  });
+  const followUpBtn = popup.createSpan({ cls: "xiaoyuan-msg-action" });
+  (0, import_obsidian3.setIcon)(followUpBtn, "corner-up-right");
+  (0, import_obsidian3.setTooltip)(followUpBtn, "\u8FFD\u95EE\u9009\u4E2D");
+  followUpBtn.addEventListener("click", () => {
+    onFollowUp(text);
+    removeSelectionPopup();
+  });
+  popup.style.left = `${x}px`;
+  popup.style.top = `${y}px`;
+  document.body.appendChild(popup);
+}
+
+// src/quote-bar.ts
+function renderQuoteBar(attachPreviewEl, state, onRemoveQuote, onRemoveAttachment) {
+  attachPreviewEl.empty();
+  if (state.quoteText) {
+    attachPreviewEl.style.display = "flex";
+    const chip = attachPreviewEl.createDiv({ cls: "xiaoyuan-attach-chip xy-quote-chip" });
+    chip.textContent = "\u{1F4CE} \u5F15\u7528: " + (state.quoteText.length > 50 ? state.quoteText.slice(0, 50) + "..." : state.quoteText);
+    const removeBtn = chip.createSpan({ text: " \u2715" });
+    removeBtn.style.cursor = "pointer";
+    removeBtn.addEventListener("click", onRemoveQuote);
+  }
+  for (let i = 0; i < state.attachments.length; i++) {
+    const att = state.attachments[i];
+    attachPreviewEl.style.display = "flex";
+    const chip = attachPreviewEl.createDiv({ cls: "xiaoyuan-attach-chip" });
+    chip.textContent = att.name.length > 20 ? att.name.slice(0, 17) + "..." : att.name;
+    const removeBtn = chip.createSpan({ text: " \xD7" });
+    removeBtn.style.cursor = "pointer";
+    removeBtn.addEventListener("click", () => onRemoveAttachment(i));
+  }
+  if (!state.quoteText && state.attachments.length === 0) {
+    attachPreviewEl.style.display = "none";
+  }
+}
+
+// src/attachment.ts
+var import_obsidian4 = require("obsidian");
+var ACCEPT_TYPES = "image/*,.pdf,.txt,.md,.csv,.json,.yaml,.yml,.xml";
+function pickFiles(onFile, maxAttachmentSize) {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.multiple = true;
+  input.accept = ACCEPT_TYPES;
+  input.addEventListener("change", async () => {
+    if (input.files) handleFiles(input.files, maxAttachmentSize, onFile);
+  });
+  input.click();
+}
+async function handleFiles(files, maxAttachmentSize, onFile) {
+  const maxBytes = maxAttachmentSize * 1024 * 1024;
+  for (const file of Array.from(files)) {
+    if (file.size > maxBytes) {
+      new import_obsidian4.Notice(`\u6587\u4EF6\u8FC7\u5927: ${file.name} (\u6700\u5927 ${maxAttachmentSize}MB)`);
+      continue;
+    }
+    try {
+      const data = await readFileAsBase64(file);
+      onFile(file.name, file.type || "application/octet-stream", data, file.size);
+    } catch (e) {
+    }
+  }
+}
+function readFileAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// src/open-in-editor.ts
+var import_obsidian5 = require("obsidian");
+function simpleHash(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) {
+    h = (h << 5) - h + s.charCodeAt(i);
+    h |= 0;
+  }
+  return (h >>> 0).toString(36);
+}
+async function openInEditor(content, vault, workspace, chatHistoryPath, ts) {
+  try {
+    const tempRel = `${chatHistoryPath}/temp`;
+    try {
+      await vault.createFolder(tempRel);
+    } catch (e) {
+    }
+    const d = ts ? new Date(ts) : /* @__PURE__ */ new Date();
+    const dateStr = `${String(d.getFullYear())}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}-${String(d.getHours()).padStart(2, "0")}${String(d.getMinutes()).padStart(2, "0")}`;
+    const hash = simpleHash(content);
+    const fileRel = `${tempRel}/msg-${dateStr}-${hash}.md`;
+    const title = (content.split("\n")[0] || "\u6D88\u606F").replace(/^#+\s*/, "").slice(0, 50);
+    const dateOnly = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const frontmatter = `---
+title: ${title}
+created: ${dateOnly}
+updated: ${dateOnly}
+---
+
+`;
+    const fullContent = frontmatter + content;
+    const existing = vault.getAbstractFileByPath(fileRel);
+    let file;
+    if (existing instanceof import_obsidian5.TFile) {
+      await vault.modify(existing, fullContent);
+      file = existing;
+    } else {
+      file = await vault.create(fileRel, fullContent);
+    }
+    await workspace.getLeaf("tab").openFile(file);
+  } catch (err) {
+    new import_obsidian5.Notice(`\u6253\u5F00\u5931\u8D25: ${err instanceof Error ? err.message : String(err)}`);
+  }
+}
+
 // src/chat-view.ts
-var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
+var XiaoyuanAIChatView = class extends import_obsidian6.ItemView {
   constructor(leaf, plugin) {
     super(leaf);
     this.messages = [];
@@ -1479,7 +1822,7 @@ var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
     this.thinkingBarEl = this.viewContainer.createDiv({ cls: "xiaoyuan-thinking-bar" });
     this.messagesEl = this.viewContainer.createDiv({ cls: "xiaoyuan-chat-messages" });
     this.buildInputArea();
-    this.registerSelectionListener();
+    registerSelectionListener(this.messagesEl, (text) => this.followUp(text));
     if (this.plugin.settings.execMode === "cli") {
       this.syncCLIModels();
     } else {
@@ -1502,7 +1845,7 @@ var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
   }
   async addMessage(role, content) {
     const id = "msg-" + ++this.msgIdCounter;
-    const now = window.moment().format("YYYY-MM-DD HH:mm");
+    const now = Date.now();
     this.messages.push({ id, role, content, timestamp: now });
     this.addDateHeaderIfNeeded(now);
     this.messagesEl.appendChild(await this.renderMessageEl(id, role, content, false, void 0, now));
@@ -1525,11 +1868,11 @@ var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
     const left = headerEl.createSpan({ cls: "xiaoyuan-chat-header-left" });
     const right = headerEl.createSpan({ cls: "xiaoyuan-chat-header-right" });
     const newChatBtn = left.createSpan({ cls: "xiaoyuan-new-chat-icon" });
-    (0, import_obsidian2.setIcon)(newChatBtn, "message-square-plus");
-    (0, import_obsidian2.setTooltip)(newChatBtn, "\u65B0\u5EFA\u5BF9\u8BDD");
+    (0, import_obsidian6.setIcon)(newChatBtn, "message-square-plus");
+    (0, import_obsidian6.setTooltip)(newChatBtn, "\u65B0\u5EFA\u5BF9\u8BDD");
     newChatBtn.addEventListener("click", () => this.newChat());
     this.sessionSelector = left.createSpan({ cls: "xiaoyuan-session-selector" });
-    (0, import_obsidian2.setTooltip)(this.sessionSelector, "\u70B9\u51FB\u9009\u62E9\u4F1A\u8BDD");
+    (0, import_obsidian6.setTooltip)(this.sessionSelector, "\u70B9\u51FB\u9009\u62E9\u4F1A\u8BDD");
     this.sessionSelector.textContent = "\u65B0\u5BF9\u8BDD";
     this.sessionSelector.addEventListener("click", async (e) => {
       e.stopPropagation();
@@ -1560,7 +1903,7 @@ var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
     });
     const modeText = right.createSpan({ cls: "xiaoyuan-mode-selector" });
     modeText.textContent = s.execMode === "cli" ? "CLI" : "API";
-    (0, import_obsidian2.setTooltip)(modeText, "\u70B9\u51FB\u5207\u6362\u6267\u884C\u6A21\u5F0F");
+    (0, import_obsidian6.setTooltip)(modeText, "\u70B9\u51FB\u5207\u6362\u6267\u884C\u6A21\u5F0F");
     modeText.addEventListener("click", (e) => {
       e.stopPropagation();
       showPopup(modeText, (popup) => {
@@ -1570,7 +1913,7 @@ var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
             this.rebuildHeader();
             this.rebuildToolbar();
             this.addSystemMessage("\u2705 \u5DF2\u5207\u6362\u5230 API \u6A21\u5F0F");
-            new import_obsidian2.Notice("\u5DF2\u5207\u6362\u5230 API \u6A21\u5F0F");
+            new import_obsidian6.Notice("\u5DF2\u5207\u6362\u5230 API \u6A21\u5F0F");
           });
         });
         addPopupItem(popup, "CLI", s.execMode === "cli", () => {
@@ -1579,14 +1922,14 @@ var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
             this.rebuildHeader();
             this.rebuildToolbar();
             this.addSystemMessage("\u2705 \u5DF2\u5207\u6362\u5230 CLI \u6A21\u5F0F");
-            new import_obsidian2.Notice("\u5DF2\u5207\u6362\u5230 CLI \u6A21\u5F0F");
+            new import_obsidian6.Notice("\u5DF2\u5207\u6362\u5230 CLI \u6A21\u5F0F");
           });
         });
       });
     });
     const settingsIcon = right.createSpan({ cls: "xiaoyuan-settings-icon" });
-    (0, import_obsidian2.setIcon)(settingsIcon, "settings");
-    (0, import_obsidian2.setTooltip)(settingsIcon, "\u8BBE\u7F6E");
+    (0, import_obsidian6.setIcon)(settingsIcon, "settings");
+    (0, import_obsidian6.setTooltip)(settingsIcon, "\u8BBE\u7F6E");
     settingsIcon.addEventListener("click", () => {
       this.app.setting.open();
       this.app.setting.openTabById("xiaoyuanAI");
@@ -1627,7 +1970,10 @@ var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
       var _a, _b;
       e.preventDefault();
       container.removeClass("xy-drag-over");
-      if ((_b = (_a = e.dataTransfer) == null ? void 0 : _a.files) == null ? void 0 : _b.length) this.handleFiles(e.dataTransfer.files);
+      if ((_b = (_a = e.dataTransfer) == null ? void 0 : _a.files) == null ? void 0 : _b.length) handleFiles(e.dataTransfer.files, this.plugin.settings.maxAttachmentSize, (name, type, data, size) => {
+        this.attachments.push({ name, type, data, size });
+        this.renderQuoteBar();
+      });
     });
   }
   handleSkillInput() {
@@ -1683,82 +2029,28 @@ var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
       }
       await this.plugin.saveSettings();
       if (result.models.length === 0) {
-        new import_obsidian2.Notice("\u672A\u627E\u5230\u6A21\u578B\uFF0C\u8BF7\u68C0\u67E5 opencode \u914D\u7F6E");
+        new import_obsidian6.Notice("\u672A\u627E\u5230\u6A21\u578B\uFF0C\u8BF7\u68C0\u67E5 opencode \u914D\u7F6E");
       } else {
-        new import_obsidian2.Notice(`\u5DF2\u540C\u6B65 ${result.models.length} \u4E2A\u6A21\u578B`);
+        new import_obsidian6.Notice(`\u5DF2\u540C\u6B65 ${result.models.length} \u4E2A\u6A21\u578B`);
       }
       this.updateConnectionStatusUI(true);
       syncMCPServers(s, getVaultBasePath(this.app.vault)).catch(() => {
       });
     } catch (err) {
       this.updateConnectionStatusUI(false);
-      new import_obsidian2.Notice(`\u540C\u6B65\u6A21\u578B\u5931\u8D25\uFF1A${err instanceof Error ? err.message : String(err)}`);
+      new import_obsidian6.Notice(`\u540C\u6B65\u6A21\u578B\u5931\u8D25\uFF1A${err instanceof Error ? err.message : String(err)}`);
     }
   }
   async checkConnectionStatus() {
-    const s = this.plugin.settings;
-    if (s.execMode === "cli") {
-      const vaultDir = getVaultBasePath(this.app.vault);
-      let ok = false;
-      const status = await checkOpenCodeStatus(s.opencode.cliPath, vaultDir, s.opencode.port, s.opencode.hostname);
-      if (status.ok) {
-        ok = true;
-      } else if (s.opencode.autoStart) {
-        try {
-          await ensureOpenCodeServer(s.opencode.cliPath, s.opencode.hostname, s.opencode.port, vaultDir, true);
-          ok = true;
-        } catch (e) {
-        }
-      }
-      this.updateConnectionStatusUI(ok);
-      return;
-    }
-    const provider = getActiveProvider(s);
-    if (!provider || !provider.baseUrl || !provider.apiKey) {
-      this.updateConnectionStatusUI(false);
-      return;
-    }
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 8e3);
-      const modelsUrl = provider.baseUrl.replace(/\/+$/, "") + "/models";
-      const resp = await fetch(modelsUrl, {
-        headers: { Authorization: `Bearer ${provider.apiKey}` },
-        signal: controller.signal
-      });
-      clearTimeout(timer);
-      this.updateConnectionStatusUI(resp.ok);
-    } catch (e) {
-      this.updateConnectionStatusUI(false);
-    }
+    const ok = await checkConnection(this.plugin.settings, getVaultBasePath(this.app.vault));
+    this.updateConnectionStatusUI(ok);
   }
   updateConnectionStatusUI(ok) {
     if (!this.connectionStatusEl) return;
     const mode = this.plugin.settings.execMode;
     this.connectionStatusEl.style.cssText = `display:inline-block;width:8px;height:8px;border-radius:50%;cursor:pointer;background:${ok ? "var(--color-green)" : "var(--color-red)"};`;
     const tip = mode === "cli" ? ok ? "opencode \u53EF\u7528" : "opencode \u4E0D\u53EF\u7528" : ok ? "API \u8FDE\u63A5\u6B63\u5E38" : "API \u672A\u8FDE\u63A5";
-    (0, import_obsidian2.setTooltip)(this.connectionStatusEl, tip);
-  }
-  registerSelectionListener() {
-    this.messagesEl.addEventListener("mouseup", (e) => {
-      setTimeout(() => {
-        const sel = window.getSelection();
-        if (!sel || !sel.toString().trim()) {
-          this.removeSelectionPopup();
-          return;
-        }
-        const range = sel.getRangeAt(0);
-        if (!this.messagesEl.contains(range.commonAncestorContainer)) return;
-        const rect = range.getBoundingClientRect();
-        this.showSelectionPopup(sel.toString().trim(), rect.left + rect.width / 2 - 60, rect.top - 36);
-      }, 10);
-    });
-    document.addEventListener("mousedown", (e) => {
-      var _a, _b;
-      if (!((_b = (_a = e.target) == null ? void 0 : _a.closest) == null ? void 0 : _b.call(_a, ".xy-selection-popup"))) {
-        this.removeSelectionPopup();
-      }
-    });
+    (0, import_obsidian6.setTooltip)(this.connectionStatusEl, tip);
   }
   // ─── Message rendering ───────────────────────────────────────────
   async renderMessageEl(id, role, content, streaming = false, thinking, timestamp) {
@@ -1780,7 +2072,12 @@ var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
       this.enhanceCodeBlocks(bubbleEl);
     }
     if (!streaming) {
-      this.buildActionBar(msgEl, role, content, timestamp);
+      buildActionBar(msgEl, role, content, timestamp, {
+        execMode: this.plugin.settings.execMode,
+        undoMessage: (id2) => this.undoMessage(id2),
+        openInEditor: (c, ts) => this.openInEditor(c, ts),
+        followUp: (text) => this.followUp(text)
+      });
     }
     return msgEl;
   }
@@ -1816,7 +2113,7 @@ var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
   async renderObsidianMD(container, md) {
     const safe = this.sanitizeForRender(md);
     const sourcePath = `${this.plugin.settings.chatHistoryPath}/session.md`;
-    await import_obsidian2.MarkdownRenderer.render(
+    await import_obsidian6.MarkdownRenderer.render(
       this.app,
       safe,
       container,
@@ -1833,46 +2130,24 @@ var XiaoyuanAIChatView = class extends import_obsidian2.ItemView {
     });
   }
   async openInEditor(content, ts) {
-    try {
-      const vault = this.app.vault;
-      const tempRel = `${this.plugin.settings.chatHistoryPath}/temp`;
-      try {
-        await vault.createFolder(tempRel);
-      } catch (e) {
-      }
-      const dateStr = ts && ts.includes(" ") ? ts.split(" ")[0].replace(/-/g, "") + "-" + ts.split(" ")[1].replace(/:/g, "") : window.moment().format("YYYYMMDD-HHmm");
-      const hash = this.simpleHash(content);
-      const fileRel = `${tempRel}/msg-${dateStr}-${hash}.md`;
-      const title = (content.split("\n")[0] || "\u6D88\u606F").replace(/^#+\s*/, "").slice(0, 50);
-      const dateOnly = ts ? ts.split(" ")[0] : window.moment().format("YYYY-MM-DD");
-      const frontmatter = `---
-title: ${title}
-created: ${dateOnly}
-updated: ${dateOnly}
----
-
-`;
-      const fullContent = frontmatter + content;
-      const existing = vault.getAbstractFileByPath(fileRel);
-      let file;
-      if (existing instanceof import_obsidian2.TFile) {
-        await vault.modify(existing, fullContent);
-        file = existing;
-      } else {
-        file = await vault.create(fileRel, fullContent);
-      }
-      await this.app.workspace.getLeaf("tab").openFile(file);
-    } catch (err) {
-      new import_obsidian2.Notice(`\u6253\u5F00\u5931\u8D25: ${err instanceof Error ? err.message : String(err)}`);
-    }
+    await openInEditor(content, this.app.vault, this.app.workspace, this.plugin.settings.chatHistoryPath, ts);
   }
-  simpleHash(s) {
-    let h = 0;
-    for (let i = 0; i < s.length; i++) {
-      h = (h << 5) - h + s.charCodeAt(i);
-      h |= 0;
-    }
-    return (h >>> 0).toString(36);
+  followUp(text) {
+    this.quoteText = text;
+    this.renderQuoteBar();
+    this.inputEl.focus();
+  }
+  renderQuoteBar() {
+    renderQuoteBar(this.attachPreviewEl, {
+      quoteText: this.quoteText,
+      attachments: this.attachments
+    }, () => {
+      this.quoteText = "";
+      this.renderQuoteBar();
+    }, (i) => {
+      this.attachments.splice(i, 1);
+      this.renderQuoteBar();
+    });
   }
   addWelcomeMessage() {
     const s = this.plugin.settings;
@@ -1909,171 +2184,6 @@ updated: ${dateOnly}
       const headerEl = this.messagesEl.createDiv({ cls: "xiaoyuan-msg xiaoyuan-msg-system xiaoyuan-date-header" });
       headerEl.createDiv({ cls: "xiaoyuan-msg-bubble" }).textContent = formatDateWeekday(timestamp);
     }
-  }
-  buildActionBar(msgEl, role, content, timestamp) {
-    const actionsEl = msgEl.createDiv({ cls: "xiaoyuan-msg-actions" });
-    if (role === "user") {
-      const copyBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
-      (0, import_obsidian2.setIcon)(copyBtn, "copy");
-      (0, import_obsidian2.setTooltip)(copyBtn, "\u590D\u5236");
-      copyBtn.addEventListener("click", () => {
-        navigator.clipboard.writeText(content);
-        new import_obsidian2.Notice("\u5DF2\u590D\u5236");
-      });
-      const speakBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
-      let isSpeaking = false;
-      (0, import_obsidian2.setIcon)(speakBtn, "volume-2");
-      (0, import_obsidian2.setTooltip)(speakBtn, "\u6717\u8BFB");
-      speakBtn.addEventListener("click", () => {
-        if (isSpeaking) {
-          speechSynthesis.cancel();
-          isSpeaking = false;
-          speakBtn.removeClass("is-speaking");
-          (0, import_obsidian2.setTooltip)(speakBtn, "\u6717\u8BFB");
-        } else {
-          speechSynthesis.cancel();
-          this.speakText(content, () => {
-            isSpeaking = false;
-            speakBtn.removeClass("is-speaking");
-            (0, import_obsidian2.setTooltip)(speakBtn, "\u6717\u8BFB");
-          });
-          isSpeaking = true;
-          speakBtn.addClass("is-speaking");
-          (0, import_obsidian2.setTooltip)(speakBtn, "\u505C\u6B62");
-        }
-      });
-      const quoteBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
-      (0, import_obsidian2.setIcon)(quoteBtn, "quote");
-      (0, import_obsidian2.setTooltip)(quoteBtn, "\u5F15\u7528");
-      quoteBtn.addEventListener("click", () => this.quote(content));
-      const undoBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
-      (0, import_obsidian2.setIcon)(undoBtn, "undo");
-      (0, import_obsidian2.setTooltip)(undoBtn, "\u64A4\u9500\u6B64\u6D88\u606F");
-      undoBtn.addEventListener("click", () => {
-        this.undoMessage(msgEl.id);
-      });
-    } else {
-      const copyBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
-      (0, import_obsidian2.setIcon)(copyBtn, "copy");
-      (0, import_obsidian2.setTooltip)(copyBtn, "\u590D\u5236");
-      copyBtn.addEventListener("click", () => {
-        const sel = window.getSelection();
-        const selected = sel == null ? void 0 : sel.toString().trim();
-        navigator.clipboard.writeText(selected || content);
-        new import_obsidian2.Notice("\u5DF2\u590D\u5236");
-      });
-      const speakBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
-      let isSpeaking = false;
-      (0, import_obsidian2.setIcon)(speakBtn, "volume-2");
-      (0, import_obsidian2.setTooltip)(speakBtn, "\u6717\u8BFB");
-      speakBtn.addEventListener("click", () => {
-        if (isSpeaking) {
-          speechSynthesis.cancel();
-          isSpeaking = false;
-          speakBtn.removeClass("is-speaking");
-          (0, import_obsidian2.setTooltip)(speakBtn, "\u6717\u8BFB");
-        } else {
-          speechSynthesis.cancel();
-          this.speakText(content, () => {
-            isSpeaking = false;
-            speakBtn.removeClass("is-speaking");
-            (0, import_obsidian2.setTooltip)(speakBtn, "\u6717\u8BFB");
-          });
-          isSpeaking = true;
-          speakBtn.addClass("is-speaking");
-          (0, import_obsidian2.setTooltip)(speakBtn, "\u505C\u6B62");
-        }
-      });
-      const quoteBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
-      (0, import_obsidian2.setIcon)(quoteBtn, "quote");
-      (0, import_obsidian2.setTooltip)(quoteBtn, "\u5F15\u7528");
-      quoteBtn.addEventListener("click", () => this.quote(content));
-      const editBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
-      (0, import_obsidian2.setIcon)(editBtn, "pencil");
-      (0, import_obsidian2.setTooltip)(editBtn, "\u5728\u7F16\u8F91\u5668\u4E2D\u7F16\u8F91");
-      editBtn.addEventListener("click", () => this.openInEditor(content, timestamp));
-    }
-    if (timestamp) {
-      actionsEl.createSpan({ cls: "xiaoyuan-msg-time", text: `${this.plugin.settings.execMode.toUpperCase()} \xB7 ${formatTime(timestamp)}` });
-    }
-  }
-  quote(text) {
-    this.quoteText = text;
-    this.renderQuoteBar();
-    this.inputEl.focus();
-  }
-  speakText(text, onEnd) {
-    const utterance = new SpeechSynthesisUtterance(text.replace(/[#*_`\[\]]/g, ""));
-    utterance.lang = "zh-CN";
-    utterance.rate = 1;
-    if (onEnd) {
-      utterance.onend = onEnd;
-    }
-    speechSynthesis.speak(utterance);
-  }
-  renderQuoteBar() {
-    this.attachPreviewEl.empty();
-    if (this.quoteText) {
-      this.attachPreviewEl.style.display = "flex";
-      const chip = this.attachPreviewEl.createDiv({ cls: "xiaoyuan-attach-chip xy-quote-chip" });
-      chip.textContent = "\u{1F4CE} \u5F15\u7528: " + (this.quoteText.length > 20 ? this.quoteText.slice(0, 20) + "..." : this.quoteText);
-      const removeBtn = chip.createSpan({ text: " \u2715" });
-      removeBtn.style.cursor = "pointer";
-      removeBtn.addEventListener("click", () => {
-        this.quoteText = "";
-        this.renderQuoteBar();
-      });
-    }
-    if (this.attachments.length > 0) {
-      this.attachPreviewEl.style.display = "flex";
-      for (let i = 0; i < this.attachments.length; i++) {
-        const att = this.attachments[i];
-        const chip = this.attachPreviewEl.createDiv({ cls: "xiaoyuan-attach-chip" });
-        chip.textContent = att.name.length > 20 ? att.name.slice(0, 17) + "..." : att.name;
-        const removeBtn = chip.createSpan({ text: " \xD7" });
-        removeBtn.style.cursor = "pointer";
-        removeBtn.addEventListener("click", () => {
-          this.attachments.splice(i, 1);
-          this.renderQuoteBar();
-        });
-      }
-    }
-    if (!this.quoteText && this.attachments.length === 0) {
-      this.attachPreviewEl.style.display = "none";
-    }
-  }
-  removeSelectionPopup() {
-    document.querySelectorAll(".xy-selection-popup").forEach((el) => el.remove());
-  }
-  showSelectionPopup(text, x, y) {
-    this.removeSelectionPopup();
-    const popup = document.body.createDiv({ cls: "xy-selection-popup" });
-    const copyBtn = popup.createSpan({ cls: "xiaoyuan-msg-action" });
-    (0, import_obsidian2.setIcon)(copyBtn, "copy");
-    (0, import_obsidian2.setTooltip)(copyBtn, "\u590D\u5236\u9009\u4E2D");
-    copyBtn.addEventListener("click", () => {
-      navigator.clipboard.writeText(text);
-      new import_obsidian2.Notice("\u5DF2\u590D\u5236");
-      this.removeSelectionPopup();
-    });
-    const speakBtn = popup.createSpan({ cls: "xiaoyuan-msg-action" });
-    (0, import_obsidian2.setIcon)(speakBtn, "volume-2");
-    (0, import_obsidian2.setTooltip)(speakBtn, "\u6717\u8BFB\u9009\u4E2D");
-    speakBtn.addEventListener("click", () => {
-      speechSynthesis.cancel();
-      this.speakText(text);
-      this.removeSelectionPopup();
-    });
-    const quoteBtn = popup.createSpan({ cls: "xiaoyuan-msg-action" });
-    (0, import_obsidian2.setIcon)(quoteBtn, "quote");
-    (0, import_obsidian2.setTooltip)(quoteBtn, "\u5F15\u7528\u9009\u4E2D");
-    quoteBtn.addEventListener("click", () => {
-      this.quote(text);
-      this.removeSelectionPopup();
-    });
-    popup.style.left = `${x}px`;
-    popup.style.top = `${y}px`;
-    document.body.appendChild(popup);
   }
   async truncateMessagesIfNeeded() {
     const s = this.plugin.settings;
@@ -2198,7 +2308,7 @@ ${att.data}
           await ensureOpenCodeServer(s.opencode.cliPath, s.opencode.hostname, s.opencode.port, vaultDir, true);
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
-          new import_obsidian2.Notice(`\u26A0 \u542F\u52A8 opencode \u5931\u8D25: ${msg}`);
+          new import_obsidian6.Notice(`\u26A0 \u542F\u52A8 opencode \u5931\u8D25: ${msg}`);
           throw new Error(`\u65E0\u6CD5\u542F\u52A8 opencode serve: ${msg}`);
         }
       }
@@ -2331,7 +2441,7 @@ ${att.data}
   }
   addStreamingMessage(content, thinking) {
     const id = "msg-" + ++this.msgIdCounter;
-    const now = window.moment().format("YYYY-MM-DD HH:mm");
+    const now = Date.now();
     this.messages.push({ id, role: "assistant", content, thinking, timestamp: now });
     const msgEl = createDiv({ cls: "xiaoyuan-msg xiaoyuan-msg-assistant" });
     msgEl.id = id;
@@ -2345,7 +2455,12 @@ ${att.data}
     const contentEl = bubbleEl.createDiv({ cls: "xy-stream-content" });
     contentEl.textContent = content;
     this.messagesEl.appendChild(msgEl);
-    this.buildActionBar(msgEl, "assistant", content, now);
+    buildActionBar(msgEl, "assistant", content, now, {
+      execMode: this.plugin.settings.execMode,
+      undoMessage: (id2) => this.undoMessage(id2),
+      openInEditor: (c, ts) => this.openInEditor(c, ts),
+      followUp: (text) => this.followUp(text)
+    });
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
     return id;
   }
@@ -2473,25 +2588,25 @@ ${att.data}
   async loadSessions() {
     var _a, _b;
     try {
-      const path3 = getChatHistoryPath(this.plugin.settings.chatHistoryPath);
-      await ensureChatHistoryFolder(this.app.vault, path3);
+      const path5 = getChatHistoryPath(this.plugin.settings.chatHistoryPath);
+      await ensureChatHistoryFolder(this.app.vault, path5);
       const meta = await loadSessionsMeta(this.plugin);
-      this.sessions = await scanChatHistoryFolder(this.app.vault, path3);
-      this.sessions.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+      this.sessions = await scanChatHistoryFolder(this.app.vault, path5);
+      this.sessions.sort((a, b) => b.updatedAt - a.updatedAt);
       this.currentSessionId = meta.currentSessionId;
       if (this.sessions.length === 0) {
         const oldMessages = migrateOldData(meta);
         if (oldMessages && oldMessages.length > 0) {
-          const now = window.moment().format("YYYY-MM-DD");
+          const now = Date.now();
           const newSession = {
-            id: "session-" + Date.now(),
+            id: "session-" + now,
             title: ((_b = (_a = oldMessages[0]) == null ? void 0 : _a.content) == null ? void 0 : _b.slice(0, 30)) || "\u5386\u53F2\u5BF9\u8BDD",
             createdAt: now,
             updatedAt: now
           };
           this.sessions.push(newSession);
           this.messages = [...oldMessages];
-          await saveSessionToFile(this.app.vault, path3, newSession.id, newSession, oldMessages, this.plugin.settings.execMode);
+          await saveSessionToFile(this.app.vault, path5, newSession.id, newSession, oldMessages, this.plugin.settings.execMode);
         }
       }
     } catch (e) {
@@ -2508,8 +2623,8 @@ ${att.data}
     this.updateSessionSelector();
   }
   async loadSession(session) {
-    const path3 = getChatHistoryPath(this.plugin.settings.chatHistoryPath);
-    this.messages = await loadSessionFromFile(this.app.vault, path3, session.id);
+    const path5 = getChatHistoryPath(this.plugin.settings.chatHistoryPath);
+    this.messages = await loadSessionFromFile(this.app.vault, path5, session.id);
     this.msgIdCounter = this.messages.length;
     this.messagesEl.empty();
     this.lastDateKey = "";
@@ -2532,30 +2647,30 @@ ${att.data}
   }
   async saveCurrentSession() {
     if (this.messages.length === 0) return;
-    const path3 = getChatHistoryPath(this.plugin.settings.chatHistoryPath);
+    const path5 = getChatHistoryPath(this.plugin.settings.chatHistoryPath);
     const session = this.sessions.find((s) => s.id === this.currentSessionId);
     if (session) {
-      session.updatedAt = window.moment().format("YYYY-MM-DD");
+      session.updatedAt = Date.now();
       if (session.title === "\u65B0\u5BF9\u8BDD" || session.title === "") {
         session.title = this.messages.length > 0 ? this.sessionTitleFromMessages() : "\u65B0\u5BF9\u8BDD";
         this.updateSessionSelector();
       }
     }
-    await saveSessionToFile(this.app.vault, path3, this.currentSessionId, session, this.messages, this.plugin.settings.execMode);
+    await saveSessionToFile(this.app.vault, path5, this.currentSessionId, session, this.messages, this.plugin.settings.execMode);
     await saveSessionsMeta(this.plugin, this.sessions, this.currentSessionId);
   }
   updateSessionTitle() {
     const session = this.sessions.find((s) => s.id === this.currentSessionId);
     if (session && (session.title === "\u65B0\u5BF9\u8BDD" || session.title === "") && this.messages.length > 0) {
       session.title = this.sessionTitleFromMessages();
-      session.updatedAt = window.moment().format("YYYY-MM-DD");
+      session.updatedAt = Date.now();
       this.updateSessionSelector();
     }
   }
   async createNewSession() {
-    const now = window.moment().format("YYYY-MM-DD");
+    const now = Date.now();
     const newSession = {
-      id: "session-" + Date.now(),
+      id: "session-" + now,
       title: "\u65B0\u5BF9\u8BDD",
       createdAt: now,
       updatedAt: now
@@ -2570,7 +2685,7 @@ ${att.data}
   }
   async switchSession(sessionId) {
     if (this.abortController) {
-      new import_obsidian2.Notice("\u8BF7\u7B49\u5F85\u5F53\u524D AI \u56DE\u590D\u5B8C\u6210");
+      new import_obsidian6.Notice("\u8BF7\u7B49\u5F85\u5F53\u524D AI \u56DE\u590D\u5B8C\u6210");
       return;
     }
     await this.saveCurrentSession();
@@ -2585,11 +2700,11 @@ ${att.data}
   }
   async deleteSession(sessionId) {
     if (this.abortController) {
-      new import_obsidian2.Notice("\u8BF7\u7B49\u5F85\u5F53\u524D AI \u56DE\u590D\u5B8C\u6210");
+      new import_obsidian6.Notice("\u8BF7\u7B49\u5F85\u5F53\u524D AI \u56DE\u590D\u5B8C\u6210");
       return;
     }
     if (this.sessions.length <= 1) {
-      new import_obsidian2.Notice("\u81F3\u5C11\u4FDD\u7559\u4E00\u4E2A\u5BF9\u8BDD");
+      new import_obsidian6.Notice("\u81F3\u5C11\u4FDD\u7559\u4E00\u4E2A\u5BF9\u8BDD");
       return;
     }
     const idx = this.sessions.findIndex((s) => s.id === sessionId);
@@ -2603,7 +2718,7 @@ ${att.data}
     }
     await saveSessionsMeta(this.plugin, this.sessions, this.currentSessionId);
     this.updateSessionSelector();
-    new import_obsidian2.Notice("\u5DF2\u5220\u9664");
+    new import_obsidian6.Notice("\u5DF2\u5220\u9664");
   }
   async showSessionDropdown(e) {
     if (document.querySelector(".xy-popup")) {
@@ -2611,8 +2726,8 @@ ${att.data}
       return;
     }
     await this.saveCurrentSession();
-    const path3 = getChatHistoryPath(this.plugin.settings.chatHistoryPath);
-    const diskSessions = await scanChatHistoryFolder(this.app.vault, path3);
+    const path5 = getChatHistoryPath(this.plugin.settings.chatHistoryPath);
+    const diskSessions = await scanChatHistoryFolder(this.app.vault, path5);
     const diskIds = new Set(diskSessions.map((s) => s.id));
     const unsaved = this.sessions.filter((s) => !diskIds.has(s.id));
     this.sessions = [...diskSessions, ...unsaved];
@@ -2677,13 +2792,13 @@ ${att.data}
         const renameBtn = suffix.createSpan({ cls: "xy-popup-suffix-btn" });
         renameBtn.textContent = "\u270E";
         renameBtn.style.fontSize = "12px";
-        (0, import_obsidian2.setTooltip)(renameBtn, "\u91CD\u547D\u540D");
+        (0, import_obsidian6.setTooltip)(renameBtn, "\u91CD\u547D\u540D");
         renameBtn.addEventListener("click", startRename);
         const deleteBtn = suffix.createSpan({ cls: "xy-popup-suffix-btn" });
         deleteBtn.classList.add("danger");
         deleteBtn.textContent = "\xD7";
         deleteBtn.style.fontSize = "16px";
-        (0, import_obsidian2.setTooltip)(deleteBtn, "\u5220\u9664\u6B64\u5BF9\u8BDD");
+        (0, import_obsidian6.setTooltip)(deleteBtn, "\u5220\u9664\u6B64\u5BF9\u8BDD");
         deleteBtn.addEventListener("click", (ev) => {
           ev.stopPropagation();
           this.deleteSession(session.id);
@@ -2730,67 +2845,39 @@ ${att.data}
   }
   // ─── Attachments ───────────────────────────────────────────────
   pickFiles() {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.multiple = true;
-    input.accept = "image/*,.pdf,.txt,.md,.csv,.json,.yaml,.yml,.xml";
-    input.addEventListener("change", async () => {
-      if (input.files) this.handleFiles(input.files);
-    });
-    input.click();
-  }
-  async handleFiles(files) {
-    const maxBytes = this.plugin.settings.maxAttachmentSize * 1024 * 1024;
-    for (const file of Array.from(files)) {
-      if (file.size > maxBytes) {
-        new import_obsidian2.Notice(`\u6587\u4EF6\u8FC7\u5927: ${file.name} (\u6700\u5927 ${this.plugin.settings.maxAttachmentSize}MB)`);
-        continue;
-      }
-      try {
-        const data = await this.readFileAsBase64(file);
-        this.attachments.push({ name: file.name, type: file.type || "application/octet-stream", data, size: file.size });
-      } catch (e) {
-      }
-    }
-    this.renderQuoteBar();
-  }
-  readFileAsBase64(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
+    pickFiles((name, type, data, size) => {
+      this.attachments.push({ name, type, data, size });
+      this.renderQuoteBar();
+    }, this.plugin.settings.maxAttachmentSize);
   }
   // ─── UI helpers ──────────────────────────────────────────────────
   setProcessingState(processing) {
     this.thinkingBarEl.classList.toggle("is-active", processing);
     if (processing) {
-      (0, import_obsidian2.setIcon)(this.sendBtn, "circle-stop");
-      (0, import_obsidian2.setTooltip)(this.sendBtn, "\u505C\u6B62");
+      (0, import_obsidian6.setIcon)(this.sendBtn, "circle-stop");
+      (0, import_obsidian6.setTooltip)(this.sendBtn, "\u505C\u6B62");
       this.sendBtn.classList.add("is-stop");
     } else {
-      (0, import_obsidian2.setIcon)(this.sendBtn, "circle-arrow-right");
-      (0, import_obsidian2.setTooltip)(this.sendBtn, "\u53D1\u9001");
+      (0, import_obsidian6.setIcon)(this.sendBtn, "circle-arrow-right");
+      (0, import_obsidian6.setTooltip)(this.sendBtn, "\u53D1\u9001");
       this.sendBtn.classList.remove("is-stop");
     }
   }
 };
-function formatTime(ts) {
-  return ts.split(" ")[1] || "";
-}
 function formatDateWeekday(ts) {
-  const m = window.moment(ts);
-  return m.format("YYYY\u5E74M\u6708D\u65E5 dddd");
+  const d = new Date(ts);
+  const weekdays = ["\u661F\u671F\u65E5", "\u661F\u671F\u4E00", "\u661F\u671F\u4E8C", "\u661F\u671F\u4E09", "\u661F\u671F\u56DB", "\u661F\u671F\u4E94", "\u661F\u671F\u516D"];
+  return `${d.getFullYear()}\u5E74${d.getMonth() + 1}\u6708${d.getDate()}\u65E5 ${weekdays[d.getDay()]}`;
 }
 function getDateKey(ts) {
-  return ts.split(" ")[0];
+  const d = new Date(ts);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 // src/settings.ts
-var import_obsidian3 = require("obsidian");
-init_types();
-var XiaoyuanAISettingTab = class extends import_obsidian3.PluginSettingTab {
+var import_obsidian7 = require("obsidian");
+init_constants();
+var XiaoyuanAISettingTab = class extends import_obsidian7.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
     this.activeTab = "general";
@@ -2816,21 +2903,21 @@ var XiaoyuanAISettingTab = class extends import_obsidian3.PluginSettingTab {
     nameEl.addClass("xy-setting-name-with-icon");
     const icon = document.createElement("span");
     icon.addClass("xy-setting-icon");
-    (0, import_obsidian3.setIcon)(icon, iconName);
+    (0, import_obsidian7.setIcon)(icon, iconName);
     nameEl.prepend(icon);
     return setting;
   }
   addStatusRow(container, iconName, label, value) {
     const row = container.createDiv({ cls: "xy-settings-status-row" });
     const icon = row.createSpan({ cls: "xy-settings-status-icon" });
-    (0, import_obsidian3.setIcon)(icon, iconName);
+    (0, import_obsidian7.setIcon)(icon, iconName);
     row.createSpan({ cls: "xy-settings-status-label", text: label });
     row.createSpan({ cls: "xy-settings-status-value", text: value });
   }
   // ─── ① Mode Selector ─────────────────────────────────────────────
   buildModeSelector(container) {
     const s = this.s();
-    this.decorateSetting(new import_obsidian3.Setting(container).setName("\u667A\u80FD\u52A9\u7406\u6A21\u5F0F").setDesc(s.execMode === "cli" ? "\u6240\u6709\u64CD\u4F5C\u901A\u8FC7 opencode run \u6267\u884C\uFF0C\u9002\u5408\u672C\u5730\u5F00\u53D1\u9879\u76EE" : "\u6240\u6709\u64CD\u4F5C\u76F4\u63A5\u8C03\u7528 OpenAI \u517C\u5BB9 API\uFF0C\u9002\u5408\u7EAF\u5BF9\u8BDD\u573A\u666F").addDropdown((dd) => {
+    this.decorateSetting(new import_obsidian7.Setting(container).setName("\u667A\u80FD\u52A9\u7406\u6A21\u5F0F").setDesc(s.execMode === "cli" ? "\u6240\u6709\u64CD\u4F5C\u901A\u8FC7 opencode run \u6267\u884C\uFF0C\u9002\u5408\u672C\u5730\u5F00\u53D1\u9879\u76EE" : "\u6240\u6709\u64CD\u4F5C\u76F4\u63A5\u8C03\u7528 OpenAI \u517C\u5BB9 API\uFF0C\u9002\u5408\u7EAF\u5BF9\u8BDD\u573A\u666F").addDropdown((dd) => {
       dd.addOption("cli", "CLI \u6A21\u5F0F");
       dd.addOption("api", "API \u6A21\u5F0F");
       dd.setValue(s.execMode);
@@ -2852,30 +2939,9 @@ var XiaoyuanAISettingTab = class extends import_obsidian3.PluginSettingTab {
     if (!card) return;
     const s = this.s();
     try {
-      const { checkOpenCodeStatus: checkOpenCodeStatus2, ensureOpenCodeServer: ensureOpenCodeServer2 } = await Promise.resolve().then(() => (init_ai(), ai_exports));
       const vaultDir = (await Promise.resolve().then(() => (init_server(), server_exports))).getVaultBasePath(this.app.vault);
-      if (s.execMode === "cli") {
-        let ok = false;
-        const status = await checkOpenCodeStatus2(s.opencode.cliPath, vaultDir, s.opencode.port, s.opencode.hostname);
-        if (status.ok) {
-          ok = true;
-        } else if (s.opencode.autoStart) {
-          try {
-            await ensureOpenCodeServer2(s.opencode.cliPath, s.opencode.hostname, s.opencode.port, vaultDir, true);
-            ok = true;
-          } catch (e) {
-            console.warn("opencode \u81EA\u52A8\u542F\u52A8\u5931\u8D25:", e);
-          }
-        }
-        this.updateRow(card, 0, ok ? "\u5DF2\u8FDE\u63A5" : "\u672A\u8FDE\u63A5");
-      } else {
-        const active = getActiveProvider(s);
-        if (active && active.baseUrl && active.apiKey) {
-          this.updateRow(card, 0, "\u5DF2\u8FDE\u63A5");
-        } else {
-          this.updateRow(card, 0, "\u672A\u914D\u7F6E");
-        }
-      }
+      const ok = await checkConnection(s, vaultDir);
+      this.updateRow(card, 0, ok ? "\u5DF2\u8FDE\u63A5" : s.execMode === "cli" ? "\u672A\u8FDE\u63A5" : "\u672A\u914D\u7F6E");
       this.updateRow(card, 1, s.execMode === "cli" ? s.opencode.model || "\u672A\u9009\u62E9" : ((_a = getActiveProvider(s)) == null ? void 0 : _a.model) || "\u672A\u9009\u62E9");
       this.updateRow(card, 2, s.proxyEnabled ? s.proxyUrl : "\u5DF2\u5173\u95ED");
     } catch (e) {
@@ -2936,7 +3002,7 @@ var XiaoyuanAISettingTab = class extends import_obsidian3.PluginSettingTab {
         attr: { type: "button" }
       });
       const icon = btn.createSpan({ cls: "xy-settings-tab-icon" });
-      (0, import_obsidian3.setIcon)(icon, t.icon);
+      (0, import_obsidian7.setIcon)(icon, t.icon);
       btn.createSpan({ text: t.label });
       btn.onclick = () => {
         this.activeTab = t.id;
@@ -2968,7 +3034,7 @@ var XiaoyuanAISettingTab = class extends import_obsidian3.PluginSettingTab {
   buildCLITab(container) {
     var _a, _b;
     const s = this.s();
-    const pathSetting = this.decorateSetting(new import_obsidian3.Setting(container).setName("OpenCode \u8DEF\u5F84").setDesc("\u53EF\u6267\u884C\u6587\u4EF6\u8DEF\u5F84\u3002\u5168\u5C40\u5B89\u88C5\u586B opencode\uFF0C\u975E\u5168\u5C40\u5199\u5B8C\u6574\u7EDD\u5BF9\u8DEF\u5F84\u3002").addText(
+    const pathSetting = this.decorateSetting(new import_obsidian7.Setting(container).setName("OpenCode \u8DEF\u5F84").setDesc("\u53EF\u6267\u884C\u6587\u4EF6\u8DEF\u5F84\u3002\u5168\u5C40\u5B89\u88C5\u586B opencode\uFF0C\u975E\u5168\u5C40\u5199\u5B8C\u6574\u7EDD\u5BF9\u8DEF\u5F84\u3002").addText(
       (text) => text.setPlaceholder("opencode").setValue(s.opencode.cliPath === "opencode" ? "" : s.opencode.cliPath).onChange(async (val) => {
         s.opencode.cliPath = val;
         await this.plugin.saveSettings();
@@ -2976,39 +3042,39 @@ var XiaoyuanAISettingTab = class extends import_obsidian3.PluginSettingTab {
     ), "terminal-square");
     (async () => {
       try {
-        const { resolveOpenCodePath: resolveOpenCodePath2 } = await Promise.resolve().then(() => (init_ai(), ai_exports));
+        const { resolveOpenCodePath: resolveOpenCodePath2 } = await Promise.resolve().then(() => (init_opencode_server(), opencode_server_exports));
         const detected = await resolveOpenCodePath2(s.opencode.cliPath);
         if (detected && detected !== s.opencode.cliPath) pathSetting.setDesc(`\u5DF2\u68C0\u6D4B\u5230: ${detected}`);
       } catch (e) {
       }
     })();
-    this.decorateSetting(new import_obsidian3.Setting(container).setName("\u81EA\u52A8\u542F\u52A8 OpenCode Server").setDesc("\u6253\u5F00 Obsidian \u6216\u68C0\u6D4B\u5230\u670D\u52A1\u672A\u8FD0\u884C\u65F6\u81EA\u52A8\u542F\u52A8 opencode serve").addToggle((t) => {
+    this.decorateSetting(new import_obsidian7.Setting(container).setName("\u81EA\u52A8\u542F\u52A8 OpenCode Server").setDesc("\u6253\u5F00 Obsidian \u6216\u68C0\u6D4B\u5230\u670D\u52A1\u672A\u8FD0\u884C\u65F6\u81EA\u52A8\u542F\u52A8 opencode serve").addToggle((t) => {
       t.setValue(s.opencode.autoStart);
       t.onChange(async (val) => {
         s.opencode.autoStart = val;
         await this.plugin.saveSettings();
         if (val && s.execMode === "cli") {
-          const { ensureOpenCodeServer: ensureOpenCodeServer2 } = await Promise.resolve().then(() => (init_ai(), ai_exports));
+          const { ensureOpenCodeServer: ensureOpenCodeServer3 } = await Promise.resolve().then(() => (init_ai(), ai_exports));
           const { getVaultBasePath: getVaultBasePath2 } = await Promise.resolve().then(() => (init_server(), server_exports));
-          ensureOpenCodeServer2(s.opencode.cliPath, s.opencode.hostname, s.opencode.port, getVaultBasePath2(this.app.vault), true).catch(() => {
+          ensureOpenCodeServer3(s.opencode.cliPath, s.opencode.hostname, s.opencode.port, getVaultBasePath2(this.app.vault), true).catch(() => {
           });
         }
       });
     }), "play");
-    this.decorateSetting(new import_obsidian3.Setting(container).setName("Host").setDesc("opencode \u670D\u52A1\u5668\u4E3B\u673A\u5730\u5740").addText(
+    this.decorateSetting(new import_obsidian7.Setting(container).setName("Host").setDesc("opencode \u670D\u52A1\u5668\u4E3B\u673A\u5730\u5740").addText(
       (text) => text.setPlaceholder("127.0.0.1").setValue(s.opencode.hostname === "127.0.0.1" ? "" : s.opencode.hostname).onChange(async (val) => {
         s.opencode.hostname = val;
         await this.plugin.saveSettings();
       })
     ), "globe");
-    this.decorateSetting(new import_obsidian3.Setting(container).setName("Port").setDesc("opencode \u670D\u52A1\u5668\u7AEF\u53E3").addText(
+    this.decorateSetting(new import_obsidian7.Setting(container).setName("Port").setDesc("opencode \u670D\u52A1\u5668\u7AEF\u53E3").addText(
       (text) => text.setPlaceholder("16226").setValue(s.opencode.port === 16226 ? "" : String(s.opencode.port)).onChange(async (val) => {
         const n = parseInt(val);
         s.opencode.port = n > 0 ? n : 16226;
         await this.plugin.saveSettings();
       })
     ), "plug");
-    const modelSetting = this.decorateSetting(new import_obsidian3.Setting(container).setName("\u6A21\u578B").setDesc("\u70B9\u51FB\u9009\u62E9\u6A21\u578B\uFF0C\u6216\u70B9 \u21BB \u4ECE opencode \u540C\u6B65").addText((text) => {
+    const modelSetting = this.decorateSetting(new import_obsidian7.Setting(container).setName("\u6A21\u578B").setDesc("\u70B9\u51FB\u9009\u62E9\u6A21\u578B\uFF0C\u6216\u70B9 \u21BB \u4ECE opencode \u540C\u6B65").addText((text) => {
       text.setPlaceholder("\u70B9\u51FB\u9009\u62E9\u6216\u8F93\u5165 providerID/modelID").setValue(s.opencode.model);
       text.inputEl.addClass("xy-model-picker-trigger");
       text.inputEl.readOnly = false;
@@ -3037,13 +3103,13 @@ var XiaoyuanAISettingTab = class extends import_obsidian3.PluginSettingTab {
             s.opencode.model = result.defaultModel;
           }
           await this.plugin.saveSettings();
-          new import_obsidian3.Notice(result.models.length === 0 ? "\u672A\u627E\u5230\u6A21\u578B" : `\u5DF2\u540C\u6B65 ${result.models.length} \u4E2A\u6A21\u578B`);
+          new import_obsidian7.Notice(result.models.length === 0 ? "\u672A\u627E\u5230\u6A21\u578B" : `\u5DF2\u540C\u6B65 ${result.models.length} \u4E2A\u6A21\u578B`);
           this.display();
           const { fetchOpenCodeAgents: fetchOpenCodeAgents2 } = await Promise.resolve().then(() => (init_ai(), ai_exports));
           s.opencodeAgents = await fetchOpenCodeAgents2(s.opencode.cliPath, getVaultBasePath2(this.app.vault), s.opencode.port).catch(() => s.opencodeAgents);
           await this.plugin.saveSettings();
         } catch (err) {
-          new import_obsidian3.Notice(`\u540C\u6B65\u5931\u8D25\uFF1A${err instanceof Error ? err.message : String(err)}`);
+          new import_obsidian7.Notice(`\u540C\u6B65\u5931\u8D25\uFF1A${err instanceof Error ? err.message : String(err)}`);
         }
       });
     }), "box");
@@ -3068,7 +3134,7 @@ var XiaoyuanAISettingTab = class extends import_obsidian3.PluginSettingTab {
       const allItems = agentItems.length ? agentItems : fallbackItems;
       const currentAgent = s.opencode.agent;
       const inList = allItems.some((a) => a.name === currentAgent);
-      this.decorateSetting(new import_obsidian3.Setting(container).setName("Agent").setDesc(currentAgent ? `\u5F53\u524D: ${currentAgent}${((_b = allItems.find((a) => a.name === currentAgent)) == null ? void 0 : _b.description) ? ` (${allItems.find((a) => a.name === currentAgent).description})` : ""}` : "\u9009\u62E9 agent").addDropdown((dd) => {
+      this.decorateSetting(new import_obsidian7.Setting(container).setName("Agent").setDesc(currentAgent ? `\u5F53\u524D: ${currentAgent}${((_b = allItems.find((a) => a.name === currentAgent)) == null ? void 0 : _b.description) ? ` (${allItems.find((a) => a.name === currentAgent).description})` : ""}` : "\u9009\u62E9 agent").addDropdown((dd) => {
         var _a2;
         for (const a of allItems) dd.addOption(a.name, a.name);
         dd.setValue(inList ? currentAgent : ((_a2 = allItems[0]) == null ? void 0 : _a2.name) || "build");
@@ -3088,15 +3154,15 @@ var XiaoyuanAISettingTab = class extends import_obsidian3.PluginSettingTab {
             const agents = await fetchOpenCodeAgents2(s.opencode.cliPath, vaultDir, s.opencode.port);
             s.opencodeAgents = agents;
             await this.plugin.saveSettings();
-            new import_obsidian3.Notice(`\u5DF2\u540C\u6B65 ${agents.length} \u4E2A agent`);
+            new import_obsidian7.Notice(`\u5DF2\u540C\u6B65 ${agents.length} \u4E2A agent`);
             this.display();
           } catch (err) {
-            new import_obsidian3.Notice(`\u540C\u6B65\u5931\u8D25\uFF1A${err.message}`);
+            new import_obsidian7.Notice(`\u540C\u6B65\u5931\u8D25\uFF1A${err.message}`);
           }
         });
       }), "bot");
     }
-    this.decorateSetting(new import_obsidian3.Setting(container).setName("\u601D\u8003\u5F3A\u5EA6").setDesc("\u63A7\u5236\u6A21\u578B\u7684\u63A8\u7406\u6DF1\u5EA6").addDropdown((dd) => {
+    this.decorateSetting(new import_obsidian7.Setting(container).setName("\u601D\u8003\u5F3A\u5EA6").setDesc("\u63A7\u5236\u6A21\u578B\u7684\u63A8\u7406\u6DF1\u5EA6").addDropdown((dd) => {
       dd.addOption("none", "none");
       dd.addOption("minimal", "minimal");
       dd.addOption("low", "low");
@@ -3109,7 +3175,7 @@ var XiaoyuanAISettingTab = class extends import_obsidian3.PluginSettingTab {
         await this.plugin.saveSettings();
       });
     }), "brain");
-    this.decorateSetting(new import_obsidian3.Setting(container).setName("\u6587\u4EF6\u6743\u9650").setDesc('AI \u5BF9\u5DE5\u4F5C\u533A\u6587\u4EF6\u7684\u8BBF\u95EE\u6743\u9650\uFF08\u4EC5"\u5B8C\u5168\u653E\u5F00"\u65F6\u4F20\u9012 --dangerously-skip-permissions\uFF09').addDropdown((dd) => {
+    this.decorateSetting(new import_obsidian7.Setting(container).setName("\u6587\u4EF6\u6743\u9650").setDesc('AI \u5BF9\u5DE5\u4F5C\u533A\u6587\u4EF6\u7684\u8BBF\u95EE\u6743\u9650\uFF08\u4EC5"\u5B8C\u5168\u653E\u5F00"\u65F6\u4F20\u9012 --dangerously-skip-permissions\uFF09').addDropdown((dd) => {
       dd.addOption("read-only", "\u53EA\u8BFB");
       dd.addOption("workspace-write", "\u5DE5\u4F5C\u533A\u53EF\u5199");
       dd.addOption("danger-full-access", "\u5B8C\u5168\u653E\u5F00");
@@ -3145,19 +3211,19 @@ var XiaoyuanAISettingTab = class extends import_obsidian3.PluginSettingTab {
           await this.plugin.saveSettings();
           this.display();
           const ok = await this.testApiConnection(provider);
-          new import_obsidian3.Notice(ok ? `\u2705 \u5DF2\u5207\u6362\u5230: ${provider.name}` : `\u274C \u8FDE\u63A5\u5931\u8D25: ${provider.name}`);
+          new import_obsidian7.Notice(ok ? `\u2705 \u5DF2\u5207\u6362\u5230: ${provider.name}` : `\u274C \u8FDE\u63A5\u5931\u8D25: ${provider.name}`);
         });
       }
       const testBtn = headActions.createEl("button", { cls: "xy-status-btn", text: "\u8FDE\u63A5\u6D4B\u8BD5" });
       testBtn.addEventListener("click", async () => {
         const ok = await this.testApiConnection(provider);
-        new import_obsidian3.Notice(ok ? `\u2705 ${provider.name} \u8FDE\u63A5\u6210\u529F` : `\u274C ${provider.name} \u8FDE\u63A5\u5931\u8D25`);
+        new import_obsidian7.Notice(ok ? `\u2705 ${provider.name} \u8FDE\u63A5\u6210\u529F` : `\u274C ${provider.name} \u8FDE\u63A5\u5931\u8D25`);
       });
       const deleteBtn = headActions.createEl("button", { cls: "xy-status-btn", text: "\u5220\u9664" });
       deleteBtn.addEventListener("click", async () => {
         var _a2;
         if (providers.length <= 1) {
-          new import_obsidian3.Notice("\u81F3\u5C11\u4FDD\u7559\u4E00\u4E2A API \u63D0\u4F9B\u8005");
+          new import_obsidian7.Notice("\u81F3\u5C11\u4FDD\u7559\u4E00\u4E2A API \u63D0\u4F9B\u8005");
           return;
         }
         s.apiProviders = providers.filter((p) => p.id !== provider.id);
@@ -3205,7 +3271,7 @@ var XiaoyuanAISettingTab = class extends import_obsidian3.PluginSettingTab {
     });
     container.createEl("hr");
     container.createEl("h3", { text: "API \u53C2\u6570" });
-    this.decorateSetting(new import_obsidian3.Setting(container).setName("\u601D\u8003\u5F3A\u5EA6").setDesc("\u63A7\u5236\u6A21\u578B\u7684\u63A8\u7406\u6DF1\u5EA6\uFF08none / low / medium / high\uFF09").addDropdown((dd) => {
+    this.decorateSetting(new import_obsidian7.Setting(container).setName("\u601D\u8003\u5F3A\u5EA6").setDesc("\u63A7\u5236\u6A21\u578B\u7684\u63A8\u7406\u6DF1\u5EA6\uFF08none / low / medium / high\uFF09").addDropdown((dd) => {
       dd.addOption("none", "none");
       dd.addOption("low", "low");
       dd.addOption("medium", "medium");
@@ -3216,13 +3282,13 @@ var XiaoyuanAISettingTab = class extends import_obsidian3.PluginSettingTab {
         await this.plugin.saveSettings();
       });
     }), "brain");
-    this.decorateSetting(new import_obsidian3.Setting(container).setName("\u6E29\u5EA6").setDesc("\u6A21\u578B\u8F93\u51FA\u7684\u968F\u673A\u6027\uFF080=\u786E\u5B9A\uFF0C2=\u968F\u673A\uFF09").addSlider(
+    this.decorateSetting(new import_obsidian7.Setting(container).setName("\u6E29\u5EA6").setDesc("\u6A21\u578B\u8F93\u51FA\u7684\u968F\u673A\u6027\uFF080=\u786E\u5B9A\uFF0C2=\u968F\u673A\uFF09").addSlider(
       (slider) => slider.setLimits(0, 2, 0.1).setValue(s.temperature).onChange(async (val) => {
         s.temperature = val;
         await this.plugin.saveSettings();
       })
     ), "thermometer");
-    this.decorateSetting(new import_obsidian3.Setting(container).setName("\u6700\u5927 Token \u6570").addText(
+    this.decorateSetting(new import_obsidian7.Setting(container).setName("\u6700\u5927 Token \u6570").addText(
       (text) => text.setPlaceholder("4096").setValue(s.maxTokens === 4096 ? "" : String(s.maxTokens)).onChange(async (val) => {
         const n = parseInt(val);
         s.maxTokens = n > 0 ? n : 4096;
@@ -3375,17 +3441,17 @@ var XiaoyuanAISettingTab = class extends import_obsidian3.PluginSettingTab {
   buildSkillsTab(container) {
     const s = this.s();
     this.decorateSetting(
-      new import_obsidian3.Setting(container).setName("AGENTS.MD").setDesc("\u70B9\u51FB\u4E0B\u65B9\u521B\u5EFA\u6309\u94AE\uFF0CAI \u81EA\u52A8\u751F\u6210\u3002\u8DEF\u5F84\u4E3A /AGENTS.md").addButton((btn) => {
+      new import_obsidian7.Setting(container).setName("AGENTS.MD").setDesc("\u70B9\u51FB\u4E0B\u65B9\u521B\u5EFA\u6309\u94AE\uFF0CAI \u81EA\u52A8\u751F\u6210\u3002\u8DEF\u5F84\u4E3A /AGENTS.md").addButton((btn) => {
         btn.setButtonText("\u521B\u5EFA");
         btn.onClick(async () => {
           const file = this.app.vault.getAbstractFileByPath("AGENTS.md");
-          if (file && file instanceof import_obsidian3.TFile) {
-            new import_obsidian3.Notice("AGENTS.md \u5DF2\u5B58\u5728\uFF0C\u8BF7\u4F7F\u7528\u300C\u4FEE\u6539\u300D\u6309\u94AE\u7F16\u8F91");
+          if (file && file instanceof import_obsidian7.TFile) {
+            new import_obsidian7.Notice("AGENTS.md \u5DF2\u5B58\u5728\uFF0C\u8BF7\u4F7F\u7528\u300C\u4FEE\u6539\u300D\u6309\u94AE\u7F16\u8F91");
             return;
           }
           const text = inputEl.value.trim();
           if (!text) {
-            new import_obsidian3.Notice("\u8BF7\u5148\u8F93\u5165\u63CF\u8FF0");
+            new import_obsidian7.Notice("\u8BF7\u5148\u8F93\u5165\u63CF\u8FF0");
             return;
           }
           btn.setDisabled(true);
@@ -3404,16 +3470,16 @@ ${text}
               vaultDir: getVaultBasePath2(this.app.vault)
             });
             await this.app.vault.create("AGENTS.md", result.trim());
-            new import_obsidian3.Notice("AGENTS.md \u5DF2\u751F\u6210");
+            new import_obsidian7.Notice("AGENTS.md \u5DF2\u751F\u6210");
             inputEl.value = "";
             btn.setDisabled(false);
             btn.setButtonText("\u521B\u5EFA");
           } catch (e) {
             const msg = e instanceof Error ? e.message : String(e);
             if (msg.includes("configure") || msg.includes("connection") || msg.includes("API") || msg.includes("key")) {
-              new import_obsidian3.Notice("\u8BF7\u5148\u914D\u7F6E AI \u8FDE\u63A5");
+              new import_obsidian7.Notice("\u8BF7\u5148\u914D\u7F6E AI \u8FDE\u63A5");
             } else {
-              new import_obsidian3.Notice(`\u521B\u5EFA\u5931\u8D25: ${msg}`);
+              new import_obsidian7.Notice(`\u521B\u5EFA\u5931\u8D25: ${msg}`);
             }
             btn.setDisabled(false);
             btn.setButtonText("\u521B\u5EFA");
@@ -3423,8 +3489,8 @@ ${text}
         btn.setButtonText("\u4FEE\u6539");
         btn.onClick(() => {
           const file = this.app.vault.getAbstractFileByPath("AGENTS.md");
-          if (!file || !(file instanceof import_obsidian3.TFile)) {
-            new import_obsidian3.Notice("AGENTS.md \u4E0D\u5B58\u5728\uFF0C\u8BF7\u5148\u521B\u5EFA");
+          if (!file || !(file instanceof import_obsidian7.TFile)) {
+            new import_obsidian7.Notice("AGENTS.md \u4E0D\u5B58\u5728\uFF0C\u8BF7\u5148\u521B\u5EFA");
             return;
           }
           this.app.workspace.openLinkText("AGENTS.md", "/");
@@ -3437,15 +3503,15 @@ ${text}
       attr: { placeholder: "\u63CF\u8FF0\u4F60\u60F3\u8981\u521B\u5EFA\u7684AGENTS.MD\uFF08\u81EA\u7136\u8BED\u8A00\u3001\u53C2\u8003\u94FE\u63A5\u5747\u53EF\uFF09\uFF0C\u70B9\u51FB\u4E0A\u65B9\u521B\u5EFA\u6309\u94AE\uFF0CAI \u81EA\u52A8\u751F\u6210\u3002\u6BD4\u5982\uFF1A\n\u5E2E\u52A9\u5199\u4F5C\u3001\u7FFB\u8BD1\u7B49" }
     });
     this.decorateSetting(
-      new import_obsidian3.Setting(container).setName("Skills\u5217\u8868").setDesc("\u4ECE AGENTS.md \u66F4\u65B0 skill \u5217\u8868").addButton((btn) => {
+      new import_obsidian7.Setting(container).setName("Skills\u5217\u8868").setDesc("\u4ECE AGENTS.md \u66F4\u65B0 skill \u5217\u8868").addButton((btn) => {
         btn.setButtonText("\u21BB");
         btn.setTooltip("\u4ECE AGENTS.md \u66F4\u65B0");
         btn.onClick(async () => {
           btn.setDisabled(true);
           try {
             const file = this.app.vault.getAbstractFileByPath("AGENTS.md");
-            if (!file || !(file instanceof import_obsidian3.TFile)) {
-              new import_obsidian3.Notice("AGENTS.md \u4E0D\u5B58\u5728\uFF0C\u8BF7\u5148\u521B\u5EFA");
+            if (!file || !(file instanceof import_obsidian7.TFile)) {
+              new import_obsidian7.Notice("AGENTS.md \u4E0D\u5B58\u5728\uFF0C\u8BF7\u5148\u521B\u5EFA");
               btn.setDisabled(false);
               return;
             }
@@ -3467,14 +3533,14 @@ ${content}`,
             if (!Array.isArray(skills)) throw new Error("AI \u8FD4\u56DE\u683C\u5F0F\u9519\u8BEF");
             s.skills = skills;
             await this.plugin.saveSettings();
-            new import_obsidian3.Notice(`\u5DF2\u540C\u6B65 ${skills.length} \u4E2A skill`);
+            new import_obsidian7.Notice(`\u5DF2\u540C\u6B65 ${skills.length} \u4E2A skill`);
             this.display();
           } catch (e) {
             const msg = e instanceof Error ? e.message : String(e);
             if (msg.includes("configure") || msg.includes("connection") || msg.includes("API") || msg.includes("key")) {
-              new import_obsidian3.Notice("\u8BF7\u5148\u914D\u7F6E AI \u8FDE\u63A5");
+              new import_obsidian7.Notice("\u8BF7\u5148\u914D\u7F6E AI \u8FDE\u63A5");
             } else {
-              new import_obsidian3.Notice(`\u66F4\u65B0\u5931\u8D25: ${msg}`);
+              new import_obsidian7.Notice(`\u66F4\u65B0\u5931\u8D25: ${msg}`);
             }
             btn.setDisabled(false);
           }
@@ -3512,20 +3578,20 @@ ${content}`,
   // ─── 通用设置 ─────────────────────────────────────────────────────
   buildGeneralTab(container) {
     const s = this.s();
-    this.decorateSetting(new import_obsidian3.Setting(container).setName("\u542F\u7528\u672C\u5730\u4EE3\u7406").setDesc("\u53EA\u5F71\u54CD\u63D2\u4EF6\u901A\u8FC7 opencode \u542F\u52A8\u7684\u5B50\u8FDB\u7A0B").addToggle((t) => {
+    this.decorateSetting(new import_obsidian7.Setting(container).setName("\u542F\u7528\u672C\u5730\u4EE3\u7406").setDesc("\u53EA\u5F71\u54CD\u63D2\u4EF6\u901A\u8FC7 opencode \u542F\u52A8\u7684\u5B50\u8FDB\u7A0B").addToggle((t) => {
       t.setValue(s.proxyEnabled);
       t.onChange(async (val) => {
         s.proxyEnabled = val;
         await this.plugin.saveSettings();
       });
     }), "waypoints");
-    this.decorateSetting(new import_obsidian3.Setting(container).setName("\u4EE3\u7406\u5730\u5740").setDesc("HTTP \u4EE3\u7406\u5730\u5740").addText(
+    this.decorateSetting(new import_obsidian7.Setting(container).setName("\u4EE3\u7406\u5730\u5740").setDesc("HTTP \u4EE3\u7406\u5730\u5740").addText(
       (text) => text.setPlaceholder("http://127.0.0.1:7890").setValue(s.proxyUrl).onChange(async (val) => {
         s.proxyUrl = val.trim();
         await this.plugin.saveSettings();
       })
     ), "route");
-    this.decorateSetting(new import_obsidian3.Setting(container).setName("\u542F\u52A8\u65F6\u81EA\u52A8\u6253\u5F00\u4FA7\u680F").addToggle((t) => {
+    this.decorateSetting(new import_obsidian7.Setting(container).setName("\u542F\u52A8\u65F6\u81EA\u52A8\u6253\u5F00\u4FA7\u680F").addToggle((t) => {
       t.setValue(s.autoOpen);
       t.onChange(async (val) => {
         s.autoOpen = val;
@@ -3534,13 +3600,13 @@ ${content}`,
     }), "panel-right-open");
     container.createEl("hr");
     container.createEl("h3", { text: "\u804A\u5929\u8BBE\u7F6E" });
-    this.decorateSetting(new import_obsidian3.Setting(container).setName("\u804A\u5929\u5386\u53F2\u5B58\u50A8\u8DEF\u5F84").setDesc("\u804A\u5929\u5386\u53F2 Markdown \u6587\u4EF6\u7684\u5B58\u50A8\u76EE\u5F55").addText(
+    this.decorateSetting(new import_obsidian7.Setting(container).setName("\u804A\u5929\u5386\u53F2\u5B58\u50A8\u8DEF\u5F84").setDesc("\u804A\u5929\u5386\u53F2 Markdown \u6587\u4EF6\u7684\u5B58\u50A8\u76EE\u5F55").addText(
       (text) => text.setPlaceholder("_chatHistory").setValue(s.chatHistoryPath === "_chatHistory" ? "" : s.chatHistoryPath).onChange(async (val) => {
         s.chatHistoryPath = val.trim() || "_chatHistory";
         await this.plugin.saveSettings();
       })
     ), "folder");
-    this.decorateSetting(new import_obsidian3.Setting(container).setName("\u804A\u5929\u9762\u677F\u4F4D\u7F6E").addDropdown((dd) => {
+    this.decorateSetting(new import_obsidian7.Setting(container).setName("\u804A\u5929\u9762\u677F\u4F4D\u7F6E").addDropdown((dd) => {
       dd.addOption("left", "\u5DE6\u4FA7");
       dd.addOption("right", "\u53F3\u4FA7");
       dd.setValue(s.chatViewType);
@@ -3549,21 +3615,21 @@ ${content}`,
         await this.plugin.saveSettings();
       });
     }), "layout-dashboard");
-    this.decorateSetting(new import_obsidian3.Setting(container).setName("Diff \u9884\u89C8").setDesc("\u5728 AI \u56DE\u590D\u4E2D\u663E\u793A\u6587\u4EF6\u53D8\u66F4\u9884\u89C8").addToggle((t) => {
+    this.decorateSetting(new import_obsidian7.Setting(container).setName("Diff \u9884\u89C8").setDesc("\u5728 AI \u56DE\u590D\u4E2D\u663E\u793A\u6587\u4EF6\u53D8\u66F4\u9884\u89C8").addToggle((t) => {
       t.setValue(s.showDiffPreview);
       t.onChange(async (val) => {
         s.showDiffPreview = val;
         await this.plugin.saveSettings();
       });
     }), "file-diff");
-    this.decorateSetting(new import_obsidian3.Setting(container).setName("\u663E\u793A\u601D\u8003\u8FC7\u7A0B").setDesc("\u5728 AI \u56DE\u590D\u4E2D\u4EE5\u6298\u53E0\u5757\u663E\u793A\u6A21\u578B\u7684\u601D\u8003\u8FC7\u7A0B").addToggle((t) => {
+    this.decorateSetting(new import_obsidian7.Setting(container).setName("\u663E\u793A\u601D\u8003\u8FC7\u7A0B").setDesc("\u5728 AI \u56DE\u590D\u4E2D\u4EE5\u6298\u53E0\u5757\u663E\u793A\u6A21\u578B\u7684\u601D\u8003\u8FC7\u7A0B").addToggle((t) => {
       t.setValue(s.showThinking);
       t.onChange(async (val) => {
         s.showThinking = val;
         await this.plugin.saveSettings();
       });
     }), "brain");
-    this.decorateSetting(new import_obsidian3.Setting(container).setName("\u9644\u4EF6\u5927\u5C0F\u4E0A\u9650").setDesc("\u5355\u4F4D MB\uFF0C\u8D85\u51FA\u9650\u5236\u7684\u6587\u4EF6\u4F1A\u88AB\u8DF3\u8FC7").addText(
+    this.decorateSetting(new import_obsidian7.Setting(container).setName("\u9644\u4EF6\u5927\u5C0F\u4E0A\u9650").setDesc("\u5355\u4F4D MB\uFF0C\u8D85\u51FA\u9650\u5236\u7684\u6587\u4EF6\u4F1A\u88AB\u8DF3\u8FC7").addText(
       (text) => text.setPlaceholder("10").setValue(s.maxAttachmentSize === 10 ? "" : String(s.maxAttachmentSize)).onChange(async (val) => {
         const n = parseInt(val);
         s.maxAttachmentSize = n > 0 ? n : 10;
@@ -3572,7 +3638,7 @@ ${content}`,
     ), "hard-drive");
     container.createEl("hr");
     container.createEl("h3", { text: "\u7CFB\u7EDF\u63D0\u793A\u8BCD" });
-    this.decorateSetting(new import_obsidian3.Setting(container).setName("\u663E\u793A\u6587\u4EF6\u4E0A\u4E0B\u6587").setDesc("\u5728\u804A\u5929\u5DE5\u5177\u680F\u663E\u793A\u5F53\u524D\u7B14\u8BB0\u7684\u4E0A\u4E0B\u6587\u4FE1\u606F").addToggle((t) => {
+    this.decorateSetting(new import_obsidian7.Setting(container).setName("\u663E\u793A\u6587\u4EF6\u4E0A\u4E0B\u6587").setDesc("\u5728\u804A\u5929\u5DE5\u5177\u680F\u663E\u793A\u5F53\u524D\u7B14\u8BB0\u7684\u4E0A\u4E0B\u6587\u4FE1\u606F").addToggle((t) => {
       t.setValue(s.showContext);
       t.onChange(async (val) => {
         s.showContext = val;
@@ -3580,7 +3646,7 @@ ${content}`,
         this.display();
       });
     }), "file-text");
-    this.decorateSetting(new import_obsidian3.Setting(container).setName("\u7CFB\u7EDF\u63D0\u793A\u8BCD").addTextArea((text) => {
+    this.decorateSetting(new import_obsidian7.Setting(container).setName("\u7CFB\u7EDF\u63D0\u793A\u8BCD").addTextArea((text) => {
       text.setValue(s.systemPrompt);
       text.inputEl.rows = 4;
       text.onChange(async (val) => {
@@ -3600,9 +3666,9 @@ ${content}`,
         ev.stopPropagation();
         popup.remove();
         try {
-          const { fetchOpenCodeModelsFromCLI: fetchOpenCodeModelsFromCLI2, ensureOpenCodeServer: ensureOpenCodeServer2 } = await Promise.resolve().then(() => (init_ai(), ai_exports));
+          const { fetchOpenCodeModelsFromCLI: fetchOpenCodeModelsFromCLI2, ensureOpenCodeServer: ensureOpenCodeServer3 } = await Promise.resolve().then(() => (init_ai(), ai_exports));
           const vaultDir = (await Promise.resolve().then(() => (init_server(), server_exports))).getVaultBasePath(this.app.vault);
-          await ensureOpenCodeServer2(s.opencode.cliPath, s.opencode.hostname, s.opencode.port, vaultDir, true);
+          await ensureOpenCodeServer3(s.opencode.cliPath, s.opencode.hostname, s.opencode.port, vaultDir, true);
           const result = await fetchOpenCodeModelsFromCLI2(s.opencode.cliPath, vaultDir, s.opencode.port);
           s.opencodeModels = result.models.map((m) => ({ label: m.displayName, value: m.id }));
           s.opencodeModelCaps = result.caps;
@@ -3610,9 +3676,9 @@ ${content}`,
             s.opencode.model = result.defaultModel || ((_a = result.models[0]) == null ? void 0 : _a.id) || "";
           }
           await this.plugin.saveSettings();
-          new import_obsidian3.Notice(`\u5DF2\u540C\u6B65 ${result.models.length} \u4E2A\u6A21\u578B`);
+          new import_obsidian7.Notice(`\u5DF2\u540C\u6B65 ${result.models.length} \u4E2A\u6A21\u578B`);
         } catch (err) {
-          new import_obsidian3.Notice(`\u540C\u6B65\u5931\u8D25: ${err instanceof Error ? err.message : String(err)}`);
+          new import_obsidian7.Notice(`\u540C\u6B65\u5931\u8D25: ${err instanceof Error ? err.message : String(err)}`);
         }
       });
       const groups = /* @__PURE__ */ new Map();
@@ -3646,9 +3712,9 @@ ${content}`,
 };
 
 // src/modals.ts
-var import_obsidian4 = require("obsidian");
+var import_obsidian8 = require("obsidian");
 init_ai();
-init_types();
+init_constants();
 function makeDraggable(handle, modalEl) {
   handle.addEventListener("mousedown", (e) => {
     e.preventDefault();
@@ -3671,7 +3737,7 @@ function makeDraggable(handle, modalEl) {
     document.addEventListener("mouseup", up);
   });
 }
-var TextOperationModal = class extends import_obsidian4.Modal {
+var TextOperationModal = class extends import_obsidian8.Modal {
   constructor(app, plugin, operation, inputText) {
     super(app);
     this.plugin = plugin;
@@ -3695,30 +3761,30 @@ var TextOperationModal = class extends import_obsidian4.Modal {
     const leftGroup = btnRow.createDiv({ cls: "xy-modal-btn-group" });
     const rightGroup = btnRow.createDiv({ cls: "xy-modal-btn-group" });
     const replaceBtn = leftGroup.createEl("button", { cls: "xy-icon-btn" });
-    (0, import_obsidian4.setIcon)(replaceBtn, "replace");
-    (0, import_obsidian4.setTooltip)(replaceBtn, "\u66FF\u6362\u9009\u4E2D\u6587\u672C");
+    (0, import_obsidian8.setIcon)(replaceBtn, "replace");
+    (0, import_obsidian8.setTooltip)(replaceBtn, "\u66FF\u6362\u9009\u4E2D\u6587\u672C");
     replaceBtn.addEventListener("click", () => {
       const editor = this.plugin.getActiveEditor();
       if (editor) {
         editor.replaceSelection(this.contentAreaEl.textContent || "");
-        new import_obsidian4.Notice("\u5DF2\u66FF\u6362");
-      } else new import_obsidian4.Notice("\u672A\u627E\u5230\u6D3B\u52A8\u7F16\u8F91\u5668");
+        new import_obsidian8.Notice("\u5DF2\u66FF\u6362");
+      } else new import_obsidian8.Notice("\u672A\u627E\u5230\u6D3B\u52A8\u7F16\u8F91\u5668");
       this.close();
     });
     const copyBtn = leftGroup.createEl("button", { cls: "xy-icon-btn" });
-    (0, import_obsidian4.setIcon)(copyBtn, "copy");
-    (0, import_obsidian4.setTooltip)(copyBtn, "\u590D\u5236\u5230\u526A\u8D34\u677F");
+    (0, import_obsidian8.setIcon)(copyBtn, "copy");
+    (0, import_obsidian8.setTooltip)(copyBtn, "\u590D\u5236\u5230\u526A\u8D34\u677F");
     copyBtn.addEventListener("click", () => {
       navigator.clipboard.writeText(this.contentAreaEl.textContent || "");
-      new import_obsidian4.Notice("\u5DF2\u590D\u5236");
+      new import_obsidian8.Notice("\u5DF2\u590D\u5236");
     });
     const openBtn = leftGroup.createEl("button", { cls: "xy-icon-btn" });
-    (0, import_obsidian4.setIcon)(openBtn, "pencil");
-    (0, import_obsidian4.setTooltip)(openBtn, "\u5728\u7F16\u8F91\u5668\u4E2D\u7F16\u8F91");
+    (0, import_obsidian8.setIcon)(openBtn, "pencil");
+    (0, import_obsidian8.setTooltip)(openBtn, "\u5728\u7F16\u8F91\u5668\u4E2D\u7F16\u8F91");
     openBtn.addEventListener("click", () => this.openInEditor());
     this.toolsBtn = leftGroup.createEl("button", { cls: "xy-icon-btn" });
-    (0, import_obsidian4.setIcon)(this.toolsBtn, "sparkles");
-    (0, import_obsidian4.setTooltip)(this.toolsBtn, "\u5207\u6362 AI \u64CD\u4F5C");
+    (0, import_obsidian8.setIcon)(this.toolsBtn, "sparkles");
+    (0, import_obsidian8.setTooltip)(this.toolsBtn, "\u5207\u6362 AI \u64CD\u4F5C");
     this.toolsBtn.addEventListener("click", (e) => this.showAIToolsMenu(e));
     const closeBtn = rightGroup.createEl("button", { text: "\u5173\u95ED", cls: "xiaoyuan-btn-secondary" });
     closeBtn.addEventListener("click", () => this.close());
@@ -3729,7 +3795,7 @@ var TextOperationModal = class extends import_obsidian4.Modal {
     }
   }
   showAIToolsMenu(e) {
-    const menu = new import_obsidian4.Menu();
+    const menu = new import_obsidian8.Menu();
     OPERATIONS.forEach((op) => {
       menu.addItem((item) => {
         item.setTitle(OPERATION_LABELS[op]);
@@ -3742,7 +3808,7 @@ var TextOperationModal = class extends import_obsidian4.Modal {
   async reprocessWith(operation) {
     const fullText = this.contentAreaEl.textContent || "";
     if (!fullText.trim()) {
-      new import_obsidian4.Notice("\u5185\u5BB9\u4E3A\u7A7A\uFF0C\u8BF7\u5148\u8F93\u5165\u5185\u5BB9");
+      new import_obsidian8.Notice("\u5185\u5BB9\u4E3A\u7A7A\uFF0C\u8BF7\u5148\u8F93\u5165\u5185\u5BB9");
       return;
     }
     const sel = window.getSelection();
@@ -3822,7 +3888,7 @@ var TextOperationModal = class extends import_obsidian4.Modal {
       const fileRel = `${tempRel}/ai-result-${dateStr}-${hash}.md`;
       const existing = vault.getAbstractFileByPath(fileRel);
       let file;
-      if (existing instanceof import_obsidian4.TFile) {
+      if (existing instanceof import_obsidian8.TFile) {
         await vault.modify(existing, content);
         file = existing;
       } else {
@@ -3830,7 +3896,7 @@ var TextOperationModal = class extends import_obsidian4.Modal {
       }
       await this.app.workspace.getLeaf("tab").openFile(file);
     } catch (err) {
-      new import_obsidian4.Notice(`\u6253\u5F00\u5931\u8D25: ${err instanceof Error ? err.message : String(err)}`);
+      new import_obsidian8.Notice(`\u6253\u5F00\u5931\u8D25: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
   simpleHash(s) {
@@ -3847,10 +3913,11 @@ var TextOperationModal = class extends import_obsidian4.Modal {
 };
 
 // src/main.ts
-init_types();
+init_constants();
 init_ai();
+init_opencode_server();
 init_server();
-var XiaoyuanAIPlugin = class extends import_obsidian5.Plugin {
+var XiaoyuanAIPlugin = class extends import_obsidian9.Plugin {
   async onload() {
     await this.loadSettings();
     setVaultBasePath(this.app.vault.adapter.getBasePath());
@@ -3859,7 +3926,7 @@ var XiaoyuanAIPlugin = class extends import_obsidian5.Plugin {
       if (!fsSync.existsSync(resolved)) {
         this.settings.execMode = "api";
         await this.saveSettings();
-        new import_obsidian5.Notice("\u672A\u68C0\u6D4B\u5230 opencode \u7A0B\u5E8F\uFF0C\u5DF2\u81EA\u52A8\u5207\u6362\u4E3A API \u6A21\u5F0F");
+        new import_obsidian9.Notice("\u672A\u68C0\u6D4B\u5230 opencode \u7A0B\u5E8F\uFF0C\u5DF2\u81EA\u52A8\u5207\u6362\u4E3A API \u6A21\u5F0F");
       }
     }
     this.registerView(VIEW_TYPE_XIAOYUAN_AI_CHAT, (leaf) => new XiaoyuanAIChatView(leaf, this));
@@ -3912,7 +3979,7 @@ var XiaoyuanAIPlugin = class extends import_obsidian5.Plugin {
       callback: async () => {
         const file = this.app.workspace.getActiveFile();
         if (!file) {
-          new import_obsidian5.Notice("\u8BF7\u5148\u6253\u5F00\u4E00\u4E2A\u7B14\u8BB0");
+          new import_obsidian9.Notice("\u8BF7\u5148\u6253\u5F00\u4E00\u4E2A\u7B14\u8BB0");
           return;
         }
         const content = await this.app.vault.read(file);
@@ -3935,20 +4002,20 @@ ${content.slice(0, 3e3)}`);
   }
   async cleanTempFiles() {
     try {
-      const tempDir = path2.join(getVaultBasePath(this.app.vault), this.settings.chatHistoryPath, "temp");
+      const tempDir = path4.join(getVaultBasePath(this.app.vault), this.settings.chatHistoryPath, "temp");
       try {
-        await fs2.access(tempDir);
+        await fs4.access(tempDir);
       } catch (e) {
         return;
       }
       const now = Date.now();
       const maxAge = 24 * 60 * 60 * 1e3;
-      const names = await fs2.readdir(tempDir);
+      const names = await fs4.readdir(tempDir);
       for (const name of names) {
-        const fp = path2.join(tempDir, name);
-        const stat2 = await fs2.stat(fp);
+        const fp = path4.join(tempDir, name);
+        const stat2 = await fs4.stat(fp);
         if (stat2.isFile() && name.endsWith(".md") && now - stat2.mtimeMs > maxAge) {
-          await fs2.unlink(fp);
+          await fs4.unlink(fp);
         }
       }
     } catch (e) {
@@ -3982,7 +4049,7 @@ ${content.slice(0, 3e3)}`);
     return leaf;
   }
   getActiveEditor() {
-    const view = this.app.workspace.getActiveViewOfType(import_obsidian5.MarkdownView);
+    const view = this.app.workspace.getActiveViewOfType(import_obsidian9.MarkdownView);
     return (view == null ? void 0 : view.editor) || null;
   }
   async loadSettings() {

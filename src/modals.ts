@@ -1,7 +1,8 @@
 import { App, Modal, Notice, TFile, Menu, setIcon, setTooltip } from "obsidian";
 import type XiaoyuanAIPlugin from "./main";
 import { callAISession, getVaultBasePath } from "./ai";
-import { OPERATION_PROMPTS, OPERATION_LABELS, OPERATIONS, OPERATION_ICONS, type Operation } from "./types";
+import { OPERATION_PROMPTS, OPERATION_LABELS, OPERATIONS, OPERATION_ICONS } from "./constants";
+import type { Operation } from "./types";
 
 function makeDraggable(handle: HTMLElement, modalEl: HTMLElement) {
   handle.addEventListener("mousedown", (e) => {

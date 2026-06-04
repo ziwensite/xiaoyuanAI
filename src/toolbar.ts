@@ -1,6 +1,7 @@
 ﻿import { Notice, setTooltip } from "obsidian";
 import { showPopup, addPopupItem } from "./popup";
-import { getActiveProvider, type ReasoningEffort, type ReasoningEffortAPI } from "./types";
+import { getActiveProvider } from "./constants";
+import type { ReasoningEffort, ReasoningEffortAPI } from "./types";
 import type XiaoyuanAIPlugin from "./main";
 
 interface ToolbarHost {

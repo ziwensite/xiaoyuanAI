@@ -2,12 +2,14 @@ import * as fs from "fs/promises";
 import * as fsSync from "fs";
 import * as path from "path";
 import { Plugin, WorkspaceLeaf, Notice, Menu, MarkdownView } from "obsidian";
-import { XiaoyuanAISettings, DEFAULT_SETTINGS, VIEW_TYPE_XIAOYUAN_AI_CHAT } from "./types";
+import type { XiaoyuanAISettings } from "./types";
+import { DEFAULT_SETTINGS, VIEW_TYPE_XIAOYUAN_AI_CHAT } from "./constants";
 import { XiaoyuanAIChatView } from "./chat-view";
 import { XiaoyuanAISettingTab } from "./settings";
 import { TextOperationModal } from "./modals";
-import { OPERATION_LABELS, OPERATIONS, OPERATION_ICONS } from "./types";
-import { ensureOpenCodeServer, stopOpenCodeServer, resolveOpenCodePath } from "./ai";
+import { OPERATION_LABELS, OPERATIONS, OPERATION_ICONS } from "./constants";
+import { ensureOpenCodeServer, stopOpenCodeServer } from "./ai";
+import { resolveOpenCodePath } from "./opencode-server";
 import { getVaultBasePath, setVaultBasePath } from "./server";
 
 export default class XiaoyuanAIPlugin extends Plugin {

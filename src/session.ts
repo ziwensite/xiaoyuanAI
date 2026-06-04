@@ -1,7 +1,7 @@
 import { Vault } from "obsidian";
 import type { ChatMessage, ChatSession } from "./types";
 import type XiaoyuanAIPlugin from "./main";
-import { CHAT_SESSIONS_KEY, CURRENT_SESSION_KEY } from "./types";
+import { CHAT_SESSIONS_KEY, CURRENT_SESSION_KEY } from "./constants";
 
 export function getChatHistoryPath(chatHistoryPath: string): string {
   return chatHistoryPath || ".chatHistory";
@@ -36,7 +36,7 @@ function parseMarkdownToMessages(content: string): ChatMessage[] {
     let msgContent = "";
     let thinkingLines: string[] = [];
     let inThinking = false;
-    let ts: string | undefined;
+    let ts: number | undefined;
 
     const headerRegex = /^\*\*(你|小元)\*\* \((?:CLI|API) · (\d{4}-\d{2}-\d{2} \d{2}:\d{2})\):$/;
 
@@ -44,7 +44,7 @@ function parseMarkdownToMessages(content: string): ChatMessage[] {
       const hMatch = line.match(headerRegex);
       if (hMatch) {
         role = hMatch[1] === "你" ? "user" : "assistant";
-        ts = hMatch[2];
+        ts = new Date(hMatch[2]).getTime();
         continue;
       }
 
@@ -72,13 +72,23 @@ function parseMarkdownToMessages(content: string): ChatMessage[] {
   return messages;
 }
 
+function formatDate(ts: number): string {
+  const d = new Date(ts);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function formatTime(ts: number): string {
+  const d = new Date(ts);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
 function sessionToMarkdown(session: ChatSession | undefined, messages: ChatMessage[], execMode: string): string {
-  const now = window.moment().format("YYYY-MM-DD");
+  const now = Date.now();
   const created = session?.createdAt || now;
-  let content = `---\ntitle: ${session?.title || "新对话"}\ncreated: ${created}\nupdated: ${now}\n---\n\n`;
+  let content = `---\ntitle: ${session?.title || "新对话"}\ncreated: ${formatDate(created)}\nupdated: ${formatDate(now)}\n---\n\n`;
   messages.forEach((msg) => {
     const ts = msg.timestamp
-      ? ` (${execMode.toUpperCase()} · ${msg.timestamp}):`
+      ? ` (${execMode.toUpperCase()} · ${formatTime(msg.timestamp)}):`
       : ":";
     content += `**${msg.role === "user" ? "你" : "小元"}**${ts}\n\n${msg.content}\n\n`;
     if (msg.thinking) {
@@ -135,11 +145,11 @@ export async function scanChatHistoryFolder(
           ? match[1].trim()
           : messages[0]?.content?.slice(0, 30) || "历史对话";
 
-        const matchCreated = content.match(/created:\s*(\d{4}-\d{2}-\d{2})/);
-        const createdAt = matchCreated ? matchCreated[1] : "";
+        const matchCreated = content.match(/created:\s*(.+)/);
+        const createdAt = matchCreated ? new Date(matchCreated[1]).getTime() : Date.now();
 
-        const matchUpdated = content.match(/updated:\s*(\d{4}-\d{2}-\d{2})/);
-        const updatedAt = matchUpdated ? matchUpdated[1] : "";
+        const matchUpdated = content.match(/updated:\s*(.+)/);
+        const updatedAt = matchUpdated ? new Date(matchUpdated[1]).getTime() : Date.now();
 
         loaded.push({
           id: sessionId,
@@ -152,7 +162,7 @@ export async function scanChatHistoryFolder(
       }
     }
 
-    loaded.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    loaded.sort((a, b) => b.updatedAt - a.updatedAt);
     return loaded;
   } catch (e) {
     console.warn("扫描历史会话文件夹失败:", e);
