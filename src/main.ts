@@ -1,7 +1,7 @@
 import * as fs from "fs/promises";
 import * as fsSync from "fs";
 import * as path from "path";
-import { Plugin, WorkspaceLeaf, Notice, MarkdownView } from "obsidian";
+import { Plugin, WorkspaceLeaf, Notice, MarkdownView, Menu } from "obsidian";
 import type { XiaoyuanAISettings } from "./types";
 import { DEFAULT_SETTINGS, VIEW_TYPE_XIAOYUAN_AI_CHAT } from "./constants";
 import { XiaoyuanAIChatView } from "./chat-view";
@@ -11,6 +11,7 @@ import { OPERATION_LABELS, OPERATIONS, OPERATION_ICONS } from "./constants";
 import { ensureOpenCodeServer, stopOpenCodeServer } from "./ai";
 import { resolveOpenCodePath } from "./opencode-server";
 import { getVaultBasePath, setVaultBasePath } from "./server";
+import { createActionBtn } from "./action-buttons";
 
 export default class XiaoyuanAIPlugin extends Plugin {
   settings!: XiaoyuanAISettings;
@@ -102,6 +103,81 @@ export default class XiaoyuanAIPlugin extends Plugin {
     }
 
     this.app.workspace.onLayoutReady(() => this.cleanTempFiles());
+
+    this.registerDomEvent(document, "mouseup", (e: MouseEvent) => {
+      setTimeout(() => {
+        const modalEl = document.querySelector(".xiaoyuan-modal-container");
+        if (modalEl?.contains(e.target as Node)) return;
+
+        const chatEl = document.querySelector(".xiaoyuan-chat");
+        if (chatEl?.contains(e.target as Node)) return;
+
+        const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+        if (!view) return;
+        const editor = view.editor;
+        const text = editor.getSelection();
+        if (!text.trim()) return;
+
+        const domSel = window.getSelection();
+        if (!domSel || !domSel.rangeCount) return;
+        const editorEl = view.contentEl;
+        if (!editorEl.contains(domSel.anchorNode)) return;
+        const rect = domSel.getRangeAt(0).getBoundingClientRect();
+        const x = rect.left + rect.width / 2 - 60;
+        const y = rect.top - 36;
+
+        document.querySelectorAll(".xy-selection-popup").forEach((el) => el.remove());
+
+        const popup = document.body.createDiv({ cls: "xy-selection-popup" });
+
+        const copyBtn = createActionBtn("copy");
+        copyBtn.addEventListener("click", () => {
+          navigator.clipboard.writeText(text);
+          new Notice("已复制");
+          popup.remove();
+        });
+        popup.appendChild(copyBtn);
+
+        const speakBtn = createActionBtn("speak");
+        speakBtn.addEventListener("click", () => {
+          speechSynthesis.cancel();
+          const u = new SpeechSynthesisUtterance(text.replace(/[#*_`\[\]]/g, ""));
+          u.lang = "zh-CN"; speechSynthesis.speak(u);
+          popup.remove();
+        });
+        popup.appendChild(speakBtn);
+
+        const quoteBtn = createActionBtn("quote");
+        quoteBtn.addEventListener("click", () => {
+          this.activateChatView();
+          const chatLeaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_XIAOYUAN_AI_CHAT).first();
+          if (chatLeaf?.view && typeof (chatLeaf.view as unknown as { quote: unknown }).quote === "function") {
+            (chatLeaf.view as unknown as { quote: (t: string) => void }).quote(text);
+          }
+          popup.remove();
+        });
+        popup.appendChild(quoteBtn);
+
+        const aiBtn = createActionBtn("aiTools");
+        aiBtn.addEventListener("click", (ev: MouseEvent) => {
+          const menu = new Menu();
+          OPERATIONS.forEach((op) => {
+            menu.addItem((item) => {
+              item.setTitle(OPERATION_LABELS[op]);
+              item.setIcon(OPERATION_ICONS[op]);
+              item.onClick(() => new TextOperationModal(this.app, this, op, text).open());
+            });
+          });
+          menu.showAtMouseEvent(ev);
+          popup.remove();
+        });
+        popup.appendChild(aiBtn);
+
+        popup.style.left = `${x}px`;
+        popup.style.top = `${y}px`;
+        document.body.appendChild(popup);
+      }, 10);
+    });
   }
 
   private async cleanTempFiles() {

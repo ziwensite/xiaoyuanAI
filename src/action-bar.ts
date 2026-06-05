@@ -1,4 +1,5 @@
-import { setIcon, setTooltip, Notice } from "obsidian";
+import { Notice } from "obsidian";
+import { createActionBtn } from "./action-buttons";
 
 function formatTime(ts: number): string {
   const d = new Date(ts);
@@ -11,6 +12,7 @@ export interface ActionBarOptions {
   openInEditor: (content: string, timestamp?: number) => void;
   quote: (text: string) => void;
   onSpeak: (text: string) => void;
+  onAITools: (content: string, e: MouseEvent) => void;
 }
 
 export function buildActionBar(
@@ -23,55 +25,53 @@ export function buildActionBar(
   const actionsEl = msgEl.createDiv({ cls: "xiaoyuan-msg-actions" });
 
   if (role === "user") {
-    const copyBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
-    setIcon(copyBtn, "copy");
-    setTooltip(copyBtn, "复制");
+    const copyBtn = createActionBtn("copy");
     copyBtn.addEventListener("click", () => {
       navigator.clipboard.writeText(content);
       new Notice("已复制");
     });
+    actionsEl.appendChild(copyBtn);
 
-    const speakBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
-    setIcon(speakBtn, "volume-2");
-    setTooltip(speakBtn, "朗读");
+    const speakBtn = createActionBtn("speak");
     speakBtn.addEventListener("click", () => options.onSpeak(content));
+    actionsEl.appendChild(speakBtn);
 
-    const quoteBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
-    setIcon(quoteBtn, "quote");
-    setTooltip(quoteBtn, "引用");
+    const quoteBtn = createActionBtn("quote");
     quoteBtn.addEventListener("click", () => options.quote(content));
+    actionsEl.appendChild(quoteBtn);
 
-    const undoBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
-    setIcon(undoBtn, "undo");
-    setTooltip(undoBtn, "撤销此消息");
-    undoBtn.addEventListener("click", () => {
-      options.undoMessage(msgEl.id);
-    });
+    const undoBtn = createActionBtn("undo");
+    undoBtn.addEventListener("click", () => options.undoMessage(msgEl.id));
+    actionsEl.appendChild(undoBtn);
+
+    const aiBtn = createActionBtn("aiTools");
+    aiBtn.addEventListener("click", (e) => options.onAITools(content, e));
+    actionsEl.appendChild(aiBtn);
   } else {
-    const copyBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
-    setIcon(copyBtn, "copy");
-    setTooltip(copyBtn, "复制");
+    const copyBtn = createActionBtn("copy");
     copyBtn.addEventListener("click", () => {
       const sel = window.getSelection();
       const selected = sel?.toString().trim();
       navigator.clipboard.writeText(selected || content);
       new Notice("已复制");
     });
+    actionsEl.appendChild(copyBtn);
 
-    const speakBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
-    setIcon(speakBtn, "volume-2");
-    setTooltip(speakBtn, "朗读");
+    const speakBtn = createActionBtn("speak");
     speakBtn.addEventListener("click", () => options.onSpeak(content));
+    actionsEl.appendChild(speakBtn);
 
-    const quoteBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
-    setIcon(quoteBtn, "quote");
-    setTooltip(quoteBtn, "引用");
+    const quoteBtn = createActionBtn("quote");
     quoteBtn.addEventListener("click", () => options.quote(content));
+    actionsEl.appendChild(quoteBtn);
 
-    const editBtn = actionsEl.createSpan({ cls: "xiaoyuan-msg-action" });
-    setIcon(editBtn, "pencil");
-    setTooltip(editBtn, "在编辑器中编辑");
+    const editBtn = createActionBtn("edit");
     editBtn.addEventListener("click", () => options.openInEditor(content, timestamp));
+    actionsEl.appendChild(editBtn);
+
+    const aiBtn = createActionBtn("aiTools");
+    aiBtn.addEventListener("click", (e) => options.onAITools(content, e));
+    actionsEl.appendChild(aiBtn);
   }
 
   if (timestamp) {

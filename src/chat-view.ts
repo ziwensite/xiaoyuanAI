@@ -1,4 +1,4 @@
-﻿import { ItemView, WorkspaceLeaf, Notice, setIcon, setTooltip, MarkdownRenderer, TFile } from "obsidian";
+﻿import { ItemView, WorkspaceLeaf, Notice, setIcon, setTooltip, MarkdownRenderer, Menu } from "obsidian";
 import type XiaoyuanAIPlugin from "./main";
 import {
   ChatMessage,
@@ -6,7 +6,7 @@ import {
   FileDiff,
   Attachment,
 } from "./types";
-import { VIEW_TYPE_XIAOYUAN_AI_CHAT, getActiveProvider } from "./constants";
+import { VIEW_TYPE_XIAOYUAN_AI_CHAT, getActiveProvider, OPERATIONS, OPERATION_LABELS, OPERATION_ICONS } from "./constants";
 import { callAIWithHTTPStreaming, callAISession, getVaultBasePath, estimateTokens, ensureOpenCodeServer, syncMCPServers } from "./ai";
 import { fetchOpenCodeModelsFromCLI } from "./opencode-config";
 import { checkConnection } from "./connection-checker";
@@ -29,6 +29,8 @@ import { renderQuoteBar } from "./quote-bar";
 import { pickFiles, handleFiles } from "./attachment";
 import { openInEditor } from "./open-in-editor";
 import { SpeakController } from "./speak-controller";
+import { createActionBtn } from "./action-buttons";
+import { TextOperationModal } from "./modals";
 
 export class XiaoyuanAIChatView extends ItemView {
   plugin: XiaoyuanAIPlugin;
@@ -74,7 +76,18 @@ export class XiaoyuanAIChatView extends ItemView {
     this.thinkingBarEl = this.viewContainer.createDiv({ cls: "xiaoyuan-thinking-bar" });
     this.messagesEl = this.viewContainer.createDiv({ cls: "xiaoyuan-chat-messages" });
     this.buildInputArea();
-    registerSelectionListener(this.messagesEl, (text) => this.quote(text), (text) => this.speakController.start(text));
+    registerSelectionListener(this.messagesEl, {
+      getSelectedText: () => window.getSelection()?.toString().trim() || "",
+      getPosition: () => {
+        const sel = window.getSelection();
+        if (!sel || !sel.rangeCount || !this.messagesEl.contains(sel.anchorNode)) return null;
+        const rect = sel.getRangeAt(0).getBoundingClientRect();
+        return { x: rect.left + rect.width / 2 - 60, y: rect.top - 36 };
+      },
+      onSpeak: (text) => this.speakController.start(text),
+      onQuote: (text) => this.quote(text),
+      onAITools: (text, e) => this.showAIToolsForContent(text, e),
+    });
     if (this.plugin.settings.execMode === "cli") {
       this.syncCLIModels();
     } else {
@@ -378,6 +391,7 @@ export class XiaoyuanAIChatView extends ItemView {
         openInEditor: (c, ts) => this.openInEditor(c, ts),
         quote: (text) => this.quote(text),
         onSpeak: (text) => this.speakController.start(text),
+        onAITools: (c, e) => this.showAIToolsForContent(c, e),
       });
     }
 
@@ -429,7 +443,7 @@ export class XiaoyuanAIChatView extends ItemView {
   }
 
   private async openInEditor(content: string, ts?: number) {
-    await openInEditor(content, this.app.vault, this.app.workspace, this.plugin.settings.chatHistoryPath, ts);
+    await openInEditor(content, this.app.vault, this.app.workspace, this.plugin.settings.chatHistoryPath, ts, "bubble");
   }
 
   private quote(text: string) {
@@ -520,6 +534,18 @@ private async truncateMessagesIfNeeded(): Promise<void> {
     this.messages = this.messages.slice(removed);
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
     this.addSystemMessage(`已自动截断 ${removed} 条历史消息以控制 Token 用量`);
+  }
+
+  private showAIToolsForContent(content: string, e: MouseEvent) {
+    const menu = new Menu();
+    OPERATIONS.forEach((op) => {
+      menu.addItem((item) => {
+        item.setTitle(OPERATION_LABELS[op]);
+        item.setIcon(OPERATION_ICONS[op]);
+        item.onClick(() => new TextOperationModal(this.app, this.plugin, op, content).open());
+      });
+    });
+    menu.showAtMouseEvent(e);
   }
 
   // ─── Send / AI ───────────────────────────────────────────────────
@@ -740,6 +766,7 @@ private addStreamingMessage(content: string, thinking?: string): string {
       openInEditor: (c, ts) => this.openInEditor(c, ts),
       quote: (text) => this.quote(text),
       onSpeak: (text) => this.speakController.start(text),
+      onAITools: (c, e) => this.showAIToolsForContent(c, e),
     });
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
     return id;
@@ -1004,42 +1031,6 @@ private addStreamingMessage(content: string, thinking?: string): string {
     }
   }
 
-  private async exportSession(sessionId: string) {
-    const session = this.sessions.find((s) => s.id === sessionId);
-    if (!session) { new Notice("会话不存在"); return; }
-
-    const path = getChatHistoryPath(this.plugin.settings.chatHistoryPath);
-    const messages = await loadSessionFromFile(this.app.vault, path, sessionId);
-    if (messages.length === 0) { new Notice("会话为空"); return; }
-
-    const content = messages.map((m) => {
-      const ts = m.timestamp ? new Date(m.timestamp).toLocaleString("zh-CN") : "";
-      const role = m.role === "user" ? "👤 你" : "🤖 小元";
-      const header = `### ${role} ${ts ? `(${ts})` : ""}`;
-      const body = m.content;
-      const think = m.thinking ? `\n> 💭 ${m.thinking}` : "";
-      return `${header}\n\n${body}${think}`;
-    }).join("\n\n---\n\n");
-
-    const frontmatter = `---\ntitle: ${session.title}\ncreated: ${new Date(session.createdAt).toLocaleDateString("zh-CN")}\nexport: ${new Date().toLocaleString("zh-CN")}\n---\n\n`;
-    const mdContent = frontmatter + `# ${session.title}\n\n${content}\n`;
-
-    try {
-      const exportPath = `${this.plugin.settings.chatHistoryPath}/export/${session.id}.md`;
-      const folderPath = `${this.plugin.settings.chatHistoryPath}/export`;
-      try { await this.app.vault.createFolder(folderPath); } catch {}
-      const existing = this.app.vault.getAbstractFileByPath(exportPath);
-      if (existing instanceof TFile) {
-        await this.app.vault.modify(existing, mdContent);
-      } else {
-        await this.app.vault.create(exportPath, mdContent);
-      }
-      new Notice(`已导出: ${exportPath}`);
-    } catch (err: unknown) {
-      new Notice(`导出失败: ${err instanceof Error ? err.message : String(err)}`);
-    }
-  }
-
   private async deleteSession(sessionId: string) {
     if (this.abortController) { new Notice("请等待当前 AI 回复完成"); return; }
     if (this.sessions.length <= 1) {
@@ -1137,24 +1128,26 @@ private addStreamingMessage(content: string, thinking?: string): string {
         };
 
         const suffix = item.createSpan({ cls: "xy-popup-suffix" });
-        const renameBtn = suffix.createSpan({ cls: "xy-popup-suffix-btn" });
-        renameBtn.textContent = "\u270E";
-        renameBtn.style.fontSize = "12px";
-        setTooltip(renameBtn, "重命名");
+        const renameBtn = createActionBtn("rename");
+        renameBtn.classList.add("xy-popup-suffix-btn");
         renameBtn.addEventListener("click", startRename);
+        suffix.appendChild(renameBtn);
 
-        const exportBtn = suffix.createSpan({ cls: "xy-popup-suffix-btn" });
-        exportBtn.textContent = "\u2B07";
-        exportBtn.style.fontSize = "12px";
-        setTooltip(exportBtn, "导出此对话");
-        exportBtn.addEventListener("click", (ev) => { ev.stopPropagation(); this.exportSession(session.id); popup.remove(); });
+        const openBtn = createActionBtn("open");
+        openBtn.classList.add("xy-popup-suffix-btn");
+        openBtn.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          const p = getChatHistoryPath(this.plugin.settings.chatHistoryPath);
+          this.app.workspace.openLinkText(`${p}/${session.id}.md`, "/");
+          popup.remove();
+        });
+        suffix.appendChild(openBtn);
 
-        const deleteBtn = suffix.createSpan({ cls: "xy-popup-suffix-btn" });
+        const deleteBtn = createActionBtn("delete");
+        deleteBtn.classList.add("xy-popup-suffix-btn");
         deleteBtn.classList.add("danger");
-        deleteBtn.textContent = "\u00D7";
-        deleteBtn.style.fontSize = "16px";
-        setTooltip(deleteBtn, "删除此对话");
         deleteBtn.addEventListener("click", (ev) => { ev.stopPropagation(); this.deleteSession(session.id); popup.remove(); });
+        suffix.appendChild(deleteBtn);
 
         item.addEventListener("click", () => { this.switchSession(session.id); popup.remove(); });
       }

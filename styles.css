@@ -282,6 +282,11 @@
   color: var(--text-normal);
 }
 
+.xiaoyuan-msg-action.is-disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
 
 @keyframes xy-voice-wave {
   0%, 100% {
@@ -726,19 +731,17 @@ pre:hover .xy-copy-btn {
   gap: 4px;
   margin-left: auto;
   flex-shrink: 0;
-}
-
-.xy-popup-suffix-btn {
-  color: var(--text-muted);
-  font-weight: bold;
-  cursor: pointer;
-  padding: 0 4px;
   opacity: 0;
   transition: opacity 0.12s;
 }
 
-.xy-popup-item:hover .xy-popup-suffix-btn {
+.xy-popup-item:hover .xy-popup-suffix {
   opacity: 1;
+}
+
+.xy-popup-suffix-btn {
+  color: var(--text-muted);
+  cursor: pointer;
 }
 
 .xy-popup-suffix-btn.danger:hover {
@@ -872,32 +875,10 @@ pre:hover .xy-copy-btn {
   cursor: not-allowed;
 }
 
-/* 纯图标按钮 */
-.xy-icon-btn {
-  background: none !important;
-  background-color: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  padding: 4px;
-  min-width: 24px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-muted);
-  cursor: pointer;
-  border-radius: 4px;
-}
-
-.xy-icon-btn:hover {
-  color: var(--text-normal);
-  background: var(--background-modifier-hover) !important;
-}
-
 /* ═══════════════════════════════════════════════════════
    Settings
    ═══════════════════════════════════════════════════════ */
 
-/* Status Card */
 .xy-settings-status {
   display: grid;
   gap: 6px;

@@ -17,6 +17,7 @@ export async function openInEditor(
   workspace: Workspace,
   chatHistoryPath: string,
   ts?: number,
+  source?: string,
 ): Promise<void> {
   try {
     const tempRel = `${chatHistoryPath}/temp`;
@@ -29,7 +30,7 @@ export async function openInEditor(
 
     const title = (content.split("\n")[0] || "消息").replace(/^#+\s*/, "").slice(0, 50);
     const dateOnly = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    const frontmatter = `---\ntitle: ${title}\ncreated: ${dateOnly}\nupdated: ${dateOnly}\n---\n\n`;
+    const frontmatter = `---\ntitle: ${title}\ncreated: ${dateOnly}${source ? `\nsource: ${source}` : ""}\n---\n\n`;
     const fullContent = frontmatter + content;
 
     const existing = vault.getAbstractFileByPath(fileRel);

@@ -1,9 +1,11 @@
-import { App, Modal, Notice, TFile, Menu, setIcon, setTooltip } from "obsidian";
+import { App, Modal, Notice, Menu } from "obsidian";
 import type XiaoyuanAIPlugin from "./main";
 import { callAISession, getVaultBasePath } from "./ai";
-import { OPERATION_PROMPTS, OPERATION_LABELS, OPERATIONS, OPERATION_ICONS } from "./constants";
+import { OPERATION_PROMPTS, OPERATION_LABELS, OPERATIONS, OPERATION_ICONS, VIEW_TYPE_XIAOYUAN_AI_CHAT } from "./constants";
 import type { Operation } from "./types";
-import { simpleHash } from "./open-in-editor";
+import { openInEditor } from "./open-in-editor";
+import { createActionBtn } from "./action-buttons";
+import { registerSelectionListener } from "./selection-popup";
 
 function makeDraggable(handle: HTMLElement, modalEl: HTMLElement) {
   handle.addEventListener("mousedown", (e) => {
@@ -33,7 +35,7 @@ export class TextOperationModal extends Modal {
   operation: Operation;
   inputText: string;
   contentAreaEl!: HTMLDivElement;
-  toolsBtn!: HTMLButtonElement;
+  toolsBtn!: HTMLElement;
   modeLabel!: HTMLSpanElement;
   titleEl!: HTMLHeadingElement;
   thinkingBarEl!: HTMLDivElement;
@@ -67,30 +69,31 @@ export class TextOperationModal extends Modal {
     const leftGroup = btnRow.createDiv({ cls: "xy-modal-btn-group" });
     const rightGroup = btnRow.createDiv({ cls: "xy-modal-btn-group" });
 
-    const replaceBtn = leftGroup.createEl("button", { cls: "xy-icon-btn" });
-    setIcon(replaceBtn, "replace");
-    setTooltip(replaceBtn, "替换选中文本");
+    const replaceBtn = createActionBtn("replace");
     replaceBtn.addEventListener("click", () => {
       const editor = this.plugin.getActiveEditor();
       if (editor) { editor.replaceSelection(this.contentAreaEl.textContent || ""); new Notice("已替换"); }
       else new Notice("未找到活动编辑器");
       this.close();
     });
+    leftGroup.appendChild(replaceBtn);
 
-    const copyBtn = leftGroup.createEl("button", { cls: "xy-icon-btn" });
-    setIcon(copyBtn, "copy");
-    setTooltip(copyBtn, "复制到剪贴板");
+    const copyBtn = createActionBtn("copy");
     copyBtn.addEventListener("click", () => { navigator.clipboard.writeText(this.contentAreaEl.textContent || ""); new Notice("已复制"); });
+    leftGroup.appendChild(copyBtn);
 
-    const openBtn = leftGroup.createEl("button", { cls: "xy-icon-btn" });
-    setIcon(openBtn, "pencil");
-    setTooltip(openBtn, "在编辑器中编辑");
-    openBtn.addEventListener("click", () => this.openInEditor());
+    const openBtn = createActionBtn("edit");
+    openBtn.addEventListener("click", () => {
+      const content = this.contentAreaEl.textContent || "";
+      if (!content.trim()) return;
+      openInEditor(content, this.app.vault, this.app.workspace, this.plugin.settings.chatHistoryPath, undefined, "modal");
+      this.close();
+    });
+    leftGroup.appendChild(openBtn);
 
-    this.toolsBtn = leftGroup.createEl("button", { cls: "xy-icon-btn" });
-    setIcon(this.toolsBtn, "sparkles");
-    setTooltip(this.toolsBtn, "切换 AI 操作");
+    this.toolsBtn = createActionBtn("aiTools");
     this.toolsBtn.addEventListener("click", (e) => this.showAIToolsMenu(e));
+    leftGroup.appendChild(this.toolsBtn);
 
     const closeBtn = rightGroup.createEl("button", { text: "关闭", cls: "xiaoyuan-btn-secondary" });
     closeBtn.addEventListener("click", () => this.close());
@@ -100,6 +103,53 @@ export class TextOperationModal extends Modal {
     } else {
       this.contentAreaEl.contentEditable = "true";
     }
+
+    registerSelectionListener(this.contentAreaEl, {
+      getSelectedText: () => window.getSelection()?.toString().trim() || "",
+      getPosition: () => {
+        const sel = window.getSelection();
+        if (!sel || !sel.rangeCount || !this.contentAreaEl.contains(sel.anchorNode)) return null;
+        const rect = sel.getRangeAt(0).getBoundingClientRect();
+        return { x: rect.left + rect.width / 2 - 60, y: rect.top - 36 };
+      },
+      onSpeak: (text) => {
+        speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text.replace(/[#*_`\[\]]/g, ""));
+        u.lang = "zh-CN"; speechSynthesis.speak(u);
+      },
+      onQuote: (text) => {
+        let leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_XIAOYUAN_AI_CHAT).first();
+        if (!leaf) {
+          const leafRight = this.app.workspace.getRightLeaf(false);
+          if (leafRight) {
+            leafRight.setViewState({ type: VIEW_TYPE_XIAOYUAN_AI_CHAT, active: true });
+            leaf = leafRight;
+          }
+        }
+        if (leaf) this.app.workspace.revealLeaf(leaf);
+        if (leaf?.view) {
+          (leaf.view as unknown as { quote: (t: string) => void }).quote(text);
+        }
+      },
+      onAITools: (text, e) => {
+        if (!text.trim()) return;
+        const menu = new Menu();
+        OPERATIONS.forEach((op) => {
+          menu.addItem((item) => {
+            item.setTitle(OPERATION_LABELS[op]);
+            item.setIcon(OPERATION_ICONS[op]);
+            item.onClick(() => {
+              this.titleEl.textContent = `AI ${OPERATION_LABELS[op]}`;
+              this.contentAreaEl.textContent = text;
+              this.operation = op;
+              this.inputText = text;
+              this.processOperation();
+            });
+          });
+        });
+        menu.showAtMouseEvent(e);
+      },
+    });
   }
 
   private showAIToolsMenu(e: MouseEvent) {
@@ -129,7 +179,7 @@ export class TextOperationModal extends Modal {
     this.contentAreaEl.textContent = "已连接，等待响应...";
     this.contentAreaEl.contentEditable = "false";
 
-    this.toolsBtn.disabled = true;
+    this.toolsBtn.toggleClass("is-disabled", true);
     this.thinkingBarEl.classList.add("is-active");
     try {
       const s = this.plugin.settings;
@@ -145,13 +195,13 @@ export class TextOperationModal extends Modal {
     } catch (err: unknown) {
       this.contentAreaEl.textContent = `\u274C 错误：${err instanceof Error ? err.message : String(err)}`;
     } finally {
-      this.toolsBtn.disabled = false;
+      this.toolsBtn.toggleClass("is-disabled", false);
       this.thinkingBarEl.classList.remove("is-active");
     }
   }
 
   private async processOperation() {
-    this.toolsBtn.disabled = true;
+    this.toolsBtn.toggleClass("is-disabled", true);
     this.thinkingBarEl.classList.add("is-active");
     try {
       const s = this.plugin.settings;
@@ -167,32 +217,8 @@ export class TextOperationModal extends Modal {
     } catch (err: unknown) {
       this.contentAreaEl.textContent = `\u274C 错误：${err instanceof Error ? err.message : String(err)}`;
     } finally {
-      this.toolsBtn.disabled = false;
+      this.toolsBtn.toggleClass("is-disabled", false);
       this.thinkingBarEl.classList.remove("is-active");
-    }
-  }
-
-  private async openInEditor() {
-    const content = this.contentAreaEl.textContent || "";
-    if (!content.trim()) return;
-    try {
-      const vault = this.app.vault;
-      const tempRel = `${this.plugin.settings.chatHistoryPath}/temp`;
-      try { await vault.createFolder(tempRel); } catch {}
-      const dateStr = String(Date.now()).slice(-8);
-      const hash = simpleHash(content);
-      const fileRel = `${tempRel}/ai-result-${dateStr}-${hash}.md`;
-      const existing = vault.getAbstractFileByPath(fileRel);
-      let file: TFile;
-      if (existing instanceof TFile) {
-        await vault.modify(existing, content);
-        file = existing;
-      } else {
-        file = await vault.create(fileRel, content);
-      }
-      await this.app.workspace.getLeaf("tab").openFile(file);
-    } catch (err: unknown) {
-      new Notice(`打开失败: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
