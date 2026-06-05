@@ -1,4 +1,4 @@
-﻿import { ItemView, WorkspaceLeaf, Notice, setIcon, setTooltip, MarkdownRenderer } from "obsidian";
+﻿import { ItemView, WorkspaceLeaf, Notice, setIcon, setTooltip, MarkdownRenderer, TFile } from "obsidian";
 import type XiaoyuanAIPlugin from "./main";
 import {
   ChatMessage,
@@ -265,7 +265,9 @@ export class XiaoyuanAIChatView extends ItemView {
     );
     if (matched.length === 0) return;
 
-    const popup = this.inputEl.parentElement!.createDiv({ cls: "xy-skill-popup" });
+    const parentEl = this.inputEl.parentElement;
+    if (!parentEl) return;
+    const popup = parentEl.createDiv({ cls: "xy-skill-popup" });
     for (const skill of matched) {
       const item = popup.createDiv({ cls: "xy-skill-popup-item" });
       item.createSpan({ cls: "xy-skill-popup-name", text: skill.name });
@@ -349,7 +351,13 @@ export class XiaoyuanAIChatView extends ItemView {
     const bubbleEl = msgEl.createDiv({ cls: "xiaoyuan-msg-bubble" });
 
     if (role === "user") {
-      bubbleEl.createSpan().textContent = content;
+      const hasImage = /!\[.*?\]\(data:image/.test(content);
+      if (hasImage) {
+        const mdContainer = bubbleEl.createDiv({ cls: "xy-obsidian-md" });
+        await this.renderObsidianMD(mdContainer, content.trim());
+      } else {
+        bubbleEl.createSpan().textContent = content;
+      }
     } else {
       const s = this.plugin.settings;
       if (thinking && s.showThinking) {
@@ -388,7 +396,7 @@ export class XiaoyuanAIChatView extends ItemView {
 
   private enhanceCodeBlocks(container: HTMLElement) {
     if (!container.isConnected) return;
-    (window as Record<string, any>).Prism?.highlightAllUnder(container);
+    (window as typeof window & { Prism?: { highlightAllUnder: (el: HTMLElement) => void } }).Prism?.highlightAllUnder(container);
     container.querySelectorAll("pre").forEach((pre) => {
       if (pre.querySelector(".xy-copy-btn")) return;
       const btn = document.createElement("button");
@@ -609,6 +617,16 @@ private async truncateMessagesIfNeeded(): Promise<void> {
       enrichedMessage = attachBlocks.join("\n\n") + "\n\n" + userMessage;
     }
 
+    if (s.showContext) {
+      const activeFile = this.app.workspace.getActiveFile();
+      if (activeFile) {
+        const fileName = activeFile.path;
+        const fileContent = await this.app.vault.read(activeFile).catch(() => "");
+        const contextPreview = fileContent.length > 500 ? fileContent.slice(0, 500) + "\n... (内容已截断)" : fileContent;
+        enrichedMessage = `[当前笔记: ${fileName}]\n\`\`\`\n${contextPreview}\n\`\`\`\n\n---\n\n${enrichedMessage}`;
+      }
+    }
+
       if (s.execMode === "cli") {
         const vaultDir = getVaultBasePath();
         if (s.opencode.autoStart) {
@@ -786,7 +804,6 @@ private addStreamingMessage(content: string, thinking?: string): string {
     if (!bubbleEl) return null;
 
     const streamContent = bubbleEl.querySelector(".xy-stream-content");
-    const toolLog = bubbleEl.querySelector(".xy-tool-log") as HTMLElement | null;
     const existingThinking = bubbleEl.querySelector(".xiaoyuan-thinking");
 
     if (streamContent) streamContent.remove();
@@ -878,7 +895,7 @@ private addStreamingMessage(content: string, thinking?: string): string {
       this.currentSessionId = meta.currentSessionId;
 
       if (this.sessions.length === 0) {
-        const oldMessages = migrateOldData(meta as any);
+        const oldMessages = migrateOldData(meta as unknown as Record<string, unknown>);
         if (oldMessages && oldMessages.length > 0) {
           const now = Date.now();
           const newSession: ChatSession = {
@@ -987,6 +1004,42 @@ private addStreamingMessage(content: string, thinking?: string): string {
     }
   }
 
+  private async exportSession(sessionId: string) {
+    const session = this.sessions.find((s) => s.id === sessionId);
+    if (!session) { new Notice("会话不存在"); return; }
+
+    const path = getChatHistoryPath(this.plugin.settings.chatHistoryPath);
+    const messages = await loadSessionFromFile(this.app.vault, path, sessionId);
+    if (messages.length === 0) { new Notice("会话为空"); return; }
+
+    const content = messages.map((m) => {
+      const ts = m.timestamp ? new Date(m.timestamp).toLocaleString("zh-CN") : "";
+      const role = m.role === "user" ? "👤 你" : "🤖 小元";
+      const header = `### ${role} ${ts ? `(${ts})` : ""}`;
+      const body = m.content;
+      const think = m.thinking ? `\n> 💭 ${m.thinking}` : "";
+      return `${header}\n\n${body}${think}`;
+    }).join("\n\n---\n\n");
+
+    const frontmatter = `---\ntitle: ${session.title}\ncreated: ${new Date(session.createdAt).toLocaleDateString("zh-CN")}\nexport: ${new Date().toLocaleString("zh-CN")}\n---\n\n`;
+    const mdContent = frontmatter + `# ${session.title}\n\n${content}\n`;
+
+    try {
+      const exportPath = `${this.plugin.settings.chatHistoryPath}/export/${session.id}.md`;
+      const folderPath = `${this.plugin.settings.chatHistoryPath}/export`;
+      try { await this.app.vault.createFolder(folderPath); } catch {}
+      const existing = this.app.vault.getAbstractFileByPath(exportPath);
+      if (existing instanceof TFile) {
+        await this.app.vault.modify(existing, mdContent);
+      } else {
+        await this.app.vault.create(exportPath, mdContent);
+      }
+      new Notice(`已导出: ${exportPath}`);
+    } catch (err: unknown) {
+      new Notice(`导出失败: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
   private async deleteSession(sessionId: string) {
     if (this.abortController) { new Notice("请等待当前 AI 回复完成"); return; }
     if (this.sessions.length <= 1) {
@@ -1011,7 +1064,7 @@ private addStreamingMessage(content: string, thinking?: string): string {
     new Notice("已删除");
   }
 
-  private async showSessionDropdown(e: MouseEvent) {
+  private async showSessionDropdown(_e: MouseEvent) {
     if (document.querySelector(".xy-popup")) {
       document.querySelectorAll(".xy-popup").forEach((el) => el.remove());
       return;
@@ -1089,6 +1142,12 @@ private addStreamingMessage(content: string, thinking?: string): string {
         renameBtn.style.fontSize = "12px";
         setTooltip(renameBtn, "重命名");
         renameBtn.addEventListener("click", startRename);
+
+        const exportBtn = suffix.createSpan({ cls: "xy-popup-suffix-btn" });
+        exportBtn.textContent = "\u2B07";
+        exportBtn.style.fontSize = "12px";
+        setTooltip(exportBtn, "导出此对话");
+        exportBtn.addEventListener("click", (ev) => { ev.stopPropagation(); this.exportSession(session.id); popup.remove(); });
 
         const deleteBtn = suffix.createSpan({ cls: "xy-popup-suffix-btn" });
         deleteBtn.classList.add("danger");

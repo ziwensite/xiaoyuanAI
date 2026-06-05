@@ -1,7 +1,7 @@
 import * as fs from "fs/promises";
 import * as fsSync from "fs";
 import * as path from "path";
-import { Plugin, WorkspaceLeaf, Notice, Menu, MarkdownView } from "obsidian";
+import { Plugin, WorkspaceLeaf, Notice, MarkdownView } from "obsidian";
 import type { XiaoyuanAISettings } from "./types";
 import { DEFAULT_SETTINGS, VIEW_TYPE_XIAOYUAN_AI_CHAT } from "./constants";
 import { XiaoyuanAIChatView } from "./chat-view";
@@ -17,7 +17,8 @@ export default class XiaoyuanAIPlugin extends Plugin {
 
   async onload() {
     await this.loadSettings();
-    setVaultBasePath((this.app.vault.adapter as any).getBasePath());
+    const adapter = this.app.vault.adapter as { getBasePath?: () => string };
+    if (adapter.getBasePath) setVaultBasePath(adapter.getBasePath());
 
     if (this.settings.execMode === "cli") {
       const resolved = await resolveOpenCodePath(this.settings.opencode.cliPath);

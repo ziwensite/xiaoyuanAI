@@ -2,11 +2,20 @@ import * as http from "http";
 import * as path from "path";
 import * as fs from "fs";
 
-type ServerConn = { url: string; authHeader: string };
+interface ServerConn { url: string; authHeader: string }
 
-type SSEEvent = { type: string; properties?: any };
+interface SSEEventProperties {
+  sessionID?: string;
+  partID?: string;
+  field?: string;
+  delta?: string;
+  part?: Record<string, unknown>;
+  status?: { type: string };
+}
 
-export function readServerConn(vaultDir: string, configuredPort: number): ServerConn | null {
+interface SSEEvent { type: string; properties?: SSEEventProperties }
+
+export function readServerConn(vaultDir: string, _configuredPort: number): ServerConn | null {
   try {
     const lockPath = path.join(vaultDir, ".opencode", "server.lock.json");
     if (fs.existsSync(lockPath)) {
@@ -20,7 +29,7 @@ export function readServerConn(vaultDir: string, configuredPort: number): Server
   return null;
 }
 
-export function httpGetOpenCode(baseUrl: string, path: string, directory: string): Promise<any> {
+export function httpGetOpenCode(baseUrl: string, path: string, directory: string): Promise<unknown> {
   const url = new URL(path, baseUrl.replace(/\/+$/, ""));
   url.searchParams.set("directory", directory);
   return new Promise((resolve, reject) => {
@@ -30,19 +39,21 @@ export function httpGetOpenCode(baseUrl: string, path: string, directory: string
       res.on("end", () => {
         const body = Buffer.concat(chunks).toString();
         if (!res.statusCode || res.statusCode >= 300) {
-          reject(new Error(`OpenCode API ${path}: ${res.statusCode} ${(res as any).statusMessage || ""}${body ? ` - ${body.slice(0, 200)}` : ""}`));
+          reject(new Error(`OpenCode API ${path}: ${res.statusCode} ${res.statusCode ? (http.STATUS_CODES[res.statusCode] || "") : ""}${body ? ` - ${body.slice(0, 200)}` : ""}`));
           return;
         }
-        let parsed: any;
+        let parsed: unknown;
         try { parsed = JSON.parse(body); }
         catch (e) { reject(new Error(`OpenCode API ${path}: JSON 解析失败 — ${(e as Error).message}`)); return; }
         if (parsed && typeof parsed === "object" && "error" in parsed && parsed.error) {
-          const errMsg = parsed.error?.message || parsed.error?.data?.message || JSON.stringify(parsed.error);
+          const errObj = (parsed as Record<string, unknown>).error;
+          const errMap = errObj as Record<string, unknown>;
+          const errMsg = (errMap.message as string) || ((errMap.data as Record<string, unknown>)?.message as string) || JSON.stringify(errObj);
           reject(new Error(`OpenCode API 错误: ${errMsg}`));
           return;
         }
         if (parsed && typeof parsed === "object" && "data" in parsed) {
-          resolve(parsed.data);
+          resolve((parsed as Record<string, unknown>).data);
         } else {
           resolve(parsed);
         }
@@ -52,7 +63,7 @@ export function httpGetOpenCode(baseUrl: string, path: string, directory: string
 }
 
 export function requestOpenCode<T>(
-  base: string, apiPath: string, method: string, body?: any, authHeader?: string,
+  base: string, apiPath: string, method: string, body?: Record<string, unknown> | undefined, authHeader?: string,
 ): Promise<T> {
   const u = new URL(apiPath, base.replace(/\/+$/, ""));
   return new Promise((resolve, reject) => {
@@ -128,10 +139,18 @@ export function connectSSE(
 
 export function combineSignals(...sigs: (AbortSignal | undefined)[]): AbortSignal {
   const ctrl = new AbortController();
+  const cleanup: (() => void)[] = [];
   for (const s of sigs) {
     if (!s) continue;
     if (s.aborted) { ctrl.abort(s.reason); return ctrl.signal; }
-    s.addEventListener("abort", () => ctrl.abort(s.reason), { once: true });
+    const handler = () => { ctrl.abort(s.reason); };
+    s.addEventListener("abort", handler, { once: true });
+    cleanup.push(() => s.removeEventListener("abort", handler));
   }
+  const origAbort = ctrl.abort.bind(ctrl);
+  ctrl.abort = (reason?: unknown) => {
+    for (const c of cleanup) c();
+    origAbort(reason);
+  };
   return ctrl.signal;
 }

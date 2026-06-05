@@ -288,10 +288,11 @@ private async refreshStatusCard() {
       const allItems = agentItems.length ? agentItems : fallbackItems;
       const currentAgent = s.opencode.agent;
       const inList = allItems.some((a) => a.name === currentAgent);
+      const currentDesc = allItems.find((a) => a.name === currentAgent)?.description;
       this.decorateSetting(new Setting(container)
         .setName("Agent")
         .setDesc(currentAgent
-          ? `当前: ${currentAgent}${allItems.find((a) => a.name === currentAgent)?.description ? ` (${allItems.find((a) => a.name === currentAgent)!.description})` : ""}`
+          ? `当前: ${currentAgent}${currentDesc ? ` (${currentDesc})` : ""}`
           : "选择 agent")
         .addDropdown((dd) => {
           for (const a of allItems) dd.addOption(a.name, a.name);
@@ -315,7 +316,7 @@ private async refreshStatusCard() {
               await this.plugin.saveSettings();
               new Notice(`已同步 ${agents.length} 个 agent`);
               this.display();
-            } catch (err: any) { new Notice(`同步失败：${err.message}`); }
+            } catch (err: unknown) { new Notice(`同步失败：${err instanceof Error ? err.message : String(err)}`); }
           });
         }), "bot");
     }
@@ -771,7 +772,8 @@ ${text}
         execBtn.addEventListener("click", () => {
           const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_XIAOYUAN_AI_CHAT).first();
           if (leaf?.view instanceof XiaoyuanAIChatView) {
-            (this.app.setting as any).close?.();
+            const setting = this.app.setting as { close?: () => void; open?: () => void; openTabById?: (id: string) => void };
+            setting.close?.();
             leaf.view.inputEl.value = "/" + skill.name + " ";
             leaf.view.inputEl.focus();
           }
@@ -911,8 +913,12 @@ ${text}
       const groups = new Map<string, { label: string; value: string }[]>();
       for (const m of models) {
         const provider = m.value.includes("/") ? m.value.split("/")[0] : "其他";
-        if (!groups.has(provider)) groups.set(provider, []);
-        groups.get(provider)!.push(m);
+        const list = groups.get(provider);
+        if (list) {
+          list.push(m);
+        } else {
+          groups.set(provider, [m]);
+        }
       }
 
       for (const [providerName, items] of groups) {

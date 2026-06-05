@@ -1,7 +1,7 @@
 import { getActiveProvider } from "./constants";
-import type { XiaoyuanAISettings, FileDiff, ModelCaps, ModelEntry } from "./types";
+import type { XiaoyuanAISettings, FileDiff } from "./types";
 import { requestOpenCode, readServerConn, connectSSE, combineSignals } from "./opencode-client";
-import { ensureOpenCodeServer, stopOpenCodeServer } from "./opencode-server";
+import { ensureOpenCodeServer } from "./opencode-server";
 import { callAIWithAPI, ensureApiUrl, processAPISSEStream } from "./api-client";
 
 export { stopOpenCodeServer, ensureOpenCodeServer } from "./opencode-server";
@@ -31,6 +31,20 @@ function parseDiffText(text: string): FileDiff[] {
   }
   return result;
 }
+
+interface SessionMessage {
+  info?: { role: string };
+  parts?: { type: string; text?: string }[];
+}
+
+interface SessionPayload {
+  parts: { type: string; text: string }[];
+  agent?: string;
+  variant?: string;
+  model?: { providerID: string; modelID: string };
+}
+
+type PartCallback = () => void;
 
 export async function callAIWithHTTPStreaming(
   prompt: string,
@@ -62,7 +76,7 @@ export async function callAIWithHTTPStreaming(
   if (!sessionId) throw new Error("创建会话失败");
 
   try {
-    const payload: any = { parts: [{ type: "text", text: prompt }] };
+    const payload: SessionPayload = { parts: [{ type: "text", text: prompt }] };
     if (settings.opencode.agent) payload.agent = settings.opencode.agent;
     if (settings.defaultReasoning) payload.variant = settings.defaultReasoning;
     if (settings.opencode.model) {
@@ -71,7 +85,7 @@ export async function callAIWithHTTPStreaming(
         payload.model = { providerID: parts[0], modelID: parts.slice(1).join("/") };
       }
     }
-    await requestOpenCode(conn.url, `/session/${sessionId}/prompt_async`, "POST", payload, conn.authHeader);
+    await requestOpenCode(conn.url, `/session/${sessionId}/prompt_async`, "POST", payload as unknown as Record<string, unknown>, conn.authHeader);
 
     let accumulatedText = "";
     let accumulatedThinking = "";
@@ -80,7 +94,7 @@ export async function callAIWithHTTPStreaming(
 
     const partTypes = new Map<string, string>();
     const partTexts = new Map<string, string>();
-    let idleResolve: (() => void) | null = null;
+    let idleResolve: PartCallback | null = null;
     let idleReject: ((err: Error) => void) | null = null;
     const idlePromise = new Promise<void>((resolve, reject) => {
       idleResolve = resolve;
@@ -94,33 +108,37 @@ export async function callAIWithHTTPStreaming(
         if (props.sessionID !== sessionId) return;
         if (evt.type === "message.part.updated") {
           const part = props.part || {};
-          const partId = part.id;
-          if (partId) partTypes.set(partId, part.type || "");
-          if (part.type === "text") {
-            accumulatedText = part.text || "";
-            partTexts.set(partId, accumulatedText);
-            onTextUpdate?.(accumulatedText, accumulatedThinking);
-          } else if (part.type === "thinking" || part.type === "reasoning") {
-            accumulatedThinking = part.text || "";
-            partTexts.set(partId, accumulatedThinking);
-            onThinking?.(accumulatedThinking);
-          } else if (part.type === "tool") {
-            const toolName = part.tool || part.name || "";
-            const st = part.state?.status || "running";
+          const partId = part.id as string | undefined;
+          if (partId) {
+            partTypes.set(partId, (part.type as string) || "");
+            if (part.type === "text") {
+              accumulatedText = (part.text as string) || "";
+              partTexts.set(partId, accumulatedText);
+              onTextUpdate?.(accumulatedText, accumulatedThinking);
+            } else if (part.type === "thinking" || part.type === "reasoning") {
+              accumulatedThinking = (part.text as string) || "";
+              partTexts.set(partId, accumulatedThinking);
+              onThinking?.(accumulatedThinking);
+            }
+          }
+          if (part.type === "tool") {
+            const toolName = (part.tool || part.name || "") as string;
+            const partState = part.state as { status?: string } | undefined;
+            const st = (partState?.status || "running") as string;
             if (toolName) onToolProgress?.(toolName, st);
           } else if (part.type === "diff" || part.type === "patch") {
-            const diffText = part.text ?? part.diff ?? "";
+            const diffText = (part.text ?? part.diff ?? "") as string;
             if (diffText) {
               const diffs = parseDiffText(diffText);
               if (diffs.length) onDiffs?.(diffs);
             }
           }
         } else if (evt.type === "message.part.delta") {
-          const partId = props.partID;
+          const partId = props.partID as string;
           const pType = partTypes.get(partId);
           if (props.field === "text" && props.delta) {
             const prev = partTexts.get(partId) || "";
-            const updated = prev + props.delta;
+            const updated = prev + (props.delta as string);
             partTexts.set(partId, updated);
             if (pType === "text") {
               accumulatedText = updated;
@@ -133,14 +151,25 @@ export async function callAIWithHTTPStreaming(
         } else if (evt.type === "session.status") {
           if (props.status?.type === "idle") {
             sseAbort.abort();
-            idleResolve?.();
+            const resolve = idleResolve;
+            idleResolve = null;
+            idleReject = null;
+            resolve?.();
           }
         }
       },
-      () => { idleResolve?.(); },
+      () => {
+        const resolve = idleResolve;
+        idleResolve = null;
+        idleReject = null;
+        resolve?.();
+      },
       () => {
         sseFailed = true;
-        idleReject?.(new Error("SSE 连接中断"));
+        const reject = idleReject;
+        idleResolve = null;
+        idleReject = null;
+        reject?.(new Error("SSE 连接中断"));
       },
     );
 
@@ -157,9 +186,9 @@ export async function callAIWithHTTPStreaming(
 
     sseAbort.abort();
 
-    const messages = await requestOpenCode<any[]>(conn.url, `/session/${sessionId}/message?limit=50`, "GET", undefined, conn.authHeader);
-    const lastAssistant = [...(messages || [])].reverse().find((m: any) => m.info?.role === "assistant");
-    const result = lastAssistant?.parts?.find((p: any) => p.type === "text")?.text ?? "";
+    const messages = await requestOpenCode<SessionMessage[]>(conn.url, `/session/${sessionId}/message?limit=50`, "GET", undefined, conn.authHeader);
+    const lastAssistant = [...(messages || [])].reverse().find((m) => m.info?.role === "assistant");
+    const result = lastAssistant?.parts?.find((p) => p.type === "text")?.text ?? "";
     if (result) {
       onTextUpdate?.(result, accumulatedThinking);
       return result;
@@ -206,6 +235,14 @@ export async function callAISession(options: CallAISessionOptions): Promise<stri
 
 let mcpSyncDone = false;
 
+interface McpServerConfigPayload {
+  type: string;
+  command?: string;
+  args?: string[];
+  url?: string;
+  headers?: Record<string, string>;
+}
+
 export function resetMCPSyncDone(): void {
   mcpSyncDone = false;
 }
@@ -236,19 +273,21 @@ export async function syncMCPServers(
     }
   }
 
+  const activeConn = conn;
+
   for (const server of servers) {
     try {
-      const config: Record<string, any> = { type: server.type };
+      const config: McpServerConfigPayload = { type: server.type };
       if (server.type === "local") {
         if (server.command) config.command = server.command;
         if (server.args) config.args = server.args.split(/\s+/).filter(Boolean);
       } else {
         if (server.url) config.url = server.url;
         if (server.headers) {
-          try { config.headers = JSON.parse(server.headers); } catch { config.headers = {}; }
+          try { config.headers = JSON.parse(server.headers) as Record<string, string>; } catch { config.headers = {}; }
         }
       }
-      await requestOpenCode(conn!.url, "/mcp", "POST", { name: server.name, config }, conn!.authHeader);
+      await requestOpenCode(activeConn.url, "/mcp", "POST", { name: server.name, config } as unknown as Record<string, unknown>, activeConn.authHeader);
     } catch (err) {
       console.warn(`MCP server "${server.name}" sync failed:`, err);
     }

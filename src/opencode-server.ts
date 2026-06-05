@@ -23,7 +23,7 @@ export function spawnWithTimeout(bin: string, args: string[], cwd: string, timeo
   return new Promise<string>((resolve, reject) => {
     let stdout = "";
     let stderr = "";
-    let timer: any;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     try {
       const spec = buildSpawn(bin, args);
       const proc = spawn(spec.command, spec.args, { cwd, stdio: ["ignore", "pipe", "pipe"], env: { ...process.env } });

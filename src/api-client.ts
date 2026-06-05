@@ -4,7 +4,7 @@ export async function callAIWithAPI(
   maxTokens: number, temperature: number, stream = false, signal?: AbortSignal,
   reasoningEffort?: string,
 ): Promise<Response> {
-  const body: Record<string, any> = { model, messages, max_tokens: maxTokens, temperature, stream };
+  const body: Record<string, unknown> = { model, messages, max_tokens: maxTokens, temperature, stream };
   if (reasoningEffort && reasoningEffort !== "none") {
     body.reasoning_effort = reasoningEffort;
   }

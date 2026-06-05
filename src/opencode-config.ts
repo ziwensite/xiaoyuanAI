@@ -1,12 +1,13 @@
 import * as fs from "fs";
 import * as path from "path";
-import type { XiaoyuanAISettings, ModelEntry, ModelCaps } from "./types";
+import type { ModelEntry, ModelCaps } from "./types";
 import { httpGetOpenCode } from "./opencode-client";
-import { resolveOpenCodePath, ensureOpenCodeServer, spawnWithTimeout, startTempOpenCodeServer, stopTempServer } from "./opencode-server";
+import { resolveOpenCodePath, spawnWithTimeout, startTempOpenCodeServer, stopTempServer } from "./opencode-server";
 
 interface OpenCodeModelDef {
   id: string;
   name: string;
+  enabled?: boolean;
   capabilities?: {
     temperature?: boolean;
     reasoning?: boolean;
@@ -29,6 +30,20 @@ interface FlattenResult {
   caps: Record<string, ModelCaps>;
 }
 
+interface RawModelEntry {
+  id?: string;
+  name?: string;
+  enabled?: boolean;
+  capabilities?: OpenCodeModelDef["capabilities"];
+}
+
+interface AgentEntry {
+  mode?: string;
+  hidden?: boolean;
+  name: string;
+  description?: string;
+}
+
 function flattenProviders(providers: OpenCodeProvider[]): FlattenResult {
   const result = new Map<string, ModelEntry>();
   const caps: Record<string, ModelCaps> = {};
@@ -36,9 +51,9 @@ function flattenProviders(providers: OpenCodeProvider[]): FlattenResult {
     if (p.configured === false) continue;
     const providerName = p.name || p.id;
     const rawModels = p.models || {};
-    const entries = Array.isArray(rawModels)
-      ? rawModels.map((m: any) => ({ id: m.id || m.name || "", name: m.name || m.id || "", enabled: m.enabled, capabilities: m.capabilities }))
-      : Object.values(rawModels).map((m: any) => ({ id: m.id || m.name || "", name: m.name || m.id || "", enabled: m.enabled, capabilities: m.capabilities }));
+    const entries: RawModelEntry[] = Array.isArray(rawModels)
+      ? Object.values(rawModels).map((m) => ({ id: m.id || m.name || "", name: m.name || m.id || "", enabled: m.enabled, capabilities: m.capabilities }))
+      : Object.values(rawModels).map((m) => ({ id: (m as OpenCodeModelDef).id || (m as OpenCodeModelDef).name || "", name: (m as OpenCodeModelDef).name || (m as OpenCodeModelDef).id || "", enabled: (m as OpenCodeModelDef).enabled, capabilities: (m as OpenCodeModelDef).capabilities }));
     for (const m of entries) {
       if (!m.id) continue;
       if (m.enabled === false) continue;
@@ -76,7 +91,8 @@ async function fetchModelsViaServer(
   try {
     await httpGetOpenCode(serverUrl, "/global/health", vaultDir);
     const response = await httpGetOpenCode(serverUrl, "/config/providers", vaultDir);
-    const providers: OpenCodeProvider[] = response?.providers ?? response ?? [];
+    const data = response as { providers?: OpenCodeProvider[] } | OpenCodeProvider[];
+    const providers: OpenCodeProvider[] = Array.isArray(data) ? data : (data?.providers ?? []);
     const r = flattenProviders(providers);
     return { models: r.models, caps: r.caps, defaultModel: "" };
   } catch {}
@@ -86,7 +102,8 @@ async function fetchModelsViaServer(
     temp = await startTempOpenCodeServer(bin, vaultDir, tempPort);
     if (!temp) throw new Error("启动临时服务器失败");
     const response = await httpGetOpenCode(temp.url, "/config/providers", vaultDir);
-    const providers: OpenCodeProvider[] = response?.providers ?? response ?? [];
+    const data = response as { providers?: OpenCodeProvider[] } | OpenCodeProvider[];
+    const providers: OpenCodeProvider[] = Array.isArray(data) ? data : (data?.providers ?? []);
     const r = flattenProviders(providers);
     return { models: r.models, caps: r.caps, defaultModel: "" };
   } finally {
@@ -94,7 +111,7 @@ async function fetchModelsViaServer(
   }
 }
 
-function findOpenCodeConfigFiles(vaultDir: string): any[] {
+function findOpenCodeConfigFiles(vaultDir: string): Record<string, unknown>[] {
   const candidates = [
     path.join(vaultDir, ".opencode.json"),
     path.join(vaultDir, ".opencode", "config.json"),
@@ -105,27 +122,39 @@ function findOpenCodeConfigFiles(vaultDir: string): any[] {
     path.join(process.env.LOCALAPPDATA || "", "opencode", "config.json"),
   ];
   const seen = new Set<string>();
-  const results: any[] = [];
+  const results: Record<string, unknown>[] = [];
   for (const p of candidates) {
     if (seen.has(p)) continue;
     seen.add(p);
     try {
       const content = fs.readFileSync(p, "utf-8");
-      results.push(JSON.parse(content));
+      results.push(JSON.parse(content) as Record<string, unknown>);
     } catch {}
   }
   return results;
 }
 
-function extractModelsFromConfig(parsed: any): ModelEntry[] {
+interface ProviderConfig {
+  name?: string;
+  models?: Record<string, unknown> | unknown[];
+}
+
+function extractModelsFromConfig(parsed: Record<string, unknown>): ModelEntry[] {
   const result = new Map<string, ModelEntry>();
-  const providers = parsed?.providers ?? parsed?.profiles ?? {};
-  for (const [providerId, cfg] of Object.entries(providers) as [string, any][]) {
-    const providerName = cfg?.name || providerId;
-    const rawModels = cfg?.models ?? {};
-    const entries = Array.isArray(rawModels)
-      ? rawModels.map((m: any) => ({ id: m.id || m.name || m || "", name: m.name || m.id || m || "" }))
-      : Object.values(rawModels).map((m: any) => ({ id: m.id || m.name || "", name: m.name || m.id || "" }));
+  const providers = (parsed?.providers ?? parsed?.profiles ?? {}) as Record<string, unknown>;
+  for (const [providerId, cfg] of Object.entries(providers)) {
+    const pc = cfg as ProviderConfig;
+    const providerName = pc.name || providerId;
+    const rawModels = pc.models ?? {};
+    const entries: RawModelEntry[] = Array.isArray(rawModels)
+      ? rawModels.map((m) => {
+          const mm = m as Record<string, unknown>;
+          return { id: (mm.id as string) || (mm.name as string) || "", name: (mm.name as string) || (mm.id as string) || "" };
+        })
+      : Object.values(rawModels).map((m) => {
+          const mm = m as Record<string, unknown>;
+          return { id: (mm.id as string) || (mm.name as string) || "", name: (mm.name as string) || (mm.id as string) || "" };
+        });
     for (const m of entries) {
       if (!m.id) continue;
       const modelId = m.id.includes("/") ? m.id : `${providerId}/${m.id}`;
@@ -133,8 +162,8 @@ function extractModelsFromConfig(parsed: any): ModelEntry[] {
     }
   }
   if (result.size === 0 && Array.isArray(parsed?.models)) {
-    for (const m of parsed.models) {
-      const rawId = typeof m === "string" ? m : m.id || m.name || "";
+    for (const m of parsed.models as Array<string | Record<string, string>>) {
+      const rawId = typeof m === "string" ? m : ((m as Record<string, string>).id || (m as Record<string, string>).name || "");
       if (rawId && !result.has(rawId)) result.set(rawId, { id: rawId, displayName: rawId });
     }
   }
@@ -191,14 +220,14 @@ export async function fetchOpenCodeAgents(
   const url = `http://127.0.0.1:${port}`;
   try {
     await httpGetOpenCode(url, "/global/health", vaultDir);
-    const agents = await httpGetOpenCode(url, "/agent", vaultDir);
+    const agents = (await httpGetOpenCode(url, "/agent", vaultDir)) as AgentEntry[];
     if (Array.isArray(agents)) return filterAgents(agents);
   } catch {}
   try {
     const effectiveBin = await resolveOpenCodePath(opencodePath);
     const temp = await startTempOpenCodeServer(effectiveBin, vaultDir, port);
     try {
-      const agents = await httpGetOpenCode(temp.url, "/agent", vaultDir);
+      const agents = (await httpGetOpenCode(temp.url, "/agent", vaultDir)) as AgentEntry[];
       if (Array.isArray(agents)) return filterAgents(agents);
     } finally {
       stopTempServer(temp.proc);
@@ -207,10 +236,10 @@ export async function fetchOpenCodeAgents(
   return [];
 }
 
-function filterAgents(agents: any[]): { name: string; description?: string }[] {
+function filterAgents(agents: AgentEntry[]): { name: string; description?: string }[] {
   return agents
-    .filter((a: any) => a.mode === "primary" && !a.hidden)
-    .map((a: any) => ({ name: a.name, description: a.description }));
+    .filter((a) => a.mode === "primary" && !a.hidden)
+    .map((a) => ({ name: a.name, description: a.description }));
 }
 
 export async function checkOpenCodeStatus(

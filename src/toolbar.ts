@@ -15,11 +15,17 @@ interface ToolbarHost {
 export function buildToolbarContent(container: HTMLElement, view: ToolbarHost): HTMLSpanElement {
   const s = view.plugin.settings;
 
-  // Attach file
   const attachBtn = container.createSpan({ cls: "xiaoyuan-attach-btn" });
   attachBtn.textContent = "+";
   setTooltip(attachBtn, "添加附件");
   attachBtn.addEventListener("click", () => view.pickFiles());
+
+  // Context indicator
+  if (s.showContext) {
+    const ctxBtn = container.createSpan({ cls: "xiaoyuan-attach-btn" });
+    ctxBtn.textContent = "📄";
+    setTooltip(ctxBtn, "将自动附加当前笔记作为上下文");
+  }
 
   // Agent (CLI only)
   if (s.execMode === "cli") {
@@ -77,8 +83,12 @@ export function buildToolbarContent(container: HTMLElement, view: ToolbarHost): 
         const groups = new Map<string, { label: string; value: string }[]>();
         for (const m of models) {
           const provider = m.value.includes("/") ? m.value.split("/")[0] : "其他";
-          if (!groups.has(provider)) groups.set(provider, []);
-          groups.get(provider)!.push(m);
+          const list = groups.get(provider);
+          if (list) {
+            list.push(m);
+          } else {
+            groups.set(provider, [m]);
+          }
         }
         const sortedGroups = [...groups.entries()].sort(([a], [b]) => {
           if (a === "opencode") return -1;

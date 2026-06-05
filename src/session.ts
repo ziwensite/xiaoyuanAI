@@ -34,7 +34,7 @@ function parseMarkdownToMessages(content: string): ChatMessage[] {
     const lines = part.split("\n");
     let role: "user" | "assistant" | null = null;
     let msgContent = "";
-    let thinkingLines: string[] = [];
+    const thinkingLines: string[] = [];
     let inThinking = false;
     let ts: number | undefined;
 
@@ -258,7 +258,10 @@ export async function saveSessionsMeta(
   currentSessionId: string,
 ): Promise<void> {
   const data = (await plugin.loadData()) || {};
-  data[CHAT_SESSIONS_KEY] = JSON.stringify(sessions.map((s: any) => { const { messages, ...rest } = s; return rest; }));
+  data[CHAT_SESSIONS_KEY] = JSON.stringify(sessions.map((s) => {
+    const { title, id, createdAt, updatedAt } = s;
+    return { title, id, createdAt, updatedAt };
+  }));
   data[CURRENT_SESSION_KEY] = currentSessionId;
   await plugin.saveData(data);
 }
