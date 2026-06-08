@@ -495,6 +495,12 @@ private async refreshStatusCard() {
     const servers = s.mcpServers || [];
 
     container.createEl("p", { cls: "xy-settings-desc", text: "配置 MCP 服务器，为 AI 提供额外的工具和上下文能力。" });
+    const link = container.createEl("a", {
+      cls: "xy-settings-desc",
+      text: "📖 查看常用 MCP 服务器列表及参数说明",
+      attr: { href: "https://github.com/modelcontextprotocol/servers", target: "_blank" },
+    });
+    link.style.cssText = "display:block;margin-top:4px;cursor:pointer;color:var(--text-accent);";
 
     for (let i = 0; i < servers.length; i++) {
       const server = servers[i];

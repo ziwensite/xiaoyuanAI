@@ -492,6 +492,7 @@ export class XiaoyuanAIChatView extends ItemView {
   }
 
   private updateMCPStatusUI() {
+    if (!this.mcpStatusEl || !this.mcpStatusEl.isConnected) return;
     const count = this.plugin.settings.mcpServers.filter(s => s.enabled).length;
     this.mcpStatusEl.removeClass("is-connected", "is-disconnected");
     this.mcpStatusEl.addClass(count > 0 ? "is-connected" : "is-disconnected");

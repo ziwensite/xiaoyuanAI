@@ -2625,6 +2625,7 @@ var XiaoyuanAIChatView = class extends import_obsidian9.ItemView {
     (0, import_obsidian9.setTooltip)(this.connectionStatusEl, tip);
   }
   updateMCPStatusUI() {
+    if (!this.mcpStatusEl || !this.mcpStatusEl.isConnected) return;
     const count = this.plugin.settings.mcpServers.filter((s) => s.enabled).length;
     this.mcpStatusEl.removeClass("is-connected", "is-disconnected");
     this.mcpStatusEl.addClass(count > 0 ? "is-connected" : "is-disconnected");
@@ -3918,6 +3919,12 @@ var XiaoyuanAISettingTab = class extends import_obsidian10.PluginSettingTab {
     const s = this.s();
     const servers = s.mcpServers || [];
     container.createEl("p", { cls: "xy-settings-desc", text: "\u914D\u7F6E MCP \u670D\u52A1\u5668\uFF0C\u4E3A AI \u63D0\u4F9B\u989D\u5916\u7684\u5DE5\u5177\u548C\u4E0A\u4E0B\u6587\u80FD\u529B\u3002" });
+    const link = container.createEl("a", {
+      cls: "xy-settings-desc",
+      text: "\u{1F4D6} \u67E5\u770B\u5E38\u7528 MCP \u670D\u52A1\u5668\u5217\u8868\u53CA\u53C2\u6570\u8BF4\u660E",
+      attr: { href: "https://github.com/modelcontextprotocol/servers", target: "_blank" }
+    });
+    link.style.cssText = "display:block;margin-top:4px;cursor:pointer;color:var(--text-accent);";
     for (let i = 0; i < servers.length; i++) {
       const server = servers[i];
       const card = container.createDiv({ cls: "xy-api-provider-row" });
