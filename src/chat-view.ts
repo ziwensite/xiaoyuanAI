@@ -6,7 +6,7 @@ import {
   FileDiff,
   Attachment,
 } from "./types";
-import { VIEW_TYPE_XIAOYUAN_AI_CHAT, getActiveProvider, OPERATIONS, OPERATION_LABELS, OPERATION_ICONS } from "./constants";
+import { VIEW_TYPE_XIAOYUAN_AI_CHAT, getActiveProvider } from "./constants";
 import { callAIWithHTTPStreaming, callAISession, getVaultBasePath, ensureOpenCodeServer, syncMCPServers } from "./ai";
 import { estimateTokens } from "./utils";
 import { fetchOpenCodeModelsFromCLI } from "./opencode-config";
@@ -352,6 +352,26 @@ export class XiaoyuanAIChatView extends ItemView {
         }
       }, { direction: "up" });
     });
+
+    const tplBtn = container.createSpan({ cls: "xiaoyuan-wiki-btn" });
+    setIcon(tplBtn, "sparkles");
+    setTooltip(tplBtn, "AI 工具");
+    tplBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      showPopup(tplBtn, (popup) => {
+        const templates = s.promptTemplates || [];
+        if (templates.length === 0) {
+          popup.createDiv({ cls: "xy-popup-item", text: "未配置模板，请在设置中创建" });
+          return;
+        }
+        for (const tpl of templates) {
+          addPopupItem(popup, `${tpl.name} — ${tpl.description}`, false, () => {
+            this.inputEl.value = `/template:${tpl.name} `;
+            this.inputEl.focus();
+          });
+        }
+      }, { direction: "up" });
+    });
   }
 
   async syncCLIModels() {
@@ -592,13 +612,13 @@ private async truncateMessagesIfNeeded(): Promise<void> {
 
   private showAIToolsForContent(content: string, e: MouseEvent) {
     const menu = new Menu();
-    OPERATIONS.forEach((op) => {
+    for (const tpl of this.plugin.settings.promptTemplates) {
       menu.addItem((item) => {
-        item.setTitle(OPERATION_LABELS[op]);
-        item.setIcon(OPERATION_ICONS[op]);
-        item.onClick(() => new TextOperationModal(this.app, this.plugin, op, content).open());
+        item.setTitle(tpl.name);
+        item.setIcon(tpl.icon);
+        item.onClick(() => new TextOperationModal(this.app, this.plugin, tpl.id, content).open());
       });
-    });
+    }
     menu.showAtMouseEvent(e);
   }
 

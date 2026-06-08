@@ -2,57 +2,30 @@ import { describe, it, expect } from "vitest";
 import {
   DEFAULT_SETTINGS,
   DEFAULT_OPENCODE_SETTINGS,
-  OPERATIONS,
-  OPERATION_PROMPTS,
-  OPERATION_LABELS,
-  OPERATION_ICONS,
+  DEFAULT_PROMPT_TEMPLATES,
   CHAT_SESSIONS_KEY,
   CURRENT_SESSION_KEY,
   VIEW_TYPE_XIAOYUAN_AI_CHAT,
 } from "../src/constants";
-import type { Operation } from "../src/types";
 
 describe("constants integrity", () => {
-  it("OPERATIONS contains all defined operations", () => {
-    const expected: Operation[] = ["polish", "summarize", "complete", "expand", "translate", "continue"];
-    expect([...OPERATIONS].sort()).toEqual([...expected].sort());
+  it("DEFAULT_PROMPT_TEMPLATES has all 6 built-in templates", () => {
+    expect(DEFAULT_PROMPT_TEMPLATES).toHaveLength(6);
+    const ids = DEFAULT_PROMPT_TEMPLATES.map(t => t.id);
+    expect(ids).toContain("polish");
+    expect(ids).toContain("summarize");
+    expect(ids).toContain("complete");
+    expect(ids).toContain("expand");
+    expect(ids).toContain("translate");
+    expect(ids).toContain("continue");
   });
 
-  it("OPERATION_PROMPTS covers all operations", () => {
-    for (const op of OPERATIONS) {
-      expect(OPERATION_PROMPTS[op]).toBeDefined();
-      expect(OPERATION_PROMPTS[op]).toBeTruthy();
-    }
-  });
-
-  it("OPERATION_LABELS covers all operations", () => {
-    for (const op of OPERATIONS) {
-      expect(OPERATION_LABELS[op]).toBeDefined();
-      expect(OPERATION_LABELS[op]).toBeTruthy();
-    }
-  });
-
-  it("OPERATION_ICONS covers all operations", () => {
-    for (const op of OPERATIONS) {
-      expect(OPERATION_ICONS[op]).toBeDefined();
-      expect(OPERATION_ICONS[op]).toBeTruthy();
-    }
-  });
-
-  it("OPERATIONS, PROMPTS, LABELS, ICONS have matching keys", () => {
-    const promptKeys = Object.keys(OPERATION_PROMPTS).sort();
-    const labelKeys = Object.keys(OPERATION_LABELS).sort();
-    const iconKeys = Object.keys(OPERATION_ICONS).sort();
-    const opKeys = [...OPERATIONS].sort();
-
-    expect(promptKeys).toEqual(opKeys);
-    expect(labelKeys).toEqual(opKeys);
-    expect(iconKeys).toEqual(opKeys);
-  });
-
-  it("no operation maps to empty prompt", () => {
-    for (const op of OPERATIONS) {
-      expect(OPERATION_PROMPTS[op].length).toBeGreaterThan(10);
+  it("all built-in templates have non-empty fields", () => {
+    for (const tpl of DEFAULT_PROMPT_TEMPLATES) {
+      expect(tpl.name).toBeTruthy();
+      expect(tpl.description).toBeTruthy();
+      expect(tpl.prompt.length).toBeGreaterThan(10);
+      expect(tpl.icon).toBeTruthy();
     }
   });
 
@@ -72,6 +45,8 @@ describe("constants integrity", () => {
     expect(DEFAULT_SETTINGS.apiProviders.length).toBeGreaterThanOrEqual(1);
     expect(DEFAULT_SETTINGS.mcpServers).toBeInstanceOf(Array);
     expect(DEFAULT_SETTINGS.skills).toBeInstanceOf(Array);
+    expect(DEFAULT_SETTINGS.promptTemplates).toBeInstanceOf(Array);
+    expect(DEFAULT_SETTINGS.promptTemplates.length).toBeGreaterThanOrEqual(6);
     expect(DEFAULT_SETTINGS.maxTokens).toBeGreaterThan(0);
     expect(DEFAULT_SETTINGS.temperature).toBeGreaterThanOrEqual(0);
     expect(DEFAULT_SETTINGS.chatHistoryPath).toBeTruthy();

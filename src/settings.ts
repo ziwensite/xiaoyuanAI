@@ -1,7 +1,7 @@
 import { App, PluginSettingTab, Setting, Notice, setIcon, TFile } from "obsidian";
 import type XiaoyuanAIPlugin from "./main";
 import { XiaoyuanAIChatView } from "./chat-view";
-import { VIEW_TYPE_XIAOYUAN_AI_CHAT, getActiveProvider } from "./constants";
+import { VIEW_TYPE_XIAOYUAN_AI_CHAT, getActiveProvider, DEFAULT_PROMPT_TEMPLATES } from "./constants";
 import type { XiaoyuanAISettings, ApiProviderConfig, ReasoningEffort, ReasoningEffortAPI, PermissionMode } from "./types";
 import { showPopup, addPopupItem } from "./popup";
 import { checkConnection } from "./connection-checker";
@@ -838,17 +838,20 @@ ${text}
   private buildPromptsTab(container: HTMLElement) {
     const s = this.s();
     const templates = s.promptTemplates || [];
+    const builtinIds = ["polish", "summarize", "complete", "expand", "translate", "continue"];
 
     container.createEl("p", { cls: "xy-settings-desc", text: "管理 Prompt 模板。模板可在聊天/弹窗中快速选用，自动将提示词注入对话。" });
 
     for (let i = 0; i < templates.length; i++) {
       const tpl = templates[i];
+      const builtin = builtinIds.includes(tpl.id);
       const card = container.createDiv({ cls: "xy-api-provider-row" });
 
       const head = card.createDiv({ cls: "xy-api-provider-head" });
       const title = head.createDiv({ cls: "xy-api-provider-title" });
       const nameSpan = title.createSpan({ text: tpl.name });
       title.createEl("small", { text: ` · ${tpl.description}` });
+      if (builtin) title.createEl("small", { text: " · 默认", cls: "xy-mcp-disabled" });
 
       const updateHeader = () => {
         nameSpan.textContent = tpl.name || "未命名";
@@ -878,26 +881,41 @@ ${text}
 
       const promptField = content.createDiv({ cls: "xy-api-provider-field" });
       promptField.createSpan({ cls: "xy-api-provider-label", text: "提示词" });
-      const promptArea = promptField.createEl("textarea", { cls: "xy-api-provider-input", attr: { rows: "4", placeholder: "你是一个文字润色助手。请润色以下文本..." } });
+      const promptArea = promptField.createEl("textarea", { cls: "xy-api-provider-input", attr: { rows: "4", placeholder: "留空则使用默认提示词" } });
       promptArea.value = tpl.prompt;
       promptArea.addEventListener("change", async () => {
         tpl.prompt = promptArea.value.trim();
         await this.plugin.saveSettings();
       });
 
-      const enabledField = content.createDiv({ cls: "xy-api-provider-field" });
-      const deleteBtn = enabledField.createEl("button", { cls: "xy-status-btn", text: "删除" });
-      deleteBtn.addEventListener("click", async () => {
-        s.promptTemplates.splice(i, 1);
-        await this.plugin.saveSettings();
-        this.display();
-      });
+      const btnField = content.createDiv({ cls: "xy-api-provider-field" });
+      if (builtin) {
+        const restoreBtn = btnField.createEl("button", { cls: "xy-status-btn", text: "恢复默认" });
+        restoreBtn.addEventListener("click", async () => {
+          const def = DEFAULT_PROMPT_TEMPLATES.find(d => d.id === tpl.id);
+          if (def) {
+            tpl.name = def.name;
+            tpl.description = def.description;
+            tpl.prompt = def.prompt;
+            tpl.icon = def.icon;
+            await this.plugin.saveSettings();
+            this.display();
+          }
+        });
+      } else {
+        const deleteBtn = btnField.createEl("button", { cls: "xy-status-btn", text: "删除" });
+        deleteBtn.addEventListener("click", async () => {
+          s.promptTemplates.splice(i, 1);
+          await this.plugin.saveSettings();
+          this.display();
+        });
+      }
     }
 
     const addBtn = container.createDiv({ cls: "xy-settings-status-actions" });
     const newBtn = addBtn.createEl("button", { cls: "xy-status-btn", text: "+ 新增模板" });
     newBtn.addEventListener("click", async () => {
-      s.promptTemplates.push({ id: "tpl-" + Date.now(), name: "新模板", description: "", prompt: "" });
+      s.promptTemplates.push({ id: "tpl-" + Date.now(), name: "新模板", description: "自定义 Prompt 模板，根据你的需求修改提示词", prompt: "请根据以下要求处理文本：\n\n", icon: "file-pen" });
       await this.plugin.saveSettings();
       this.display();
     });

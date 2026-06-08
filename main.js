@@ -39,7 +39,7 @@ function getActiveProvider(s) {
   if (s.activeApiProviderId) return s.apiProviders.find((p) => p.id === s.activeApiProviderId);
   return s.apiProviders[0];
 }
-var DEFAULT_OPENCODE_SETTINGS, DEFAULT_PROMPT_TEMPLATES, DEFAULT_SETTINGS, CHAT_SESSIONS_KEY, CURRENT_SESSION_KEY, VIEW_TYPE_XIAOYUAN_AI_CHAT, OPERATIONS, OPERATION_PROMPTS, OPERATION_ICONS, OPERATION_LABELS;
+var DEFAULT_OPENCODE_SETTINGS, DEFAULT_PROMPT_TEMPLATES, DEFAULT_SETTINGS, CHAT_SESSIONS_KEY, CURRENT_SESSION_KEY, VIEW_TYPE_XIAOYUAN_AI_CHAT;
 var init_constants = __esm({
   "src/constants.ts"() {
     "use strict";
@@ -52,12 +52,12 @@ var init_constants = __esm({
       agent: "build"
     };
     DEFAULT_PROMPT_TEMPLATES = [
-      { id: "polish", name: "\u6DA6\u8272", description: "\u6539\u8FDB\u8868\u8FBE\u3001\u8BED\u6CD5\u548C\u6D41\u7545\u5EA6", prompt: "\u4F60\u662F\u4E00\u4E2A\u6587\u5B57\u6DA6\u8272\u52A9\u624B\u3002\u8BF7\u6DA6\u8272\u4EE5\u4E0B\u6587\u672C\uFF0C\u6539\u8FDB\u8868\u8FBE\u3001\u8BED\u6CD5\u548C\u6D41\u7545\u5EA6\uFF0C\u4FDD\u6301\u539F\u610F\u4E0D\u53D8\u3002\u53EA\u8F93\u51FA\u6DA6\u8272\u540E\u7684\u7ED3\u679C\uFF0C\u4E0D\u8981\u6DFB\u52A0\u4EFB\u4F55\u89E3\u91CA\uFF1A\n\n" },
-      { id: "summarize", name: "\u603B\u7ED3", description: "\u63D0\u53D6\u5173\u952E\u8981\u70B9", prompt: "\u4F60\u662F\u4E00\u4E2A\u603B\u7ED3\u52A9\u624B\u3002\u8BF7\u5BF9\u4EE5\u4E0B\u6587\u672C\u8FDB\u884C\u7B80\u6D01\u7684\u603B\u7ED3\uFF0C\u63D0\u53D6\u5173\u952E\u8981\u70B9\u3002\u7528\u4E2D\u6587\u603B\u7ED3\uFF0C\u53EA\u8F93\u51FA\u603B\u7ED3\u5185\u5BB9\uFF1A\n\n" },
-      { id: "complete", name: "\u8865\u5168", description: "\u6839\u636E\u4E0A\u4E0B\u6587\u81EA\u7136\u8865\u5168\u5185\u5BB9", prompt: "\u4F60\u662F\u4E00\u4E2A\u5199\u4F5C\u52A9\u624B\u3002\u8BF7\u6839\u636E\u4E0A\u4E0B\u6587\uFF0C\u81EA\u7136\u5730\u8865\u5168\u4EE5\u4E0B\u5185\u5BB9\uFF0C\u4FDD\u6301\u98CE\u683C\u4E00\u81F4\uFF1A\n\n" },
-      { id: "expand", name: "\u6269\u5199", description: "\u589E\u52A0\u7EC6\u8282\u548C\u6DF1\u5EA6", prompt: "\u4F60\u662F\u4E00\u4E2A\u5199\u4F5C\u52A9\u624B\u3002\u8BF7\u6269\u5199\u4EE5\u4E0B\u5185\u5BB9\uFF0C\u589E\u52A0\u7EC6\u8282\u3001\u4F8B\u5B50\u548C\u6DF1\u5EA6\uFF0C\u4FDD\u7559\u539F\u6587\u7684\u6838\u5FC3\u89C2\u70B9\uFF1A\n\n" },
-      { id: "translate", name: "\u7FFB\u8BD1\u4E3A\u4E2D\u6587", description: "\u5C06\u6587\u672C\u7FFB\u8BD1\u6210\u4E2D\u6587", prompt: "\u4F60\u662F\u4E00\u4E2A\u7FFB\u8BD1\u52A9\u624B\u3002\u8BF7\u5C06\u4EE5\u4E0B\u6587\u672C\u7FFB\u8BD1\u6210\u4E2D\u6587\uFF0C\u4FDD\u6301\u4E13\u4E1A\u6027\u548C\u6D41\u7545\u5EA6\uFF1A\n\n" },
-      { id: "continue", name: "\u7EED\u5199", description: "\u81EA\u7136\u5730\u7EED\u5199\u5185\u5BB9", prompt: "\u4F60\u662F\u4E00\u4E2A\u5199\u4F5C\u52A9\u624B\u3002\u8BF7\u6839\u636E\u4EE5\u4E0B\u5185\u5BB9\u81EA\u7136\u5730\u7EED\u5199\uFF0C\u4FDD\u6301\u98CE\u683C\u4E00\u81F4\uFF1A\n\n" }
+      { id: "polish", name: "\u6DA6\u8272", description: "\u6539\u8FDB\u8868\u8FBE\u3001\u8BED\u6CD5\u548C\u6D41\u7545\u5EA6", prompt: "\u4F60\u662F\u4E00\u4E2A\u6587\u5B57\u6DA6\u8272\u52A9\u624B\u3002\u8BF7\u6DA6\u8272\u4EE5\u4E0B\u6587\u672C\uFF0C\u6539\u8FDB\u8868\u8FBE\u3001\u8BED\u6CD5\u548C\u6D41\u7545\u5EA6\uFF0C\u4FDD\u6301\u539F\u610F\u4E0D\u53D8\u3002\u53EA\u8F93\u51FA\u6DA6\u8272\u540E\u7684\u7ED3\u679C\uFF0C\u4E0D\u8981\u6DFB\u52A0\u4EFB\u4F55\u89E3\u91CA\uFF1A\n\n", icon: "pencil" },
+      { id: "summarize", name: "\u603B\u7ED3", description: "\u63D0\u53D6\u5173\u952E\u8981\u70B9", prompt: "\u4F60\u662F\u4E00\u4E2A\u603B\u7ED3\u52A9\u624B\u3002\u8BF7\u5BF9\u4EE5\u4E0B\u6587\u672C\u8FDB\u884C\u7B80\u6D01\u7684\u603B\u7ED3\uFF0C\u63D0\u53D6\u5173\u952E\u8981\u70B9\u3002\u7528\u4E2D\u6587\u603B\u7ED3\uFF0C\u53EA\u8F93\u51FA\u603B\u7ED3\u5185\u5BB9\uFF1A\n\n", icon: "file-text" },
+      { id: "complete", name: "\u8865\u5168", description: "\u6839\u636E\u4E0A\u4E0B\u6587\u81EA\u7136\u8865\u5168\u5185\u5BB9", prompt: "\u4F60\u662F\u4E00\u4E2A\u5199\u4F5C\u52A9\u624B\u3002\u8BF7\u6839\u636E\u4E0A\u4E0B\u6587\uFF0C\u81EA\u7136\u5730\u8865\u5168\u4EE5\u4E0B\u5185\u5BB9\uFF0C\u4FDD\u6301\u98CE\u683C\u4E00\u81F4\uFF1A\n\n", icon: "check" },
+      { id: "expand", name: "\u6269\u5199", description: "\u589E\u52A0\u7EC6\u8282\u548C\u6DF1\u5EA6", prompt: "\u4F60\u662F\u4E00\u4E2A\u5199\u4F5C\u52A9\u624B\u3002\u8BF7\u6269\u5199\u4EE5\u4E0B\u5185\u5BB9\uFF0C\u589E\u52A0\u7EC6\u8282\u3001\u4F8B\u5B50\u548C\u6DF1\u5EA6\uFF0C\u4FDD\u7559\u539F\u6587\u7684\u6838\u5FC3\u89C2\u70B9\uFF1A\n\n", icon: "maximize" },
+      { id: "translate", name: "\u7FFB\u8BD1\u4E3A\u4E2D\u6587", description: "\u5C06\u6587\u672C\u7FFB\u8BD1\u6210\u4E2D\u6587", prompt: "\u4F60\u662F\u4E00\u4E2A\u7FFB\u8BD1\u52A9\u624B\u3002\u8BF7\u5C06\u4EE5\u4E0B\u6587\u672C\u7FFB\u8BD1\u6210\u4E2D\u6587\uFF0C\u4FDD\u6301\u4E13\u4E1A\u6027\u548C\u6D41\u7545\u5EA6\uFF1A\n\n", icon: "languages" },
+      { id: "continue", name: "\u7EED\u5199", description: "\u81EA\u7136\u5730\u7EED\u5199\u5185\u5BB9", prompt: "\u4F60\u662F\u4E00\u4E2A\u5199\u4F5C\u52A9\u624B\u3002\u8BF7\u6839\u636E\u4EE5\u4E0B\u5185\u5BB9\u81EA\u7136\u5730\u7EED\u5199\uFF0C\u4FDD\u6301\u98CE\u683C\u4E00\u81F4\uFF1A\n\n", icon: "arrow-right" }
     ];
     DEFAULT_SETTINGS = {
       execMode: "cli",
@@ -89,38 +89,6 @@ var init_constants = __esm({
     CHAT_SESSIONS_KEY = "xiaoyuan-chat-sessions";
     CURRENT_SESSION_KEY = "xiaoyuan-current-session";
     VIEW_TYPE_XIAOYUAN_AI_CHAT = "xiaoyuan-chat-view";
-    OPERATIONS = [
-      "polish",
-      "summarize",
-      "complete",
-      "expand",
-      "continue",
-      "translate"
-    ];
-    OPERATION_PROMPTS = {
-      polish: "\u4F60\u662F\u4E00\u4E2A\u6587\u5B57\u6DA6\u8272\u52A9\u624B\u3002\u8BF7\u6DA6\u8272\u4EE5\u4E0B\u6587\u672C\uFF0C\u6539\u8FDB\u8868\u8FBE\u3001\u8BED\u6CD5\u548C\u6D41\u7545\u5EA6\uFF0C\u4FDD\u6301\u539F\u610F\u4E0D\u53D8\u3002\u53EA\u8F93\u51FA\u6DA6\u8272\u540E\u7684\u7ED3\u679C\uFF0C\u4E0D\u8981\u6DFB\u52A0\u4EFB\u4F55\u89E3\u91CA\uFF1A\n\n",
-      summarize: "\u4F60\u662F\u4E00\u4E2A\u603B\u7ED3\u52A9\u624B\u3002\u8BF7\u5BF9\u4EE5\u4E0B\u6587\u672C\u8FDB\u884C\u7B80\u6D01\u7684\u603B\u7ED3\uFF0C\u63D0\u53D6\u5173\u952E\u8981\u70B9\u3002\u7528\u4E2D\u6587\u603B\u7ED3\uFF0C\u53EA\u8F93\u51FA\u603B\u7ED3\u5185\u5BB9\uFF1A\n\n",
-      complete: "\u4F60\u662F\u4E00\u4E2A\u5199\u4F5C\u52A9\u624B\u3002\u8BF7\u6839\u636E\u4E0A\u4E0B\u6587\uFF0C\u81EA\u7136\u5730\u8865\u5168\u4EE5\u4E0B\u5185\u5BB9\uFF0C\u4FDD\u6301\u98CE\u683C\u4E00\u81F4\uFF1A\n\n",
-      expand: "\u4F60\u662F\u4E00\u4E2A\u5199\u4F5C\u52A9\u624B\u3002\u8BF7\u6269\u5199\u4EE5\u4E0B\u5185\u5BB9\uFF0C\u589E\u52A0\u7EC6\u8282\u3001\u4F8B\u5B50\u548C\u6DF1\u5EA6\uFF0C\u4FDD\u7559\u539F\u6587\u7684\u6838\u5FC3\u89C2\u70B9\uFF1A\n\n",
-      translate: "\u4F60\u662F\u4E00\u4E2A\u7FFB\u8BD1\u52A9\u624B\u3002\u8BF7\u5C06\u4EE5\u4E0B\u6587\u672C\u7FFB\u8BD1\u6210\u4E2D\u6587\uFF0C\u4FDD\u6301\u4E13\u4E1A\u6027\u548C\u6D41\u7545\u5EA6\uFF1A\n\n",
-      continue: "\u4F60\u662F\u4E00\u4E2A\u5199\u4F5C\u52A9\u624B\u3002\u8BF7\u6839\u636E\u4EE5\u4E0B\u5185\u5BB9\u81EA\u7136\u5730\u7EED\u5199\uFF0C\u4FDD\u6301\u98CE\u683C\u4E00\u81F4\uFF1A\n\n"
-    };
-    OPERATION_ICONS = {
-      polish: "pencil",
-      summarize: "file-text",
-      complete: "check",
-      expand: "maximize",
-      continue: "arrow-right",
-      translate: "languages"
-    };
-    OPERATION_LABELS = {
-      polish: "\u6DA6\u8272",
-      summarize: "\u603B\u7ED3",
-      complete: "\u8865\u5168",
-      expand: "\u6269\u5199",
-      translate: "\u7FFB\u8BD1\u4E3A\u4E2D\u6587",
-      continue: "\u7EED\u5199"
-    };
   }
 });
 
@@ -1124,7 +1092,6 @@ var fs4 = __toESM(require("fs/promises"));
 var fsSync = __toESM(require("fs"));
 var path4 = __toESM(require("path"));
 var import_obsidian11 = require("obsidian");
-init_constants();
 
 // src/chat-view.ts
 var import_obsidian9 = require("obsidian");
@@ -2008,19 +1975,23 @@ function makeDraggable(handle, modalEl) {
   });
 }
 var TextOperationModal = class extends import_obsidian8.Modal {
-  constructor(app, plugin, operation, inputText) {
+  constructor(app, plugin, tplId, inputText) {
     super(app);
     this.plugin = plugin;
-    this.operation = operation;
+    this.activeTplId = tplId;
     this.inputText = inputText;
+  }
+  getTpl() {
+    return this.plugin.settings.promptTemplates.find((t) => t.id === this.activeTplId);
   }
   onOpen() {
     const { contentEl, modalEl } = this;
     contentEl.empty();
     contentEl.classList.add("xiaoyuan-modal-container");
     modalEl.style.height = Math.round(window.innerHeight * 0.75) + "px";
+    const tpl = this.getTpl();
     const headerRow = contentEl.createDiv({ cls: "xiaoyuan-modal-header" });
-    this.titleEl = headerRow.createEl("h3", { text: `AI ${OPERATION_LABELS[this.operation]}` });
+    this.titleEl = headerRow.createEl("h3", { text: `AI ${(tpl == null ? void 0 : tpl.name) || "\u64CD\u4F5C"}` });
     this.modeLabel = headerRow.createSpan({ cls: "xiaoyuan-modal-mode-label" });
     this.modeLabel.textContent = this.plugin.settings.execMode === "cli" ? "CLI" : "API";
     headerRow.style.cursor = "move";
@@ -2071,11 +2042,11 @@ var TextOperationModal = class extends import_obsidian8.Modal {
         new import_obsidian8.Notice("\u672A\u914D\u7F6E Prompt \u6A21\u677F\uFF0C\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u521B\u5EFA");
         return;
       }
-      for (const tpl of templates) {
+      for (const tpl2 of templates) {
         menu.addItem((item) => {
-          item.setTitle(`\u{1F4DD} ${tpl.name}`);
+          item.setTitle(`\u{1F4DD} ${tpl2.name}`);
           item.setDisabled(false);
-          item.onClick(() => this.reprocessWithTemplate(tpl));
+          item.onClick(() => this.reprocessWithTpl(tpl2));
         });
       }
       menu.showAtMouseEvent(e);
@@ -2126,19 +2097,20 @@ var TextOperationModal = class extends import_obsidian8.Modal {
       onAITools: (text, e) => {
         if (!text.trim()) return;
         const menu = new import_obsidian8.Menu();
-        OPERATIONS.forEach((op) => {
+        const templates = this.plugin.settings.promptTemplates || [];
+        for (const tpl2 of templates) {
           menu.addItem((item) => {
-            item.setTitle(OPERATION_LABELS[op]);
-            item.setIcon(OPERATION_ICONS[op]);
+            item.setTitle(tpl2.name);
+            item.setIcon(tpl2.icon);
             item.onClick(() => {
-              this.titleEl.textContent = `AI ${OPERATION_LABELS[op]}`;
+              this.titleEl.textContent = `AI ${tpl2.name}`;
               this.contentAreaEl.textContent = text;
-              this.operation = op;
+              this.activeTplId = tpl2.id;
               this.inputText = text;
               this.processOperation();
             });
           });
-        });
+        }
         menu.showAtMouseEvent(e);
       },
       onCapture: (text) => {
@@ -2150,16 +2122,17 @@ var TextOperationModal = class extends import_obsidian8.Modal {
   }
   showAIToolsMenu(e) {
     const menu = new import_obsidian8.Menu();
-    OPERATIONS.forEach((op) => {
+    const templates = this.plugin.settings.promptTemplates || [];
+    for (const tpl of templates) {
       menu.addItem((item) => {
-        item.setTitle(OPERATION_LABELS[op]);
-        item.setIcon(OPERATION_ICONS[op]);
-        item.onClick(() => this.reprocessWith(op));
+        item.setTitle(tpl.name);
+        item.setIcon(tpl.icon);
+        item.onClick(() => this.reprocessWithTpl(tpl));
       });
-    });
+    }
     menu.showAtMouseEvent(e);
   }
-  async reprocessWith(operation) {
+  async reprocessWithTpl(tpl) {
     const fullText = this.contentAreaEl.textContent || "";
     if (!fullText.trim()) {
       new import_obsidian8.Notice("\u5185\u5BB9\u4E3A\u7A7A\uFF0C\u8BF7\u5148\u8F93\u5165\u5185\u5BB9");
@@ -2171,46 +2144,7 @@ var TextOperationModal = class extends import_obsidian8.Modal {
       textToProcess = sel.toString().trim();
     }
     if (!textToProcess) textToProcess = fullText;
-    this.titleEl.textContent = `AI ${OPERATION_LABELS[operation]}`;
-    this.contentAreaEl.textContent = "\u5DF2\u8FDE\u63A5\uFF0C\u7B49\u5F85\u54CD\u5E94...";
-    this.contentAreaEl.contentEditable = "false";
-    this.thinkingBarEl.classList.add("is-active");
-    try {
-      const s = this.plugin.settings;
-      const prompt = OPERATION_PROMPTS[operation] + textToProcess;
-      const vaultDir = getVaultBasePath();
-      const result = await callAISession({
-        prompt,
-        settings: s,
-        vaultDir,
-        onThinking: (text) => {
-          this.contentAreaEl.textContent = `\u601D\u8003\u4E2D... ${text}`;
-        },
-        onTextUpdate: (text) => {
-          this.contentAreaEl.textContent = text;
-        }
-      });
-      this.contentAreaEl.textContent = result;
-      this.contentAreaEl.contentEditable = "true";
-    } catch (err) {
-      this.contentAreaEl.textContent = `\u274C \u9519\u8BEF\uFF1A${err instanceof Error ? err.message : String(err)}`;
-    } finally {
-      this.thinkingBarEl.classList.remove("is-active");
-    }
-  }
-  async reprocessWithTemplate(tpl) {
-    const fullText = this.contentAreaEl.textContent || "";
-    if (!fullText.trim()) {
-      new import_obsidian8.Notice("\u5185\u5BB9\u4E3A\u7A7A\uFF0C\u8BF7\u5148\u8F93\u5165\u5185\u5BB9");
-      return;
-    }
-    const sel = window.getSelection();
-    let textToProcess = "";
-    if (sel && sel.rangeCount > 0 && this.contentAreaEl.contains(sel.anchorNode)) {
-      textToProcess = sel.toString().trim();
-    }
-    if (!textToProcess) textToProcess = fullText;
-    this.titleEl.textContent = `\u{1F4DD} ${tpl.name}`;
+    this.titleEl.textContent = `AI ${tpl.name}`;
     this.contentAreaEl.textContent = "\u5DF2\u8FDE\u63A5\uFF0C\u7B49\u5F85\u54CD\u5E94...";
     this.contentAreaEl.contentEditable = "false";
     this.thinkingBarEl.classList.add("is-active");
@@ -2241,7 +2175,8 @@ var TextOperationModal = class extends import_obsidian8.Modal {
     this.thinkingBarEl.classList.add("is-active");
     try {
       const s = this.plugin.settings;
-      const prompt = OPERATION_PROMPTS[this.operation] + this.inputText;
+      const tpl = s.promptTemplates.find((t) => t.id === this.activeTplId);
+      const prompt = ((tpl == null ? void 0 : tpl.prompt) || "") + this.inputText;
       const vaultDir = getVaultBasePath();
       const result = await callAISession({
         prompt,
@@ -2552,6 +2487,25 @@ var XiaoyuanAIChatView = class extends import_obsidian9.ItemView {
         }
       }, { direction: "up" });
     });
+    const tplBtn = container.createSpan({ cls: "xiaoyuan-wiki-btn" });
+    (0, import_obsidian9.setIcon)(tplBtn, "sparkles");
+    (0, import_obsidian9.setTooltip)(tplBtn, "AI \u5DE5\u5177");
+    tplBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      showPopup(tplBtn, (popup) => {
+        const templates = s.promptTemplates || [];
+        if (templates.length === 0) {
+          popup.createDiv({ cls: "xy-popup-item", text: "\u672A\u914D\u7F6E\u6A21\u677F\uFF0C\u8BF7\u5728\u8BBE\u7F6E\u4E2D\u521B\u5EFA" });
+          return;
+        }
+        for (const tpl of templates) {
+          addPopupItem(popup, `${tpl.name} \u2014 ${tpl.description}`, false, () => {
+            this.inputEl.value = `/template:${tpl.name} `;
+            this.inputEl.focus();
+          });
+        }
+      }, { direction: "up" });
+    });
   }
   async syncCLIModels() {
     const s = this.plugin.settings;
@@ -2771,13 +2725,13 @@ var XiaoyuanAIChatView = class extends import_obsidian9.ItemView {
   }
   showAIToolsForContent(content, e) {
     const menu = new import_obsidian9.Menu();
-    OPERATIONS.forEach((op) => {
+    for (const tpl of this.plugin.settings.promptTemplates) {
       menu.addItem((item) => {
-        item.setTitle(OPERATION_LABELS[op]);
-        item.setIcon(OPERATION_ICONS[op]);
-        item.onClick(() => new TextOperationModal(this.app, this.plugin, op, content).open());
+        item.setTitle(tpl.name);
+        item.setIcon(tpl.icon);
+        item.onClick(() => new TextOperationModal(this.app, this.plugin, tpl.id, content).open());
       });
-    });
+    }
     menu.showAtMouseEvent(e);
   }
   // ─── Send / AI ───────────────────────────────────────────────────
@@ -4205,14 +4159,17 @@ ${content}`,
   buildPromptsTab(container) {
     const s = this.s();
     const templates = s.promptTemplates || [];
+    const builtinIds = ["polish", "summarize", "complete", "expand", "translate", "continue"];
     container.createEl("p", { cls: "xy-settings-desc", text: "\u7BA1\u7406 Prompt \u6A21\u677F\u3002\u6A21\u677F\u53EF\u5728\u804A\u5929/\u5F39\u7A97\u4E2D\u5FEB\u901F\u9009\u7528\uFF0C\u81EA\u52A8\u5C06\u63D0\u793A\u8BCD\u6CE8\u5165\u5BF9\u8BDD\u3002" });
     for (let i = 0; i < templates.length; i++) {
       const tpl = templates[i];
+      const builtin = builtinIds.includes(tpl.id);
       const card = container.createDiv({ cls: "xy-api-provider-row" });
       const head = card.createDiv({ cls: "xy-api-provider-head" });
       const title = head.createDiv({ cls: "xy-api-provider-title" });
       const nameSpan = title.createSpan({ text: tpl.name });
       title.createEl("small", { text: ` \xB7 ${tpl.description}` });
+      if (builtin) title.createEl("small", { text: " \xB7 \u9ED8\u8BA4", cls: "xy-mcp-disabled" });
       const updateHeader = () => {
         nameSpan.textContent = tpl.name || "\u672A\u547D\u540D";
       };
@@ -4237,24 +4194,39 @@ ${content}`,
       });
       const promptField = content.createDiv({ cls: "xy-api-provider-field" });
       promptField.createSpan({ cls: "xy-api-provider-label", text: "\u63D0\u793A\u8BCD" });
-      const promptArea = promptField.createEl("textarea", { cls: "xy-api-provider-input", attr: { rows: "4", placeholder: "\u4F60\u662F\u4E00\u4E2A\u6587\u5B57\u6DA6\u8272\u52A9\u624B\u3002\u8BF7\u6DA6\u8272\u4EE5\u4E0B\u6587\u672C..." } });
+      const promptArea = promptField.createEl("textarea", { cls: "xy-api-provider-input", attr: { rows: "4", placeholder: "\u7559\u7A7A\u5219\u4F7F\u7528\u9ED8\u8BA4\u63D0\u793A\u8BCD" } });
       promptArea.value = tpl.prompt;
       promptArea.addEventListener("change", async () => {
         tpl.prompt = promptArea.value.trim();
         await this.plugin.saveSettings();
       });
-      const enabledField = content.createDiv({ cls: "xy-api-provider-field" });
-      const deleteBtn = enabledField.createEl("button", { cls: "xy-status-btn", text: "\u5220\u9664" });
-      deleteBtn.addEventListener("click", async () => {
-        s.promptTemplates.splice(i, 1);
-        await this.plugin.saveSettings();
-        this.display();
-      });
+      const btnField = content.createDiv({ cls: "xy-api-provider-field" });
+      if (builtin) {
+        const restoreBtn = btnField.createEl("button", { cls: "xy-status-btn", text: "\u6062\u590D\u9ED8\u8BA4" });
+        restoreBtn.addEventListener("click", async () => {
+          const def = DEFAULT_PROMPT_TEMPLATES.find((d) => d.id === tpl.id);
+          if (def) {
+            tpl.name = def.name;
+            tpl.description = def.description;
+            tpl.prompt = def.prompt;
+            tpl.icon = def.icon;
+            await this.plugin.saveSettings();
+            this.display();
+          }
+        });
+      } else {
+        const deleteBtn = btnField.createEl("button", { cls: "xy-status-btn", text: "\u5220\u9664" });
+        deleteBtn.addEventListener("click", async () => {
+          s.promptTemplates.splice(i, 1);
+          await this.plugin.saveSettings();
+          this.display();
+        });
+      }
     }
     const addBtn = container.createDiv({ cls: "xy-settings-status-actions" });
     const newBtn = addBtn.createEl("button", { cls: "xy-status-btn", text: "+ \u65B0\u589E\u6A21\u677F" });
     newBtn.addEventListener("click", async () => {
-      s.promptTemplates.push({ id: "tpl-" + Date.now(), name: "\u65B0\u6A21\u677F", description: "", prompt: "" });
+      s.promptTemplates.push({ id: "tpl-" + Date.now(), name: "\u65B0\u6A21\u677F", description: "\u81EA\u5B9A\u4E49 Prompt \u6A21\u677F\uFF0C\u6839\u636E\u4F60\u7684\u9700\u6C42\u4FEE\u6539\u63D0\u793A\u8BCD", prompt: "\u8BF7\u6839\u636E\u4EE5\u4E0B\u8981\u6C42\u5904\u7406\u6587\u672C\uFF1A\n\n", icon: "file-pen" });
       await this.plugin.saveSettings();
       this.display();
     });
@@ -4447,13 +4419,13 @@ var XiaoyuanAIPlugin = class extends import_obsidian11.Plugin {
           item.setTitle("\u5C0F\u5143\u5199\u4F5C");
           item.setIcon("sparkles");
           const submenu = item.setSubmenu();
-          OPERATIONS.forEach((op) => {
+          for (const tpl of this.settings.promptTemplates) {
             submenu.addItem((subItem) => {
-              subItem.setTitle(OPERATION_LABELS[op]);
-              subItem.setIcon(OPERATION_ICONS[op]);
-              subItem.onClick(() => new TextOperationModal(this.app, this, op, sel).open());
+              subItem.setTitle(tpl.name);
+              subItem.setIcon(tpl.icon);
+              subItem.onClick(() => new TextOperationModal(this.app, this, tpl.id, sel).open());
             });
-          });
+          }
         });
       })
     );
@@ -4472,16 +4444,7 @@ var XiaoyuanAIPlugin = class extends import_obsidian11.Plugin {
       },
       hotkeys: [{ modifiers: ["Ctrl", "Shift"], key: "N" }]
     });
-    OPERATIONS.forEach((op) => {
-      this.addCommand({
-        id: `xiaoyuanAI-${op}`,
-        name: `AI ${OPERATION_LABELS[op]}\u9009\u4E2D\u6587\u672C`,
-        editorCallback: (editor) => {
-          const text = editor.getSelection();
-          if (text) new TextOperationModal(this.app, this, op, text).open();
-        }
-      });
-    });
+    this.addSettingTab(new XiaoyuanAISettingTab(this.app, this));
     this.addCommand({
       id: "xiaoyuanAI-chat-with-note",
       name: "\u{1F4C4} \u7528\u5F53\u524D\u7B14\u8BB0\u5F00\u542F AI \u5BF9\u8BDD",
@@ -4584,13 +4547,13 @@ ${content.slice(0, 3e3)}`);
         const aiBtn = createActionBtn("aiTools");
         aiBtn.addEventListener("click", (ev) => {
           const menu = new import_obsidian11.Menu();
-          OPERATIONS.forEach((op) => {
+          for (const tpl of this.settings.promptTemplates) {
             menu.addItem((item) => {
-              item.setTitle(OPERATION_LABELS[op]);
-              item.setIcon(OPERATION_ICONS[op]);
-              item.onClick(() => new TextOperationModal(this.app, this, op, text).open());
+              item.setTitle(tpl.name);
+              item.setIcon(tpl.icon);
+              item.onClick(() => new TextOperationModal(this.app, this, tpl.id, text).open());
             });
-          });
+          }
           menu.showAtMouseEvent(ev);
           popup.remove();
         });

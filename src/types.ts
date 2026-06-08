@@ -86,6 +86,7 @@ export interface PromptTemplate {
   name: string;
   description: string;
   prompt: string;
+  icon: string;
 }
 
 export interface SSEPartState {
@@ -135,5 +136,3 @@ export interface XiaoyuanAISettings {
   skills: SkillEntry[];
   promptTemplates: PromptTemplate[];
 }
-
-export type Operation = "polish" | "summarize" | "complete" | "expand" | "translate" | "continue";

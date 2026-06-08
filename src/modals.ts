@@ -1,8 +1,8 @@
 import { App, Modal, Notice, Menu } from "obsidian";
 import type XiaoyuanAIPlugin from "./main";
 import { callAISession, getVaultBasePath } from "./ai";
-import { OPERATION_PROMPTS, OPERATION_LABELS, OPERATIONS, OPERATION_ICONS, VIEW_TYPE_XIAOYUAN_AI_CHAT } from "./constants";
-import type { Operation, PromptTemplate } from "./types";
+import { VIEW_TYPE_XIAOYUAN_AI_CHAT } from "./constants";
+import type { PromptTemplate } from "./types";
 import { openInEditor } from "./open-in-editor";
 import { createActionBtn } from "./action-buttons";
 import { registerSelectionListener } from "./selection-popup";
@@ -32,7 +32,7 @@ function makeDraggable(handle: HTMLElement, modalEl: HTMLElement) {
 
 export class TextOperationModal extends Modal {
   plugin: XiaoyuanAIPlugin;
-  operation: Operation;
+  activeTplId: string;
   inputText: string;
   contentAreaEl!: HTMLDivElement;
   toolsBtn!: HTMLElement;
@@ -40,11 +40,15 @@ export class TextOperationModal extends Modal {
   titleEl!: HTMLHeadingElement;
   thinkingBarEl!: HTMLDivElement;
 
-  constructor(app: App, plugin: XiaoyuanAIPlugin, operation: Operation, inputText: string) {
+  constructor(app: App, plugin: XiaoyuanAIPlugin, tplId: string, inputText: string) {
     super(app);
     this.plugin = plugin;
-    this.operation = operation;
+    this.activeTplId = tplId;
     this.inputText = inputText;
+  }
+
+  private getTpl(): PromptTemplate | undefined {
+    return this.plugin.settings.promptTemplates.find(t => t.id === this.activeTplId);
   }
 
   onOpen() {
@@ -53,8 +57,9 @@ export class TextOperationModal extends Modal {
     contentEl.classList.add("xiaoyuan-modal-container");
     modalEl.style.height = Math.round(window.innerHeight * 0.75) + 'px';
 
+    const tpl = this.getTpl();
     const headerRow = contentEl.createDiv({ cls: "xiaoyuan-modal-header" });
-    this.titleEl = headerRow.createEl("h3", { text: `AI ${OPERATION_LABELS[this.operation]}` });
+    this.titleEl = headerRow.createEl("h3", { text: `AI ${tpl?.name || "操作"}` });
     this.modeLabel = headerRow.createSpan({ cls: "xiaoyuan-modal-mode-label" });
     this.modeLabel.textContent = this.plugin.settings.execMode === "cli" ? "CLI" : "API";
     headerRow.style.cursor = "move";
@@ -113,7 +118,7 @@ export class TextOperationModal extends Modal {
         menu.addItem((item) => {
           item.setTitle(`📝 ${tpl.name}`);
           item.setDisabled(false);
-          item.onClick(() => this.reprocessWithTemplate(tpl));
+          item.onClick(() => this.reprocessWithTpl(tpl));
         });
       }
       menu.showAtMouseEvent(e);
@@ -163,19 +168,20 @@ export class TextOperationModal extends Modal {
       onAITools: (text, e) => {
         if (!text.trim()) return;
         const menu = new Menu();
-        OPERATIONS.forEach((op) => {
+        const templates = this.plugin.settings.promptTemplates || [];
+        for (const tpl of templates) {
           menu.addItem((item) => {
-            item.setTitle(OPERATION_LABELS[op]);
-            item.setIcon(OPERATION_ICONS[op]);
+            item.setTitle(tpl.name);
+            item.setIcon(tpl.icon);
             item.onClick(() => {
-              this.titleEl.textContent = `AI ${OPERATION_LABELS[op]}`;
+              this.titleEl.textContent = `AI ${tpl.name}`;
               this.contentAreaEl.textContent = text;
-              this.operation = op;
+              this.activeTplId = tpl.id;
               this.inputText = text;
               this.processOperation();
             });
           });
-        });
+        }
         menu.showAtMouseEvent(e);
       },
       onCapture: (text) => {
@@ -188,17 +194,18 @@ export class TextOperationModal extends Modal {
 
   private showAIToolsMenu(e: MouseEvent) {
     const menu = new Menu();
-    OPERATIONS.forEach((op) => {
+    const templates = this.plugin.settings.promptTemplates || [];
+    for (const tpl of templates) {
       menu.addItem((item) => {
-        item.setTitle(OPERATION_LABELS[op]);
-        item.setIcon(OPERATION_ICONS[op]);
-        item.onClick(() => this.reprocessWith(op));
+        item.setTitle(tpl.name);
+        item.setIcon(tpl.icon);
+        item.onClick(() => this.reprocessWithTpl(tpl));
       });
-    });
+    }
     menu.showAtMouseEvent(e);
   }
 
-  private async reprocessWith(operation: Operation) {
+  private async reprocessWithTpl(tpl: PromptTemplate) {
     const fullText = this.contentAreaEl.textContent || "";
     if (!fullText.trim()) { new Notice("内容为空，请先输入内容"); return; }
 
@@ -209,41 +216,7 @@ export class TextOperationModal extends Modal {
     }
     if (!textToProcess) textToProcess = fullText;
 
-    this.titleEl.textContent = `AI ${OPERATION_LABELS[operation]}`;
-    this.contentAreaEl.textContent = "已连接，等待响应...";
-    this.contentAreaEl.contentEditable = "false";
-
-    this.thinkingBarEl.classList.add("is-active");
-    try {
-      const s = this.plugin.settings;
-      const prompt = OPERATION_PROMPTS[operation] + textToProcess;
-      const vaultDir = getVaultBasePath();
-      const result = await callAISession({
-        prompt, settings: s, vaultDir,
-        onThinking: (text) => { this.contentAreaEl.textContent = `思考中... ${text}`; },
-        onTextUpdate: (text) => { this.contentAreaEl.textContent = text; },
-      });
-      this.contentAreaEl.textContent = result;
-      this.contentAreaEl.contentEditable = "true";
-    } catch (err: unknown) {
-      this.contentAreaEl.textContent = `\u274C 错误：${err instanceof Error ? err.message : String(err)}`;
-    } finally {
-      this.thinkingBarEl.classList.remove("is-active");
-    }
-  }
-
-  private async reprocessWithTemplate(tpl: PromptTemplate) {
-    const fullText = this.contentAreaEl.textContent || "";
-    if (!fullText.trim()) { new Notice("内容为空，请先输入内容"); return; }
-
-    const sel = window.getSelection();
-    let textToProcess = "";
-    if (sel && sel.rangeCount > 0 && this.contentAreaEl.contains(sel.anchorNode)) {
-      textToProcess = sel.toString().trim();
-    }
-    if (!textToProcess) textToProcess = fullText;
-
-    this.titleEl.textContent = `📝 ${tpl.name}`;
+    this.titleEl.textContent = `AI ${tpl.name}`;
     this.contentAreaEl.textContent = "已连接，等待响应...";
     this.contentAreaEl.contentEditable = "false";
 
@@ -270,7 +243,8 @@ export class TextOperationModal extends Modal {
     this.thinkingBarEl.classList.add("is-active");
     try {
       const s = this.plugin.settings;
-      const prompt = OPERATION_PROMPTS[this.operation] + this.inputText;
+      const tpl = s.promptTemplates.find(t => t.id === this.activeTplId);
+      const prompt = (tpl?.prompt || "") + this.inputText;
       const vaultDir = getVaultBasePath();
       const result = await callAISession({
         prompt, settings: s, vaultDir,

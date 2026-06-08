@@ -3,11 +3,10 @@ import * as fsSync from "fs";
 import * as path from "path";
 import { Plugin, WorkspaceLeaf, Notice, MarkdownView, Menu } from "obsidian";
 import type { XiaoyuanAISettings } from "./types";
-import { DEFAULT_SETTINGS, VIEW_TYPE_XIAOYUAN_AI_CHAT } from "./constants";
 import { XiaoyuanAIChatView } from "./chat-view";
 import { XiaoyuanAISettingTab } from "./settings";
 import { TextOperationModal } from "./modals";
-import { OPERATION_LABELS, OPERATIONS, OPERATION_ICONS } from "./constants";
+import { DEFAULT_SETTINGS, VIEW_TYPE_XIAOYUAN_AI_CHAT } from "./constants";
 import { ensureOpenCodeServer, stopOpenCodeServer, syncMCPServers } from "./ai";
 import { resolveOpenCodePath } from "./opencode-server";
 import { getVaultBasePath, setVaultBasePath } from "./server";
@@ -40,13 +39,13 @@ export default class XiaoyuanAIPlugin extends Plugin {
           item.setTitle("小元写作");
           item.setIcon("sparkles");
           const submenu = item.setSubmenu();
-          OPERATIONS.forEach((op) => {
+          for (const tpl of this.settings.promptTemplates) {
             submenu.addItem((subItem) => {
-              subItem.setTitle(OPERATION_LABELS[op]);
-              subItem.setIcon(OPERATION_ICONS[op]);
-              subItem.onClick(() => new TextOperationModal(this.app, this, op, sel).open());
+              subItem.setTitle(tpl.name);
+              subItem.setIcon(tpl.icon);
+              subItem.onClick(() => new TextOperationModal(this.app, this, tpl.id, sel).open());
             });
-          });
+          }
         });
       }),
     );
@@ -68,16 +67,7 @@ export default class XiaoyuanAIPlugin extends Plugin {
       hotkeys: [{ modifiers: ["Ctrl", "Shift"], key: "N" }],
     });
 
-    OPERATIONS.forEach((op) => {
-      this.addCommand({
-        id: `xiaoyuanAI-${op}`,
-        name: `AI ${OPERATION_LABELS[op]}选中文本`,
-        editorCallback: (editor) => {
-          const text = editor.getSelection();
-          if (text) new TextOperationModal(this.app, this, op, text).open();
-        },
-      });
-    });
+    this.addSettingTab(new XiaoyuanAISettingTab(this.app, this));
 
     this.addCommand({
       id: "xiaoyuanAI-chat-with-note", name: "\u{1F4C4} 用当前笔记开启 AI 对话",
@@ -191,13 +181,13 @@ export default class XiaoyuanAIPlugin extends Plugin {
         const aiBtn = createActionBtn("aiTools");
         aiBtn.addEventListener("click", (ev: MouseEvent) => {
           const menu = new Menu();
-          OPERATIONS.forEach((op) => {
+          for (const tpl of this.settings.promptTemplates) {
             menu.addItem((item) => {
-              item.setTitle(OPERATION_LABELS[op]);
-              item.setIcon(OPERATION_ICONS[op]);
-              item.onClick(() => new TextOperationModal(this.app, this, op, text).open());
+              item.setTitle(tpl.name);
+              item.setIcon(tpl.icon);
+              item.onClick(() => new TextOperationModal(this.app, this, tpl.id, text).open());
             });
-          });
+          }
           menu.showAtMouseEvent(ev);
           popup.remove();
         });
