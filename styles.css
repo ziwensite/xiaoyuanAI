@@ -1042,7 +1042,6 @@ pre:hover .xy-copy-btn {
   min-width: 0;
   color: var(--text-normal);
   font-size: 13px;
-  font-weight: 700;
 }
 
 .xy-api-provider-actions {
