@@ -185,7 +185,7 @@ export class XiaoyuanAIChatView extends ItemView {
   private buildHeaderContent(right: HTMLSpanElement) {
     const s = this.plugin.settings;
     this.connectionStatusEl = right.createSpan({ cls: "xiaoyuan-settings-icon" });
-    setIcon(this.connectionStatusEl, "server");
+    setIcon(this.connectionStatusEl, "activity");
     this.updateConnectionStatusUI(false);
     this.connectionStatusEl.addEventListener("click", () => {
       if (s.execMode === "cli") {
@@ -196,7 +196,7 @@ export class XiaoyuanAIChatView extends ItemView {
     });
 
     this.mcpStatusEl = right.createSpan({ cls: "xiaoyuan-settings-icon" });
-    setIcon(this.mcpStatusEl, "activity");
+    setIcon(this.mcpStatusEl, "server");
     this.updateMCPStatusUI();
     this.mcpStatusEl.addEventListener("click", (e) => {
       e.stopPropagation();

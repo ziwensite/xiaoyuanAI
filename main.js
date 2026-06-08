@@ -39,7 +39,7 @@ function getActiveProvider(s) {
   if (s.activeApiProviderId) return s.apiProviders.find((p) => p.id === s.activeApiProviderId);
   return s.apiProviders[0];
 }
-var DEFAULT_OPENCODE_SETTINGS, DEFAULT_PROMPT_TEMPLATES, DEFAULT_SETTINGS, CHAT_SESSIONS_KEY, CURRENT_SESSION_KEY, VIEW_TYPE_XIAOYUAN_AI_CHAT;
+var DEFAULT_OPENCODE_SETTINGS, MCP_PRESETS, DEFAULT_PROMPT_TEMPLATES, DEFAULT_SETTINGS, CHAT_SESSIONS_KEY, CURRENT_SESSION_KEY, VIEW_TYPE_XIAOYUAN_AI_CHAT;
 var init_constants = __esm({
   "src/constants.ts"() {
     "use strict";
@@ -51,6 +51,15 @@ var init_constants = __esm({
       model: "",
       agent: "build"
     };
+    MCP_PRESETS = [
+      { name: "\u6587\u4EF6\u7CFB\u7EDF", type: "local", command: "npx", args: "-y @modelcontextprotocol/server-filesystem \u8DEF\u5F84", url: "", headers: "", enabled: true },
+      { name: "Git", type: "local", command: "npx", args: "-y @modelcontextprotocol/server-git", url: "", headers: "", enabled: true },
+      { name: "GitHub", type: "local", command: "npx", args: "-y @modelcontextprotocol/server-github", url: "", headers: "", enabled: true },
+      { name: "Web\u641C\u7D22", type: "local", command: "npx", args: "-y @anthropic/mcp-server-web-search", url: "", headers: "", enabled: true },
+      { name: "Puppeteer", type: "local", command: "npx", args: "-y @anthropic/mcp-server-puppeteer", url: "", headers: "", enabled: true },
+      { name: "SQLite", type: "local", command: "npx", args: "-y @anthropic/mcp-server-sqlite --db \u6570\u636E\u5E93\u8DEF\u5F84", url: "", headers: "", enabled: true },
+      { name: "\u8BB0\u5FC6\u5B58\u50A8", type: "local", command: "npx", args: "-y @anthropic/mcp-server-memory", url: "", headers: "", enabled: true }
+    ];
     DEFAULT_PROMPT_TEMPLATES = [
       { id: "polish", name: "\u6DA6\u8272", description: "\u6539\u8FDB\u8868\u8FBE\u3001\u8BED\u6CD5\u548C\u6D41\u7545\u5EA6", prompt: "\u4F60\u662F\u4E00\u4E2A\u6587\u5B57\u6DA6\u8272\u52A9\u624B\u3002\u8BF7\u6DA6\u8272\u4EE5\u4E0B\u6587\u672C\uFF0C\u6539\u8FDB\u8868\u8FBE\u3001\u8BED\u6CD5\u548C\u6D41\u7545\u5EA6\uFF0C\u4FDD\u6301\u539F\u610F\u4E0D\u53D8\u3002\u53EA\u8F93\u51FA\u6DA6\u8272\u540E\u7684\u7ED3\u679C\uFF0C\u4E0D\u8981\u6DFB\u52A0\u4EFB\u4F55\u89E3\u91CA\uFF1A\n\n", icon: "pencil" },
       { id: "summarize", name: "\u603B\u7ED3", description: "\u63D0\u53D6\u5173\u952E\u8981\u70B9", prompt: "\u4F60\u662F\u4E00\u4E2A\u603B\u7ED3\u52A9\u624B\u3002\u8BF7\u5BF9\u4EE5\u4E0B\u6587\u672C\u8FDB\u884C\u7B80\u6D01\u7684\u603B\u7ED3\uFF0C\u63D0\u53D6\u5173\u952E\u8981\u70B9\u3002\u7528\u4E2D\u6587\u603B\u7ED3\uFF0C\u53EA\u8F93\u51FA\u603B\u7ED3\u5185\u5BB9\uFF1A\n\n", icon: "file-text" },
@@ -2336,7 +2345,7 @@ var XiaoyuanAIChatView = class extends import_obsidian9.ItemView {
   buildHeaderContent(right) {
     const s = this.plugin.settings;
     this.connectionStatusEl = right.createSpan({ cls: "xiaoyuan-settings-icon" });
-    (0, import_obsidian9.setIcon)(this.connectionStatusEl, "server");
+    (0, import_obsidian9.setIcon)(this.connectionStatusEl, "activity");
     this.updateConnectionStatusUI(false);
     this.connectionStatusEl.addEventListener("click", () => {
       if (s.execMode === "cli") {
@@ -2346,7 +2355,7 @@ var XiaoyuanAIChatView = class extends import_obsidian9.ItemView {
       }
     });
     this.mcpStatusEl = right.createSpan({ cls: "xiaoyuan-settings-icon" });
-    (0, import_obsidian9.setIcon)(this.mcpStatusEl, "activity");
+    (0, import_obsidian9.setIcon)(this.mcpStatusEl, "server");
     this.updateMCPStatusUI();
     this.mcpStatusEl.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -3551,7 +3560,7 @@ var XiaoyuanAISettingTab = class extends import_obsidian10.PluginSettingTab {
     var _a;
     const s = this.s();
     const card = container.createDiv({ cls: "xy-settings-status" });
-    this.addStatusRow(card, "server", "\u8FDE\u63A5\u72B6\u6001", "\u68C0\u6D4B\u4E2D...");
+    this.addStatusRow(card, "activity", "\u8FDE\u63A5\u72B6\u6001", "\u68C0\u6D4B\u4E2D...");
     this.addStatusRow(card, "box", "\u5F53\u524D\u6A21\u578B", s.execMode === "cli" ? s.opencode.model || "\u672A\u9009\u62E9" : ((_a = getActiveProvider(s)) == null ? void 0 : _a.model) || "\u672A\u9009\u62E9");
     this.addStatusRow(card, "waypoints", "\u4EE3\u7406", s.proxyEnabled ? s.proxyUrl : "\u5DF2\u5173\u95ED");
     const actions = card.createDiv({ cls: "xy-settings-status-actions" });
@@ -3584,7 +3593,7 @@ var XiaoyuanAISettingTab = class extends import_obsidian10.PluginSettingTab {
       { id: "general", icon: "settings", label: "\u901A\u7528" },
       { id: "cli", icon: "terminal-square", label: "CLI \u8BBE\u7F6E" },
       { id: "api", icon: "key-round", label: "API \u8BBE\u7F6E" },
-      { id: "mcp", icon: "blocks", label: "MCP \u5DE5\u5177" },
+      { id: "mcp", icon: "server", label: "MCP \u5DE5\u5177" },
       { id: "skills", icon: "wand-sparkles", label: "Skills" },
       { id: "prompts", icon: "file-pen", label: "Prompt \u6A21\u677F" }
     ];
@@ -4034,10 +4043,23 @@ var XiaoyuanAISettingTab = class extends import_obsidian10.PluginSettingTab {
     }
     const addBtn = container.createDiv({ cls: "xy-settings-status-actions" });
     const newBtn = addBtn.createEl("button", { cls: "xy-status-btn", text: "+ \u65B0\u589E MCP \u670D\u52A1\u5668" });
-    newBtn.addEventListener("click", async () => {
-      s.mcpServers.push({ name: "\u65B0\u670D\u52A1\u5668", type: "local", command: "", args: "", enabled: false });
-      await this.plugin.saveSettings();
-      this.display();
+    newBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      showPopup(newBtn, (popup) => {
+        for (const preset of MCP_PRESETS) {
+          addPopupItem(popup, preset.name, false, () => {
+            s.mcpServers.push({ name: preset.name, type: preset.type, command: preset.command, args: preset.args, url: preset.url, headers: preset.headers, enabled: true });
+            this.plugin.saveSettings();
+            this.display();
+          });
+        }
+        popup.createDiv({ cls: "xy-popup-separator" });
+        addPopupItem(popup, "\u270F\uFE0F \u81EA\u5B9A\u4E49\uFF08\u7A7A\u767D\uFF09", false, () => {
+          s.mcpServers.push({ name: "\u65B0\u670D\u52A1\u5668", type: "local", command: "", args: "", url: "", headers: "", enabled: true });
+          this.plugin.saveSettings();
+          this.display();
+        });
+      });
     });
     const syncBtn = addBtn.createEl("button", { cls: "xy-status-btn", text: "\u27F3 \u540C\u6B65\u5230 OpenCode" });
     syncBtn.addEventListener("click", async () => {

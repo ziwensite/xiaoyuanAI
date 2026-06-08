@@ -1,7 +1,7 @@
 import { App, PluginSettingTab, Setting, Notice, setIcon, TFile } from "obsidian";
 import type XiaoyuanAIPlugin from "./main";
 import { XiaoyuanAIChatView } from "./chat-view";
-import { VIEW_TYPE_XIAOYUAN_AI_CHAT, getActiveProvider, DEFAULT_PROMPT_TEMPLATES } from "./constants";
+import { VIEW_TYPE_XIAOYUAN_AI_CHAT, getActiveProvider, DEFAULT_PROMPT_TEMPLATES, MCP_PRESETS } from "./constants";
 import type { XiaoyuanAISettings, ApiProviderConfig, ReasoningEffort, ReasoningEffortAPI, PermissionMode } from "./types";
 import { showPopup, addPopupItem } from "./popup";
 import { checkConnection } from "./connection-checker";
@@ -105,7 +105,7 @@ private async refreshStatusCard() {
     const s = this.s();
     const card = container.createDiv({ cls: "xy-settings-status" });
 
-    this.addStatusRow(card, "server", "连接状态", "检测中...");
+    this.addStatusRow(card, "activity", "连接状态", "检测中...");
     this.addStatusRow(card, "box", "当前模型", s.execMode === "cli" ? (s.opencode.model || "未选择") : (getActiveProvider(s)?.model || "未选择"));
     this.addStatusRow(card, "waypoints", "代理", s.proxyEnabled ? s.proxyUrl : "已关闭");
 
@@ -141,7 +141,7 @@ private async refreshStatusCard() {
       { id: "general", icon: "settings", label: "通用" },
       { id: "cli", icon: "terminal-square", label: "CLI 设置" },
       { id: "api", icon: "key-round", label: "API 设置" },
-      { id: "mcp", icon: "blocks", label: "MCP 工具" },
+      { id: "mcp", icon: "server", label: "MCP 工具" },
       { id: "skills", icon: "wand-sparkles", label: "Skills" },
       { id: "prompts", icon: "file-pen", label: "Prompt 模板" },
     ];
@@ -628,10 +628,23 @@ private async refreshStatusCard() {
 
     const addBtn = container.createDiv({ cls: "xy-settings-status-actions" });
     const newBtn = addBtn.createEl("button", { cls: "xy-status-btn", text: "+ 新增 MCP 服务器" });
-    newBtn.addEventListener("click", async () => {
-      s.mcpServers.push({ name: "新服务器", type: "local", command: "", args: "", enabled: false });
-      await this.plugin.saveSettings();
-      this.display();
+    newBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      showPopup(newBtn, (popup) => {
+        for (const preset of MCP_PRESETS) {
+          addPopupItem(popup, preset.name, false, () => {
+            s.mcpServers.push({ name: preset.name, type: preset.type, command: preset.command, args: preset.args, url: preset.url, headers: preset.headers, enabled: true });
+            this.plugin.saveSettings();
+            this.display();
+          });
+        }
+        popup.createDiv({ cls: "xy-popup-separator" });
+        addPopupItem(popup, "✏️ 自定义（空白）", false, () => {
+          s.mcpServers.push({ name: "新服务器", type: "local", command: "", args: "", url: "", headers: "", enabled: true });
+          this.plugin.saveSettings();
+          this.display();
+        });
+      });
     });
 
     const syncBtn = addBtn.createEl("button", { cls: "xy-status-btn", text: "⟳ 同步到 OpenCode" });
