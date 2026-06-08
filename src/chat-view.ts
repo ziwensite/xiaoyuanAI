@@ -50,6 +50,7 @@ export class XiaoyuanAIChatView extends ItemView {
   abortController: AbortController | null = null;
   private pendingDiffs: FileDiff[] | null = null;
   private connectionStatusEl: HTMLSpanElement | null = null;
+  private mcpStatusEl!: HTMLSpanElement;
   private attachments: Attachment[] = [];
   private attachPreviewEl!: HTMLDivElement;
   private quoteText = "";
@@ -183,7 +184,8 @@ export class XiaoyuanAIChatView extends ItemView {
 
   private buildHeaderContent(right: HTMLSpanElement) {
     const s = this.plugin.settings;
-    this.connectionStatusEl = right.createSpan({ cls: "xy-status-dot" });
+    this.connectionStatusEl = right.createSpan({ cls: "xy-server-icon" });
+    setIcon(this.connectionStatusEl, "server");
     this.updateConnectionStatusUI(false);
     this.connectionStatusEl.addEventListener("click", () => {
       if (s.execMode === "cli") {
@@ -191,6 +193,32 @@ export class XiaoyuanAIChatView extends ItemView {
       } else {
         this.checkConnectionStatus();
       }
+    });
+
+    this.mcpStatusEl = right.createSpan({ cls: "xy-server-icon" });
+    setIcon(this.mcpStatusEl, "activity");
+    this.updateMCPStatusUI();
+    this.mcpStatusEl.addEventListener("click", (e) => {
+      e.stopPropagation();
+      showPopup(this.mcpStatusEl, (popup) => {
+        const servers = s.mcpServers || [];
+        if (servers.length === 0) {
+          popup.createDiv({ cls: "xy-popup-item", text: "未配置 MCP 服务器" });
+        } else {
+          for (const svr of servers) {
+            const dot = svr.enabled ? "🟢" : "⚪";
+            popup.createDiv({ cls: "xy-popup-item", text: `${dot} ${svr.name}` });
+          }
+        }
+        const sep = popup.createDiv({ cls: "xy-popup-separator" });
+        sep.style.cssText = "height:1px;background:var(--background-modifier-border);margin:4px 0;";
+        const mgmt = popup.createDiv({ cls: "xy-popup-item", text: "⚙ 管理 MCP 服务器" });
+        mgmt.addEventListener("click", () => {
+          this.app.setting.open();
+          this.app.setting.openTabById("xiaoyuanAI");
+          popup.remove();
+        });
+      });
     });
 
     const modeText = right.createSpan({ cls: "xiaoyuan-mode-selector" });
@@ -438,6 +466,7 @@ export class XiaoyuanAIChatView extends ItemView {
       }
       this.updateConnectionStatusUI(true);
       syncMCPServers(s, getVaultBasePath()).catch(() => {});
+      this.updateMCPStatusUI();
     } catch (err: unknown) {
       this.updateConnectionStatusUI(false);
       new Notice(`同步模型失败：${err instanceof Error ? err.message : String(err)}`);
@@ -452,11 +481,19 @@ export class XiaoyuanAIChatView extends ItemView {
   private updateConnectionStatusUI(ok: boolean) {
     if (!this.connectionStatusEl) return;
     const mode = this.plugin.settings.execMode;
-    this.connectionStatusEl.style.cssText = `display:inline-block;width:8px;height:8px;border-radius:50%;cursor:pointer;background:${ok ? "var(--color-green)" : "var(--color-red)"};`;
+    this.connectionStatusEl.removeClass("is-connected", "is-disconnected");
+    this.connectionStatusEl.addClass(ok ? "is-connected" : "is-disconnected");
     const tip = mode === "cli"
       ? (ok ? "opencode 可用" : "opencode 不可用")
       : (ok ? "API 连接正常" : "API 未连接");
     setTooltip(this.connectionStatusEl, tip);
+  }
+
+  private updateMCPStatusUI() {
+    const count = this.plugin.settings.mcpServers.filter(s => s.enabled).length;
+    this.mcpStatusEl.removeClass("is-connected", "is-disconnected");
+    this.mcpStatusEl.addClass(count > 0 ? "is-connected" : "is-disconnected");
+    setTooltip(this.mcpStatusEl, count > 0 ? `${count} 个 MCP 服务器已连接` : "未连接 MCP 服务器");
   }
 
   // ─── Message rendering ───────────────────────────────────────────

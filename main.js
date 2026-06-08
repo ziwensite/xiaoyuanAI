@@ -2335,7 +2335,8 @@ var XiaoyuanAIChatView = class extends import_obsidian9.ItemView {
   }
   buildHeaderContent(right) {
     const s = this.plugin.settings;
-    this.connectionStatusEl = right.createSpan({ cls: "xy-status-dot" });
+    this.connectionStatusEl = right.createSpan({ cls: "xy-server-icon" });
+    (0, import_obsidian9.setIcon)(this.connectionStatusEl, "server");
     this.updateConnectionStatusUI(false);
     this.connectionStatusEl.addEventListener("click", () => {
       if (s.execMode === "cli") {
@@ -2343,6 +2344,31 @@ var XiaoyuanAIChatView = class extends import_obsidian9.ItemView {
       } else {
         this.checkConnectionStatus();
       }
+    });
+    this.mcpStatusEl = right.createSpan({ cls: "xy-server-icon" });
+    (0, import_obsidian9.setIcon)(this.mcpStatusEl, "activity");
+    this.updateMCPStatusUI();
+    this.mcpStatusEl.addEventListener("click", (e) => {
+      e.stopPropagation();
+      showPopup(this.mcpStatusEl, (popup) => {
+        const servers = s.mcpServers || [];
+        if (servers.length === 0) {
+          popup.createDiv({ cls: "xy-popup-item", text: "\u672A\u914D\u7F6E MCP \u670D\u52A1\u5668" });
+        } else {
+          for (const svr of servers) {
+            const dot = svr.enabled ? "\u{1F7E2}" : "\u26AA";
+            popup.createDiv({ cls: "xy-popup-item", text: `${dot} ${svr.name}` });
+          }
+        }
+        const sep = popup.createDiv({ cls: "xy-popup-separator" });
+        sep.style.cssText = "height:1px;background:var(--background-modifier-border);margin:4px 0;";
+        const mgmt = popup.createDiv({ cls: "xy-popup-item", text: "\u2699 \u7BA1\u7406 MCP \u670D\u52A1\u5668" });
+        mgmt.addEventListener("click", () => {
+          this.app.setting.open();
+          this.app.setting.openTabById("xiaoyuanAI");
+          popup.remove();
+        });
+      });
     });
     const modeText = right.createSpan({ cls: "xiaoyuan-mode-selector" });
     modeText.textContent = s.execMode === "cli" ? "CLI" : "API";
@@ -2568,6 +2594,7 @@ var XiaoyuanAIChatView = class extends import_obsidian9.ItemView {
       this.updateConnectionStatusUI(true);
       syncMCPServers(s, getVaultBasePath()).catch(() => {
       });
+      this.updateMCPStatusUI();
     } catch (err) {
       this.updateConnectionStatusUI(false);
       new import_obsidian9.Notice(`\u540C\u6B65\u6A21\u578B\u5931\u8D25\uFF1A${err instanceof Error ? err.message : String(err)}`);
@@ -2580,9 +2607,16 @@ var XiaoyuanAIChatView = class extends import_obsidian9.ItemView {
   updateConnectionStatusUI(ok) {
     if (!this.connectionStatusEl) return;
     const mode = this.plugin.settings.execMode;
-    this.connectionStatusEl.style.cssText = `display:inline-block;width:8px;height:8px;border-radius:50%;cursor:pointer;background:${ok ? "var(--color-green)" : "var(--color-red)"};`;
+    this.connectionStatusEl.removeClass("is-connected", "is-disconnected");
+    this.connectionStatusEl.addClass(ok ? "is-connected" : "is-disconnected");
     const tip = mode === "cli" ? ok ? "opencode \u53EF\u7528" : "opencode \u4E0D\u53EF\u7528" : ok ? "API \u8FDE\u63A5\u6B63\u5E38" : "API \u672A\u8FDE\u63A5";
     (0, import_obsidian9.setTooltip)(this.connectionStatusEl, tip);
+  }
+  updateMCPStatusUI() {
+    const count = this.plugin.settings.mcpServers.filter((s) => s.enabled).length;
+    this.mcpStatusEl.removeClass("is-connected", "is-disconnected");
+    this.mcpStatusEl.addClass(count > 0 ? "is-connected" : "is-disconnected");
+    (0, import_obsidian9.setTooltip)(this.mcpStatusEl, count > 0 ? `${count} \u4E2A MCP \u670D\u52A1\u5668\u5DF2\u8FDE\u63A5` : "\u672A\u8FDE\u63A5 MCP \u670D\u52A1\u5668");
   }
   // ─── Message rendering ───────────────────────────────────────────
   async renderMessageEl(id, role, content, streaming = false, thinking, timestamp) {

@@ -1208,3 +1208,17 @@ pre:hover .xy-copy-btn {
   background: var(--background-modifier-hover);
   color: var(--text-normal);
 }
+
+.xy-server-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  color: var(--color-red);
+}
+
+.xy-server-icon.is-connected {
+  color: var(--color-green);
+}
