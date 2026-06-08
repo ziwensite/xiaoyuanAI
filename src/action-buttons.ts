@@ -11,6 +11,7 @@ export const ACTION_LABELS = {
   open: "在编辑器中打开",
   delete: "删除此对话",
   aiTools: "小元写作",
+  capture: "捕获",
 } as const;
 
 export type ActionType = keyof typeof ACTION_LABELS;
@@ -26,6 +27,7 @@ const ICON_MAP: Record<ActionType, string> = {
   open: "notebook-pen",
   delete: "trash-2",
   aiTools: "sparkles",
+  capture: "camera",
 };
 
 export function createActionBtn(type: ActionType): HTMLSpanElement {

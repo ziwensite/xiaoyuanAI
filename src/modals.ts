@@ -91,6 +91,16 @@ export class TextOperationModal extends Modal {
     });
     leftGroup.appendChild(openBtn);
 
+    const captureBtn = createActionBtn("capture");
+    captureBtn.addEventListener("click", () => {
+      const content = this.contentAreaEl.textContent || "";
+      navigator.clipboard.writeText(content);
+      const cmdId = this.plugin.settings.captureCommandId;
+      if (cmdId) this.app.commands.executeCommandById(cmdId);
+      new Notice("已捕获");
+    });
+    leftGroup.appendChild(captureBtn);
+
     this.toolsBtn = createActionBtn("aiTools");
     this.toolsBtn.addEventListener("click", (e) => this.showAIToolsMenu(e));
     leftGroup.appendChild(this.toolsBtn);
@@ -148,6 +158,11 @@ export class TextOperationModal extends Modal {
           });
         });
         menu.showAtMouseEvent(e);
+      },
+      onCapture: (text) => {
+        navigator.clipboard.writeText(text);
+        const cmdId = this.plugin.settings.captureCommandId;
+        if (cmdId) this.app.commands.executeCommandById(cmdId);
       },
     });
   }

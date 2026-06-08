@@ -1174,3 +1174,29 @@ pre:hover .xy-copy-btn {
   resize: vertical;
   box-sizing: border-box;
 }
+
+.xiaoyuan-wiki-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  min-height: 28px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.xiaoyuan-wiki-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  border-radius: 4px;
+  color: var(--text-muted);
+  transition: background 0.15s, color 0.15s;
+}
+
+.xiaoyuan-wiki-btn:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}

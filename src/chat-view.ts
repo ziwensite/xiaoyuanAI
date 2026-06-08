@@ -88,6 +88,11 @@ export class XiaoyuanAIChatView extends ItemView {
       onSpeak: (text) => this.speakController.start(text),
       onQuote: (text) => this.quote(text),
       onAITools: (text, e) => this.showAIToolsForContent(text, e),
+      onCapture: (text) => {
+        navigator.clipboard.writeText(text);
+        const cmdId = this.plugin.settings.captureCommandId;
+        if (cmdId) this.app.commands.executeCommandById(cmdId);
+      },
     });
     if (this.plugin.settings.execMode === "cli") {
       this.syncCLIModels();
@@ -227,6 +232,10 @@ export class XiaoyuanAIChatView extends ItemView {
 
   private buildInputArea() {
     const container = this.viewContainer.createDiv({ cls: "xiaoyuan-input-container" });
+
+    const wikiBar = container.createDiv({ cls: "xiaoyuan-wiki-bar" });
+    this.buildWikiToolbar(wikiBar);
+
     this.inputEl = container.createEl("textarea", {
       cls: "xiaoyuan-chat-input",
       attr: { placeholder: "输入你的问题..." },
@@ -304,6 +313,29 @@ export class XiaoyuanAIChatView extends ItemView {
   private buildToolbarContent(container: HTMLElement) {
     this.sendBtn = renderToolbar(container, this);
     this.setProcessingState(false);
+  }
+
+  private buildWikiToolbar(container: HTMLElement) {
+    const s = this.plugin.settings;
+    const wikiBtn = container.createSpan({ cls: "xiaoyuan-wiki-btn" });
+    setIcon(wikiBtn, "book-open");
+    setTooltip(wikiBtn, "Wiki 操作");
+    wikiBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      showPopup(wikiBtn, (popup) => {
+        const wikiSkills = s.skills.filter(sk => sk.name.toLowerCase().includes("wiki"));
+        if (wikiSkills.length === 0) {
+          popup.createDiv({ cls: "xy-popup-item", text: "未配置 Wiki Skill，请先在设置中同步" });
+          return;
+        }
+        for (const skill of wikiSkills) {
+          addPopupItem(popup, `${skill.name} — ${skill.description}`, false, () => {
+            this.inputEl.value = `/${skill.name} `;
+            this.inputEl.focus();
+          });
+        }
+      }, { direction: "up" });
+    });
   }
 
   async syncCLIModels() {
@@ -393,6 +425,11 @@ export class XiaoyuanAIChatView extends ItemView {
         quote: (text) => this.quote(text),
         onSpeak: (text) => this.speakController.start(text),
         onAITools: (c, e) => this.showAIToolsForContent(c, e),
+        onCapture: (text) => {
+          navigator.clipboard.writeText(text);
+          const cmdId = this.plugin.settings.captureCommandId;
+          if (cmdId) this.app.commands.executeCommandById(cmdId);
+        },
       });
     }
 
@@ -768,6 +805,11 @@ private addStreamingMessage(content: string, thinking?: string): string {
       quote: (text) => this.quote(text),
       onSpeak: (text) => this.speakController.start(text),
       onAITools: (c, e) => this.showAIToolsForContent(c, e),
+      onCapture: (text) => {
+        navigator.clipboard.writeText(text);
+        const cmdId = this.plugin.settings.captureCommandId;
+        if (cmdId) this.app.commands.executeCommandById(cmdId);
+      },
     });
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
     return id;

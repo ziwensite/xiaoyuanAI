@@ -120,6 +120,7 @@ export interface XiaoyuanAISettings {
   showDiffPreview: boolean;
   showThinking: boolean;
   maxAttachmentSize: number;
+  captureCommandId: string;
 
   opencodeModels?: { label: string; value: string }[];
   opencodeModelCaps?: Record<string, ModelCaps>;

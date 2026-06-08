@@ -13,6 +13,7 @@ export interface ActionBarOptions {
   quote: (text: string) => void;
   onSpeak: (text: string) => void;
   onAITools: (content: string, e: MouseEvent) => void;
+  onCapture: (text: string) => void;
 }
 
 export function buildActionBar(
@@ -44,6 +45,10 @@ export function buildActionBar(
     undoBtn.addEventListener("click", () => options.undoMessage(msgEl.id));
     actionsEl.appendChild(undoBtn);
 
+    const captureBtn = createActionBtn("capture");
+    captureBtn.addEventListener("click", () => options.onCapture(content));
+    actionsEl.appendChild(captureBtn);
+
     const aiBtn = createActionBtn("aiTools");
     aiBtn.addEventListener("click", (e) => options.onAITools(content, e));
     actionsEl.appendChild(aiBtn);
@@ -68,6 +73,10 @@ export function buildActionBar(
     const editBtn = createActionBtn("edit");
     editBtn.addEventListener("click", () => options.openInEditor(content, timestamp));
     actionsEl.appendChild(editBtn);
+
+    const captureBtn = createActionBtn("capture");
+    captureBtn.addEventListener("click", () => options.onCapture(content));
+    actionsEl.appendChild(captureBtn);
 
     const aiBtn = createActionBtn("aiTools");
     aiBtn.addEventListener("click", (e) => options.onAITools(content, e));

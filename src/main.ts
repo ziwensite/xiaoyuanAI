@@ -94,6 +94,24 @@ export default class XiaoyuanAIPlugin extends Plugin {
 
     this.addSettingTab(new XiaoyuanAISettingTab(this.app, this));
 
+    // 动态注册 wiki skill 命令
+    const wikiSkills = this.settings.skills.filter(s =>
+      s.name.toLowerCase().includes("wiki")
+    );
+    for (const skill of wikiSkills) {
+      this.addCommand({
+        id: `xiaoyuanAI-skill-${skill.name}`,
+        name: `🧩 ${skill.name} — ${skill.description}`,
+        callback: () => {
+          const leaf = this.activateChatView();
+          if (leaf?.view instanceof XiaoyuanAIChatView) {
+            leaf.view.inputEl.value = `/${skill.name} `;
+            leaf.view.inputEl.focus();
+          }
+        },
+      });
+    }
+
     if (this.settings.execMode === "cli" && this.settings.opencode.autoStart) {
       this.autoStartServer();
     }
@@ -157,6 +175,15 @@ export default class XiaoyuanAIPlugin extends Plugin {
           popup.remove();
         });
         popup.appendChild(quoteBtn);
+
+        const captureBtn = createActionBtn("capture");
+        captureBtn.addEventListener("click", () => {
+          navigator.clipboard.writeText(text);
+          const cmdId = this.settings.captureCommandId;
+          if (cmdId) this.app.commands.executeCommandById(cmdId);
+          popup.remove();
+        });
+        popup.appendChild(captureBtn);
 
         const aiBtn = createActionBtn("aiTools");
         aiBtn.addEventListener("click", (ev: MouseEvent) => {

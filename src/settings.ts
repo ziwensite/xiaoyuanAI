@@ -812,6 +812,19 @@ ${text}
         t.onChange(async (val) => { s.autoOpen = val; await this.plugin.saveSettings(); });
       }), "panel-right-open");
 
+    this.decorateSetting(new Setting(container)
+      .setName("选中捕获命令")
+      .setDesc('选中文本后点击「捕获」按钮时触发的 Obsidian 命令，选中文本会自动复制到剪贴板')
+      .addDropdown((dd) => {
+        const cmds = this.app.commands.listCommands();
+        dd.addOption("", "不执行命令（仅复制到剪贴板）");
+        for (const cmd of cmds) {
+          dd.addOption(cmd.id, `${cmd.name} (${cmd.id})`);
+        }
+        dd.setValue(s.captureCommandId);
+        dd.onChange(async (val) => { s.captureCommandId = val; await this.plugin.saveSettings(); });
+      }), "camera");
+
     container.createEl("hr");
     container.createEl("h3", { text: "聊天设置" });
 

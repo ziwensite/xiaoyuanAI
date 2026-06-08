@@ -7,6 +7,7 @@ export interface SelectionPopupConfig {
   onQuote: (text: string) => void;
   onSpeak: (text: string) => void;
   onAITools: (text: string, e: MouseEvent) => void;
+  onCapture: (text: string) => void;
 }
 
 export function registerSelectionListener(
@@ -58,6 +59,13 @@ function showSelectionPopup(text: string, x: number, y: number, config: Selectio
     removeSelectionPopup();
   });
   popup.appendChild(quoteBtn);
+
+  const captureBtn = createActionBtn("capture");
+  captureBtn.addEventListener("click", () => {
+    config.onCapture(text);
+    removeSelectionPopup();
+  });
+  popup.appendChild(captureBtn);
 
   const aiBtn = createActionBtn("aiTools");
   aiBtn.addEventListener("click", (e) => {

@@ -6,6 +6,10 @@ declare module "obsidian" {
       open(): void;
       openTabById(id: string): void;
     };
+    commands: {
+      executeCommandById(id: string): void;
+      listCommands(): { id: string; name: string }[];
+    };
   }
 
   interface MenuItem {

@@ -36,6 +36,7 @@ export const DEFAULT_SETTINGS: XiaoyuanAISettings = {
   showDiffPreview: true,
   showThinking: true,
   maxAttachmentSize: 10,
+  captureCommandId: "",
   skills: [],
 };
 
