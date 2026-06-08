@@ -2,7 +2,7 @@ import { App, Modal, Notice, Menu } from "obsidian";
 import type XiaoyuanAIPlugin from "./main";
 import { callAISession, getVaultBasePath } from "./ai";
 import { OPERATION_PROMPTS, OPERATION_LABELS, OPERATIONS, OPERATION_ICONS, VIEW_TYPE_XIAOYUAN_AI_CHAT } from "./constants";
-import type { Operation } from "./types";
+import type { Operation, PromptTemplate } from "./types";
 import { openInEditor } from "./open-in-editor";
 import { createActionBtn } from "./action-buttons";
 import { registerSelectionListener } from "./selection-popup";
@@ -101,6 +101,25 @@ export class TextOperationModal extends Modal {
     });
     leftGroup.appendChild(captureBtn);
 
+    const tplBtn = createActionBtn("template");
+    tplBtn.addEventListener("click", (e) => {
+      const menu = new Menu();
+      const templates = this.plugin.settings.promptTemplates || [];
+      if (templates.length === 0) {
+        new Notice("未配置 Prompt 模板，请先在设置中创建");
+        return;
+      }
+      for (const tpl of templates) {
+        menu.addItem((item) => {
+          item.setTitle(`📝 ${tpl.name}`);
+          item.setDisabled(false);
+          item.onClick(() => this.reprocessWithTemplate(tpl));
+        });
+      }
+      menu.showAtMouseEvent(e);
+    });
+    leftGroup.appendChild(tplBtn);
+
     this.toolsBtn = createActionBtn("aiTools");
     this.toolsBtn.addEventListener("click", (e) => this.showAIToolsMenu(e));
     leftGroup.appendChild(this.toolsBtn);
@@ -198,6 +217,40 @@ export class TextOperationModal extends Modal {
     try {
       const s = this.plugin.settings;
       const prompt = OPERATION_PROMPTS[operation] + textToProcess;
+      const vaultDir = getVaultBasePath();
+      const result = await callAISession({
+        prompt, settings: s, vaultDir,
+        onThinking: (text) => { this.contentAreaEl.textContent = `思考中... ${text}`; },
+        onTextUpdate: (text) => { this.contentAreaEl.textContent = text; },
+      });
+      this.contentAreaEl.textContent = result;
+      this.contentAreaEl.contentEditable = "true";
+    } catch (err: unknown) {
+      this.contentAreaEl.textContent = `\u274C 错误：${err instanceof Error ? err.message : String(err)}`;
+    } finally {
+      this.thinkingBarEl.classList.remove("is-active");
+    }
+  }
+
+  private async reprocessWithTemplate(tpl: PromptTemplate) {
+    const fullText = this.contentAreaEl.textContent || "";
+    if (!fullText.trim()) { new Notice("内容为空，请先输入内容"); return; }
+
+    const sel = window.getSelection();
+    let textToProcess = "";
+    if (sel && sel.rangeCount > 0 && this.contentAreaEl.contains(sel.anchorNode)) {
+      textToProcess = sel.toString().trim();
+    }
+    if (!textToProcess) textToProcess = fullText;
+
+    this.titleEl.textContent = `📝 ${tpl.name}`;
+    this.contentAreaEl.textContent = "已连接，等待响应...";
+    this.contentAreaEl.contentEditable = "false";
+
+    this.thinkingBarEl.classList.add("is-active");
+    try {
+      const s = this.plugin.settings;
+      const prompt = tpl.prompt + textToProcess;
       const vaultDir = getVaultBasePath();
       const result = await callAISession({
         prompt, settings: s, vaultDir,

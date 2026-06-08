@@ -282,21 +282,38 @@ export class XiaoyuanAIChatView extends ItemView {
     const text = this.inputEl.value;
     if (!text.startsWith("/") || text.length < 2) return;
 
-    const query = text.slice(1);
-    const matched = this.plugin.settings.skills.filter((s) =>
-      s.name.toLowerCase().includes(query.toLowerCase())
+    const query = text.slice(1).toLowerCase();
+    const s = this.plugin.settings;
+
+    const matchedSkills = s.skills.filter((sk) =>
+      sk.name.toLowerCase().includes(query)
     );
-    if (matched.length === 0) return;
+    const matchedTemplates = s.promptTemplates.filter((tp) =>
+      tp.name.toLowerCase().includes(query)
+    );
+    if (matchedSkills.length === 0 && matchedTemplates.length === 0) return;
 
     const parentEl = this.inputEl.parentElement;
     if (!parentEl) return;
     const popup = parentEl.createDiv({ cls: "xy-skill-popup" });
-    for (const skill of matched) {
+
+    for (const skill of matchedSkills) {
       const item = popup.createDiv({ cls: "xy-skill-popup-item" });
-      item.createSpan({ cls: "xy-skill-popup-name", text: skill.name });
+      item.createSpan({ cls: "xy-skill-popup-name", text: `📋 ${skill.name}` });
       item.createSpan({ cls: "xy-skill-popup-desc", text: skill.description });
       item.addEventListener("click", () => {
         this.inputEl.value = "/" + skill.name + " ";
+        this.inputEl.focus();
+        popup.remove();
+      });
+    }
+
+    for (const tpl of matchedTemplates) {
+      const item = popup.createDiv({ cls: "xy-skill-popup-item" });
+      item.createSpan({ cls: "xy-skill-popup-name", text: `📝 ${tpl.name}` });
+      item.createSpan({ cls: "xy-skill-popup-desc", text: tpl.description });
+      item.addEventListener("click", () => {
+        this.inputEl.value = `/template:${tpl.name} `;
         this.inputEl.focus();
         popup.remove();
       });
@@ -604,6 +621,15 @@ private async truncateMessagesIfNeeded(): Promise<void> {
       if (skill) {
         text = skillMatch[2] || skill.description;
         text = `[Skill: ${skill.name} - ${skill.description}]\n\n${text}`;
+      }
+    }
+
+    const templateMatch = text.match(/^\/template:(\S+)\s*(.*)/);
+    if (templateMatch) {
+      const tplName = templateMatch[1];
+      const tpl = this.plugin.settings.promptTemplates.find((t) => t.name === tplName);
+      if (tpl) {
+        text = `${tpl.prompt}${templateMatch[2] || ""}`;
       }
     }
 

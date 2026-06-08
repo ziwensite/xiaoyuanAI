@@ -1,4 +1,4 @@
-import type { OpenCodeSettings, XiaoyuanAISettings, Operation, ApiProviderConfig } from "./types";
+import type { OpenCodeSettings, XiaoyuanAISettings, Operation, ApiProviderConfig, PromptTemplate } from "./types";
 
 export const DEFAULT_OPENCODE_SETTINGS: OpenCodeSettings = {
   cliPath: "opencode",
@@ -8,6 +8,15 @@ export const DEFAULT_OPENCODE_SETTINGS: OpenCodeSettings = {
   model: "",
   agent: "build",
 };
+
+export const DEFAULT_PROMPT_TEMPLATES: PromptTemplate[] = [
+  { id: "polish", name: "润色", description: "改进表达、语法和流畅度", prompt: "你是一个文字润色助手。请润色以下文本，改进表达、语法和流畅度，保持原意不变。只输出润色后的结果，不要添加任何解释：\n\n" },
+  { id: "summarize", name: "总结", description: "提取关键要点", prompt: "你是一个总结助手。请对以下文本进行简洁的总结，提取关键要点。用中文总结，只输出总结内容：\n\n" },
+  { id: "complete", name: "补全", description: "根据上下文自然补全内容", prompt: "你是一个写作助手。请根据上下文，自然地补全以下内容，保持风格一致：\n\n" },
+  { id: "expand", name: "扩写", description: "增加细节和深度", prompt: "你是一个写作助手。请扩写以下内容，增加细节、例子和深度，保留原文的核心观点：\n\n" },
+  { id: "translate", name: "翻译为中文", description: "将文本翻译成中文", prompt: "你是一个翻译助手。请将以下文本翻译成中文，保持专业性和流畅度：\n\n" },
+  { id: "continue", name: "续写", description: "自然地续写内容", prompt: "你是一个写作助手。请根据以下内容自然地续写，保持风格一致：\n\n" },
+];
 
 export const DEFAULT_SETTINGS: XiaoyuanAISettings = {
   execMode: "cli",
@@ -37,6 +46,7 @@ export const DEFAULT_SETTINGS: XiaoyuanAISettings = {
   showThinking: true,
   maxAttachmentSize: 10,
   captureCommandId: "",
+  promptTemplates: [...DEFAULT_PROMPT_TEMPLATES],
   skills: [],
 };
 
@@ -73,5 +83,5 @@ export const OPERATION_ICONS: Record<Operation, string> = {
 
 export const OPERATION_LABELS: Record<Operation, string> = {
   polish: "润色", summarize: "总结", complete: "补全",
-  expand: "扩写", translate: "翻译为中文", continue: "续写",
+  expand: "扩写", translate: "翻译为中文",   continue: "续写",
 };

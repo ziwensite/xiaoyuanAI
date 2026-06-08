@@ -6,7 +6,7 @@ import type { XiaoyuanAISettings, ApiProviderConfig, ReasoningEffort, ReasoningE
 import { showPopup, addPopupItem } from "./popup";
 import { checkConnection } from "./connection-checker";
 
-type TabId = "cli" | "api" | "general" | "mcp" | "skills";
+type TabId = "cli" | "api" | "general" | "mcp" | "skills" | "prompts";
 
 export class XiaoyuanAISettingTab extends PluginSettingTab {
   plugin: XiaoyuanAIPlugin;
@@ -143,6 +143,7 @@ private async refreshStatusCard() {
       { id: "api", icon: "key-round", label: "API 设置" },
       { id: "mcp", icon: "blocks", label: "MCP 工具" },
       { id: "skills", icon: "wand-sparkles", label: "Skills" },
+      { id: "prompts", icon: "file-pen", label: "Prompt 模板" },
     ];
     const bar = container.createDiv({ cls: "xy-settings-tabs" });
     for (const t of tabs) {
@@ -169,6 +170,7 @@ private async refreshStatusCard() {
       case "general": this.buildGeneralTab(container); break;
       case "mcp": this.buildMCPTab(container); break;
       case "skills": this.buildSkillsTab(container); break;
+      case "prompts": this.buildPromptsTab(container); break;
     }
   }
 
@@ -829,6 +831,87 @@ ${text}
         });
       }
     }
+  }
+
+  // ─── Prompt 模板 ──────────────────────────────────────────────────
+
+  private buildPromptsTab(container: HTMLElement) {
+    const s = this.s();
+    const templates = s.promptTemplates || [];
+
+    container.createEl("p", { cls: "xy-settings-desc", text: "管理 Prompt 模板。模板可在聊天/弹窗中快速选用，自动将提示词注入对话。" });
+
+    for (let i = 0; i < templates.length; i++) {
+      const tpl = templates[i];
+      const card = container.createDiv({ cls: "xy-api-provider-row" });
+
+      const head = card.createDiv({ cls: "xy-api-provider-head" });
+      const title = head.createDiv({ cls: "xy-api-provider-title" });
+      const nameSpan = title.createSpan({ text: tpl.name });
+      title.createEl("small", { text: ` · ${tpl.description}` });
+
+      const updateHeader = () => {
+        nameSpan.textContent = tpl.name || "未命名";
+      };
+
+      let collapsed = true;
+      const content = card.createDiv({ cls: "xy-api-provider-content" });
+      content.style.display = "none";
+      head.style.cursor = "pointer";
+      head.addEventListener("click", (e) => {
+        const target = e.target instanceof HTMLElement ? e.target : null;
+        if (target?.closest("button")) return;
+        collapsed = !collapsed;
+        content.style.display = collapsed ? "none" : "";
+      });
+
+      this.addPromptsFieldText(content, "名称", tpl.name, "润色", async (val) => {
+        tpl.name = val;
+        await this.plugin.saveSettings();
+        updateHeader();
+      });
+
+      this.addPromptsFieldText(content, "描述", tpl.description, "改进表达和流畅度", async (val) => {
+        tpl.description = val;
+        await this.plugin.saveSettings();
+      });
+
+      const promptField = content.createDiv({ cls: "xy-api-provider-field" });
+      promptField.createSpan({ cls: "xy-api-provider-label", text: "提示词" });
+      const promptArea = promptField.createEl("textarea", { cls: "xy-api-provider-input", attr: { rows: "4", placeholder: "你是一个文字润色助手。请润色以下文本..." } });
+      promptArea.value = tpl.prompt;
+      promptArea.addEventListener("change", async () => {
+        tpl.prompt = promptArea.value.trim();
+        await this.plugin.saveSettings();
+      });
+
+      const enabledField = content.createDiv({ cls: "xy-api-provider-field" });
+      const deleteBtn = enabledField.createEl("button", { cls: "xy-status-btn", text: "删除" });
+      deleteBtn.addEventListener("click", async () => {
+        s.promptTemplates.splice(i, 1);
+        await this.plugin.saveSettings();
+        this.display();
+      });
+    }
+
+    const addBtn = container.createDiv({ cls: "xy-settings-status-actions" });
+    const newBtn = addBtn.createEl("button", { cls: "xy-status-btn", text: "+ 新增模板" });
+    newBtn.addEventListener("click", async () => {
+      s.promptTemplates.push({ id: "tpl-" + Date.now(), name: "新模板", description: "", prompt: "" });
+      await this.plugin.saveSettings();
+      this.display();
+    });
+  }
+
+  private addPromptsFieldText(
+    container: HTMLElement, label: string, value: string,
+    placeholder: string, onChange: (val: string) => Promise<void>,
+  ) {
+    const field = container.createDiv({ cls: "xy-api-provider-field" });
+    field.createSpan({ cls: "xy-api-provider-label", text: label });
+    const input = field.createEl("input", { cls: "xy-api-provider-input", attr: { placeholder } });
+    input.value = value;
+    input.addEventListener("change", () => { void onChange(input.value); });
   }
 
   // ─── 通用设置 ─────────────────────────────────────────────────────

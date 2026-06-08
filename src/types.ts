@@ -81,6 +81,13 @@ export interface SkillEntry {
   description: string;
 }
 
+export interface PromptTemplate {
+  id: string;
+  name: string;
+  description: string;
+  prompt: string;
+}
+
 export interface SSEPartState {
   status?: string;
 }
@@ -126,6 +133,7 @@ export interface XiaoyuanAISettings {
   opencodeModelCaps?: Record<string, ModelCaps>;
   opencodeAgents?: { name: string; description?: string }[];
   skills: SkillEntry[];
+  promptTemplates: PromptTemplate[];
 }
 
 export type Operation = "polish" | "summarize" | "complete" | "expand" | "translate" | "continue";

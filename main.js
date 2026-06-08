@@ -39,7 +39,7 @@ function getActiveProvider(s) {
   if (s.activeApiProviderId) return s.apiProviders.find((p) => p.id === s.activeApiProviderId);
   return s.apiProviders[0];
 }
-var DEFAULT_OPENCODE_SETTINGS, DEFAULT_SETTINGS, CHAT_SESSIONS_KEY, CURRENT_SESSION_KEY, VIEW_TYPE_XIAOYUAN_AI_CHAT, OPERATIONS, OPERATION_PROMPTS, OPERATION_ICONS, OPERATION_LABELS;
+var DEFAULT_OPENCODE_SETTINGS, DEFAULT_PROMPT_TEMPLATES, DEFAULT_SETTINGS, CHAT_SESSIONS_KEY, CURRENT_SESSION_KEY, VIEW_TYPE_XIAOYUAN_AI_CHAT, OPERATIONS, OPERATION_PROMPTS, OPERATION_ICONS, OPERATION_LABELS;
 var init_constants = __esm({
   "src/constants.ts"() {
     "use strict";
@@ -51,6 +51,14 @@ var init_constants = __esm({
       model: "",
       agent: "build"
     };
+    DEFAULT_PROMPT_TEMPLATES = [
+      { id: "polish", name: "\u6DA6\u8272", description: "\u6539\u8FDB\u8868\u8FBE\u3001\u8BED\u6CD5\u548C\u6D41\u7545\u5EA6", prompt: "\u4F60\u662F\u4E00\u4E2A\u6587\u5B57\u6DA6\u8272\u52A9\u624B\u3002\u8BF7\u6DA6\u8272\u4EE5\u4E0B\u6587\u672C\uFF0C\u6539\u8FDB\u8868\u8FBE\u3001\u8BED\u6CD5\u548C\u6D41\u7545\u5EA6\uFF0C\u4FDD\u6301\u539F\u610F\u4E0D\u53D8\u3002\u53EA\u8F93\u51FA\u6DA6\u8272\u540E\u7684\u7ED3\u679C\uFF0C\u4E0D\u8981\u6DFB\u52A0\u4EFB\u4F55\u89E3\u91CA\uFF1A\n\n" },
+      { id: "summarize", name: "\u603B\u7ED3", description: "\u63D0\u53D6\u5173\u952E\u8981\u70B9", prompt: "\u4F60\u662F\u4E00\u4E2A\u603B\u7ED3\u52A9\u624B\u3002\u8BF7\u5BF9\u4EE5\u4E0B\u6587\u672C\u8FDB\u884C\u7B80\u6D01\u7684\u603B\u7ED3\uFF0C\u63D0\u53D6\u5173\u952E\u8981\u70B9\u3002\u7528\u4E2D\u6587\u603B\u7ED3\uFF0C\u53EA\u8F93\u51FA\u603B\u7ED3\u5185\u5BB9\uFF1A\n\n" },
+      { id: "complete", name: "\u8865\u5168", description: "\u6839\u636E\u4E0A\u4E0B\u6587\u81EA\u7136\u8865\u5168\u5185\u5BB9", prompt: "\u4F60\u662F\u4E00\u4E2A\u5199\u4F5C\u52A9\u624B\u3002\u8BF7\u6839\u636E\u4E0A\u4E0B\u6587\uFF0C\u81EA\u7136\u5730\u8865\u5168\u4EE5\u4E0B\u5185\u5BB9\uFF0C\u4FDD\u6301\u98CE\u683C\u4E00\u81F4\uFF1A\n\n" },
+      { id: "expand", name: "\u6269\u5199", description: "\u589E\u52A0\u7EC6\u8282\u548C\u6DF1\u5EA6", prompt: "\u4F60\u662F\u4E00\u4E2A\u5199\u4F5C\u52A9\u624B\u3002\u8BF7\u6269\u5199\u4EE5\u4E0B\u5185\u5BB9\uFF0C\u589E\u52A0\u7EC6\u8282\u3001\u4F8B\u5B50\u548C\u6DF1\u5EA6\uFF0C\u4FDD\u7559\u539F\u6587\u7684\u6838\u5FC3\u89C2\u70B9\uFF1A\n\n" },
+      { id: "translate", name: "\u7FFB\u8BD1\u4E3A\u4E2D\u6587", description: "\u5C06\u6587\u672C\u7FFB\u8BD1\u6210\u4E2D\u6587", prompt: "\u4F60\u662F\u4E00\u4E2A\u7FFB\u8BD1\u52A9\u624B\u3002\u8BF7\u5C06\u4EE5\u4E0B\u6587\u672C\u7FFB\u8BD1\u6210\u4E2D\u6587\uFF0C\u4FDD\u6301\u4E13\u4E1A\u6027\u548C\u6D41\u7545\u5EA6\uFF1A\n\n" },
+      { id: "continue", name: "\u7EED\u5199", description: "\u81EA\u7136\u5730\u7EED\u5199\u5185\u5BB9", prompt: "\u4F60\u662F\u4E00\u4E2A\u5199\u4F5C\u52A9\u624B\u3002\u8BF7\u6839\u636E\u4EE5\u4E0B\u5185\u5BB9\u81EA\u7136\u5730\u7EED\u5199\uFF0C\u4FDD\u6301\u98CE\u683C\u4E00\u81F4\uFF1A\n\n" }
+    ];
     DEFAULT_SETTINGS = {
       execMode: "cli",
       opencode: { ...DEFAULT_OPENCODE_SETTINGS },
@@ -75,6 +83,7 @@ var init_constants = __esm({
       showThinking: true,
       maxAttachmentSize: 10,
       captureCommandId: "",
+      promptTemplates: [...DEFAULT_PROMPT_TEMPLATES],
       skills: []
     };
     CHAT_SESSIONS_KEY = "xiaoyuan-chat-sessions";
@@ -1653,7 +1662,8 @@ var ACTION_LABELS = {
   open: "\u5728\u7F16\u8F91\u5668\u4E2D\u6253\u5F00",
   delete: "\u5220\u9664\u6B64\u5BF9\u8BDD",
   aiTools: "\u5C0F\u5143\u5199\u4F5C",
-  capture: "\u6355\u83B7"
+  capture: "\u6355\u83B7",
+  template: "\u9009\u7528\u6A21\u677F"
 };
 var ICON_MAP = {
   copy: "copy",
@@ -1666,7 +1676,8 @@ var ICON_MAP = {
   open: "notebook-pen",
   delete: "trash-2",
   aiTools: "sparkles",
-  capture: "camera"
+  capture: "camera",
+  template: "file-pen"
 };
 function createActionBtn(type) {
   const btn = document.createElement("span");
@@ -2052,6 +2063,24 @@ var TextOperationModal = class extends import_obsidian8.Modal {
       new import_obsidian8.Notice("\u5DF2\u6355\u83B7");
     });
     leftGroup.appendChild(captureBtn);
+    const tplBtn = createActionBtn("template");
+    tplBtn.addEventListener("click", (e) => {
+      const menu = new import_obsidian8.Menu();
+      const templates = this.plugin.settings.promptTemplates || [];
+      if (templates.length === 0) {
+        new import_obsidian8.Notice("\u672A\u914D\u7F6E Prompt \u6A21\u677F\uFF0C\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u521B\u5EFA");
+        return;
+      }
+      for (const tpl of templates) {
+        menu.addItem((item) => {
+          item.setTitle(`\u{1F4DD} ${tpl.name}`);
+          item.setDisabled(false);
+          item.onClick(() => this.reprocessWithTemplate(tpl));
+        });
+      }
+      menu.showAtMouseEvent(e);
+    });
+    leftGroup.appendChild(tplBtn);
     this.toolsBtn = createActionBtn("aiTools");
     this.toolsBtn.addEventListener("click", (e) => this.showAIToolsMenu(e));
     leftGroup.appendChild(this.toolsBtn);
@@ -2149,6 +2178,45 @@ var TextOperationModal = class extends import_obsidian8.Modal {
     try {
       const s = this.plugin.settings;
       const prompt = OPERATION_PROMPTS[operation] + textToProcess;
+      const vaultDir = getVaultBasePath();
+      const result = await callAISession({
+        prompt,
+        settings: s,
+        vaultDir,
+        onThinking: (text) => {
+          this.contentAreaEl.textContent = `\u601D\u8003\u4E2D... ${text}`;
+        },
+        onTextUpdate: (text) => {
+          this.contentAreaEl.textContent = text;
+        }
+      });
+      this.contentAreaEl.textContent = result;
+      this.contentAreaEl.contentEditable = "true";
+    } catch (err) {
+      this.contentAreaEl.textContent = `\u274C \u9519\u8BEF\uFF1A${err instanceof Error ? err.message : String(err)}`;
+    } finally {
+      this.thinkingBarEl.classList.remove("is-active");
+    }
+  }
+  async reprocessWithTemplate(tpl) {
+    const fullText = this.contentAreaEl.textContent || "";
+    if (!fullText.trim()) {
+      new import_obsidian8.Notice("\u5185\u5BB9\u4E3A\u7A7A\uFF0C\u8BF7\u5148\u8F93\u5165\u5185\u5BB9");
+      return;
+    }
+    const sel = window.getSelection();
+    let textToProcess = "";
+    if (sel && sel.rangeCount > 0 && this.contentAreaEl.contains(sel.anchorNode)) {
+      textToProcess = sel.toString().trim();
+    }
+    if (!textToProcess) textToProcess = fullText;
+    this.titleEl.textContent = `\u{1F4DD} ${tpl.name}`;
+    this.contentAreaEl.textContent = "\u5DF2\u8FDE\u63A5\uFF0C\u7B49\u5F85\u54CD\u5E94...";
+    this.contentAreaEl.contentEditable = "false";
+    this.thinkingBarEl.classList.add("is-active");
+    try {
+      const s = this.plugin.settings;
+      const prompt = tpl.prompt + textToProcess;
       const vaultDir = getVaultBasePath();
       const result = await callAISession({
         prompt,
@@ -2421,20 +2489,34 @@ var XiaoyuanAIChatView = class extends import_obsidian9.ItemView {
     document.querySelectorAll(".xy-skill-popup").forEach((el) => el.remove());
     const text = this.inputEl.value;
     if (!text.startsWith("/") || text.length < 2) return;
-    const query = text.slice(1);
-    const matched = this.plugin.settings.skills.filter(
-      (s) => s.name.toLowerCase().includes(query.toLowerCase())
+    const query = text.slice(1).toLowerCase();
+    const s = this.plugin.settings;
+    const matchedSkills = s.skills.filter(
+      (sk) => sk.name.toLowerCase().includes(query)
     );
-    if (matched.length === 0) return;
+    const matchedTemplates = s.promptTemplates.filter(
+      (tp) => tp.name.toLowerCase().includes(query)
+    );
+    if (matchedSkills.length === 0 && matchedTemplates.length === 0) return;
     const parentEl = this.inputEl.parentElement;
     if (!parentEl) return;
     const popup = parentEl.createDiv({ cls: "xy-skill-popup" });
-    for (const skill of matched) {
+    for (const skill of matchedSkills) {
       const item = popup.createDiv({ cls: "xy-skill-popup-item" });
-      item.createSpan({ cls: "xy-skill-popup-name", text: skill.name });
+      item.createSpan({ cls: "xy-skill-popup-name", text: `\u{1F4CB} ${skill.name}` });
       item.createSpan({ cls: "xy-skill-popup-desc", text: skill.description });
       item.addEventListener("click", () => {
         this.inputEl.value = "/" + skill.name + " ";
+        this.inputEl.focus();
+        popup.remove();
+      });
+    }
+    for (const tpl of matchedTemplates) {
+      const item = popup.createDiv({ cls: "xy-skill-popup-item" });
+      item.createSpan({ cls: "xy-skill-popup-name", text: `\u{1F4DD} ${tpl.name}` });
+      item.createSpan({ cls: "xy-skill-popup-desc", text: tpl.description });
+      item.addEventListener("click", () => {
+        this.inputEl.value = `/template:${tpl.name} `;
         this.inputEl.focus();
         popup.remove();
       });
@@ -2719,6 +2801,14 @@ ${text}`;
         text = `[Skill: ${skill.name} - ${skill.description}]
 
 ${text}`;
+      }
+    }
+    const templateMatch = text.match(/^\/template:(\S+)\s*(.*)/);
+    if (templateMatch) {
+      const tplName = templateMatch[1];
+      const tpl = this.plugin.settings.promptTemplates.find((t) => t.name === tplName);
+      if (tpl) {
+        text = `${tpl.prompt}${templateMatch[2] || ""}`;
       }
     }
     await this.addMessage("user", text);
@@ -3472,7 +3562,8 @@ var XiaoyuanAISettingTab = class extends import_obsidian10.PluginSettingTab {
       { id: "cli", icon: "terminal-square", label: "CLI \u8BBE\u7F6E" },
       { id: "api", icon: "key-round", label: "API \u8BBE\u7F6E" },
       { id: "mcp", icon: "blocks", label: "MCP \u5DE5\u5177" },
-      { id: "skills", icon: "wand-sparkles", label: "Skills" }
+      { id: "skills", icon: "wand-sparkles", label: "Skills" },
+      { id: "prompts", icon: "file-pen", label: "Prompt \u6A21\u677F" }
     ];
     const bar = container.createDiv({ cls: "xy-settings-tabs" });
     for (const t of tabs) {
@@ -3506,6 +3597,9 @@ var XiaoyuanAISettingTab = class extends import_obsidian10.PluginSettingTab {
         break;
       case "skills":
         this.buildSkillsTab(container);
+        break;
+      case "prompts":
+        this.buildPromptsTab(container);
         break;
     }
   }
@@ -4106,6 +4200,73 @@ ${content}`,
         });
       }
     }
+  }
+  // ─── Prompt 模板 ──────────────────────────────────────────────────
+  buildPromptsTab(container) {
+    const s = this.s();
+    const templates = s.promptTemplates || [];
+    container.createEl("p", { cls: "xy-settings-desc", text: "\u7BA1\u7406 Prompt \u6A21\u677F\u3002\u6A21\u677F\u53EF\u5728\u804A\u5929/\u5F39\u7A97\u4E2D\u5FEB\u901F\u9009\u7528\uFF0C\u81EA\u52A8\u5C06\u63D0\u793A\u8BCD\u6CE8\u5165\u5BF9\u8BDD\u3002" });
+    for (let i = 0; i < templates.length; i++) {
+      const tpl = templates[i];
+      const card = container.createDiv({ cls: "xy-api-provider-row" });
+      const head = card.createDiv({ cls: "xy-api-provider-head" });
+      const title = head.createDiv({ cls: "xy-api-provider-title" });
+      const nameSpan = title.createSpan({ text: tpl.name });
+      title.createEl("small", { text: ` \xB7 ${tpl.description}` });
+      const updateHeader = () => {
+        nameSpan.textContent = tpl.name || "\u672A\u547D\u540D";
+      };
+      let collapsed = true;
+      const content = card.createDiv({ cls: "xy-api-provider-content" });
+      content.style.display = "none";
+      head.style.cursor = "pointer";
+      head.addEventListener("click", (e) => {
+        const target = e.target instanceof HTMLElement ? e.target : null;
+        if (target == null ? void 0 : target.closest("button")) return;
+        collapsed = !collapsed;
+        content.style.display = collapsed ? "none" : "";
+      });
+      this.addPromptsFieldText(content, "\u540D\u79F0", tpl.name, "\u6DA6\u8272", async (val) => {
+        tpl.name = val;
+        await this.plugin.saveSettings();
+        updateHeader();
+      });
+      this.addPromptsFieldText(content, "\u63CF\u8FF0", tpl.description, "\u6539\u8FDB\u8868\u8FBE\u548C\u6D41\u7545\u5EA6", async (val) => {
+        tpl.description = val;
+        await this.plugin.saveSettings();
+      });
+      const promptField = content.createDiv({ cls: "xy-api-provider-field" });
+      promptField.createSpan({ cls: "xy-api-provider-label", text: "\u63D0\u793A\u8BCD" });
+      const promptArea = promptField.createEl("textarea", { cls: "xy-api-provider-input", attr: { rows: "4", placeholder: "\u4F60\u662F\u4E00\u4E2A\u6587\u5B57\u6DA6\u8272\u52A9\u624B\u3002\u8BF7\u6DA6\u8272\u4EE5\u4E0B\u6587\u672C..." } });
+      promptArea.value = tpl.prompt;
+      promptArea.addEventListener("change", async () => {
+        tpl.prompt = promptArea.value.trim();
+        await this.plugin.saveSettings();
+      });
+      const enabledField = content.createDiv({ cls: "xy-api-provider-field" });
+      const deleteBtn = enabledField.createEl("button", { cls: "xy-status-btn", text: "\u5220\u9664" });
+      deleteBtn.addEventListener("click", async () => {
+        s.promptTemplates.splice(i, 1);
+        await this.plugin.saveSettings();
+        this.display();
+      });
+    }
+    const addBtn = container.createDiv({ cls: "xy-settings-status-actions" });
+    const newBtn = addBtn.createEl("button", { cls: "xy-status-btn", text: "+ \u65B0\u589E\u6A21\u677F" });
+    newBtn.addEventListener("click", async () => {
+      s.promptTemplates.push({ id: "tpl-" + Date.now(), name: "\u65B0\u6A21\u677F", description: "", prompt: "" });
+      await this.plugin.saveSettings();
+      this.display();
+    });
+  }
+  addPromptsFieldText(container, label, value, placeholder, onChange) {
+    const field = container.createDiv({ cls: "xy-api-provider-field" });
+    field.createSpan({ cls: "xy-api-provider-label", text: label });
+    const input = field.createEl("input", { cls: "xy-api-provider-input", attr: { placeholder } });
+    input.value = value;
+    input.addEventListener("change", () => {
+      void onChange(input.value);
+    });
   }
   // ─── 通用设置 ─────────────────────────────────────────────────────
   buildGeneralTab(container) {
