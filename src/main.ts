@@ -6,7 +6,7 @@ import type { XiaoyuanAISettings } from "./types";
 import { XiaoyuanAIChatView } from "./chat-view";
 import { XiaoyuanAISettingTab } from "./settings";
 import { TextOperationModal } from "./modals";
-import { DEFAULT_SETTINGS, VIEW_TYPE_XIAOYUAN_AI_CHAT } from "./constants";
+import { DEFAULT_SETTINGS, VIEW_TYPE_XIAOYUAN_AI_CHAT, DEFAULT_PROMPT_TEMPLATES } from "./constants";
 import { ensureOpenCodeServer, stopOpenCodeServer, syncMCPServers } from "./ai";
 import { resolveOpenCodePath } from "./opencode-server";
 import { getVaultBasePath, setVaultBasePath } from "./server";
@@ -36,7 +36,7 @@ export default class XiaoyuanAIPlugin extends Plugin {
       this.app.workspace.on("editor-menu", (menu, editor) => {
         const sel = editor.getSelection();
         menu.addItem((item) => {
-          item.setTitle("小元写作");
+          item.setTitle("小元AI工具");
           item.setIcon("sparkles");
           const submenu = item.setSubmenu();
           for (const tpl of this.settings.promptTemplates) {
@@ -261,6 +261,17 @@ export default class XiaoyuanAIPlugin extends Plugin {
       if (p.apiKey) {
         try { p.apiKey = atob(p.apiKey); } catch { /* 明文 Key，无需解码 */ }
       }
+    }
+    // 补全缺失的内置模板
+    for (const def of DEFAULT_PROMPT_TEMPLATES) {
+      if (!this.settings.promptTemplates.some(t => t.id === def.id)) {
+        this.settings.promptTemplates.push({ ...def });
+      }
+    }
+    // 补全旧条目缺失的 icon 字段
+    for (const tpl of this.settings.promptTemplates) {
+      const def = DEFAULT_PROMPT_TEMPLATES.find(d => d.id === tpl.id);
+      if (def && !tpl.icon) tpl.icon = def.icon;
     }
   }
   async saveSettings() {

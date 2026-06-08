@@ -56,8 +56,8 @@ var init_constants = __esm({
       { id: "summarize", name: "\u603B\u7ED3", description: "\u63D0\u53D6\u5173\u952E\u8981\u70B9", prompt: "\u4F60\u662F\u4E00\u4E2A\u603B\u7ED3\u52A9\u624B\u3002\u8BF7\u5BF9\u4EE5\u4E0B\u6587\u672C\u8FDB\u884C\u7B80\u6D01\u7684\u603B\u7ED3\uFF0C\u63D0\u53D6\u5173\u952E\u8981\u70B9\u3002\u7528\u4E2D\u6587\u603B\u7ED3\uFF0C\u53EA\u8F93\u51FA\u603B\u7ED3\u5185\u5BB9\uFF1A\n\n", icon: "file-text" },
       { id: "complete", name: "\u8865\u5168", description: "\u6839\u636E\u4E0A\u4E0B\u6587\u81EA\u7136\u8865\u5168\u5185\u5BB9", prompt: "\u4F60\u662F\u4E00\u4E2A\u5199\u4F5C\u52A9\u624B\u3002\u8BF7\u6839\u636E\u4E0A\u4E0B\u6587\uFF0C\u81EA\u7136\u5730\u8865\u5168\u4EE5\u4E0B\u5185\u5BB9\uFF0C\u4FDD\u6301\u98CE\u683C\u4E00\u81F4\uFF1A\n\n", icon: "check" },
       { id: "expand", name: "\u6269\u5199", description: "\u589E\u52A0\u7EC6\u8282\u548C\u6DF1\u5EA6", prompt: "\u4F60\u662F\u4E00\u4E2A\u5199\u4F5C\u52A9\u624B\u3002\u8BF7\u6269\u5199\u4EE5\u4E0B\u5185\u5BB9\uFF0C\u589E\u52A0\u7EC6\u8282\u3001\u4F8B\u5B50\u548C\u6DF1\u5EA6\uFF0C\u4FDD\u7559\u539F\u6587\u7684\u6838\u5FC3\u89C2\u70B9\uFF1A\n\n", icon: "maximize" },
-      { id: "translate", name: "\u7FFB\u8BD1\u4E3A\u4E2D\u6587", description: "\u5C06\u6587\u672C\u7FFB\u8BD1\u6210\u4E2D\u6587", prompt: "\u4F60\u662F\u4E00\u4E2A\u7FFB\u8BD1\u52A9\u624B\u3002\u8BF7\u5C06\u4EE5\u4E0B\u6587\u672C\u7FFB\u8BD1\u6210\u4E2D\u6587\uFF0C\u4FDD\u6301\u4E13\u4E1A\u6027\u548C\u6D41\u7545\u5EA6\uFF1A\n\n", icon: "languages" },
-      { id: "continue", name: "\u7EED\u5199", description: "\u81EA\u7136\u5730\u7EED\u5199\u5185\u5BB9", prompt: "\u4F60\u662F\u4E00\u4E2A\u5199\u4F5C\u52A9\u624B\u3002\u8BF7\u6839\u636E\u4EE5\u4E0B\u5185\u5BB9\u81EA\u7136\u5730\u7EED\u5199\uFF0C\u4FDD\u6301\u98CE\u683C\u4E00\u81F4\uFF1A\n\n", icon: "arrow-right" }
+      { id: "continue", name: "\u7EED\u5199", description: "\u81EA\u7136\u5730\u7EED\u5199\u5185\u5BB9", prompt: "\u4F60\u662F\u4E00\u4E2A\u5199\u4F5C\u52A9\u624B\u3002\u8BF7\u6839\u636E\u4EE5\u4E0B\u5185\u5BB9\u81EA\u7136\u5730\u7EED\u5199\uFF0C\u4FDD\u6301\u98CE\u683C\u4E00\u81F4\uFF1A\n\n", icon: "arrow-right" },
+      { id: "translate", name: "\u7FFB\u8BD1\u4E3A\u4E2D\u6587", description: "\u5C06\u6587\u672C\u7FFB\u8BD1\u6210\u4E2D\u6587", prompt: "\u4F60\u662F\u4E00\u4E2A\u7FFB\u8BD1\u52A9\u624B\u3002\u8BF7\u5C06\u4EE5\u4E0B\u6587\u672C\u7FFB\u8BD1\u6210\u4E2D\u6587\uFF0C\u4FDD\u6301\u4E13\u4E1A\u6027\u548C\u6D41\u7545\u5EA6\uFF1A\n\n", icon: "languages" }
     ];
     DEFAULT_SETTINGS = {
       execMode: "cli",
@@ -1628,7 +1628,7 @@ var ACTION_LABELS = {
   rename: "\u91CD\u547D\u540D",
   open: "\u5728\u7F16\u8F91\u5668\u4E2D\u6253\u5F00",
   delete: "\u5220\u9664\u6B64\u5BF9\u8BDD",
-  aiTools: "\u5C0F\u5143\u5199\u4F5C",
+  aiTools: "\u5C0F\u5143AI\u5DE5\u5177",
   capture: "\u6355\u83B7",
   template: "\u9009\u7528\u6A21\u677F"
 };
@@ -2489,7 +2489,7 @@ var XiaoyuanAIChatView = class extends import_obsidian9.ItemView {
     });
     const tplBtn = container.createSpan({ cls: "xiaoyuan-wiki-btn" });
     (0, import_obsidian9.setIcon)(tplBtn, "sparkles");
-    (0, import_obsidian9.setTooltip)(tplBtn, "AI \u5DE5\u5177");
+    (0, import_obsidian9.setTooltip)(tplBtn, "\u5C0F\u5143AI\u5DE5\u5177");
     tplBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       showPopup(tplBtn, (popup) => {
@@ -4416,7 +4416,7 @@ var XiaoyuanAIPlugin = class extends import_obsidian11.Plugin {
       this.app.workspace.on("editor-menu", (menu, editor) => {
         const sel = editor.getSelection();
         menu.addItem((item) => {
-          item.setTitle("\u5C0F\u5143\u5199\u4F5C");
+          item.setTitle("\u5C0F\u5143AI\u5DE5\u5177");
           item.setIcon("sparkles");
           const submenu = item.setSubmenu();
           for (const tpl of this.settings.promptTemplates) {
@@ -4631,6 +4631,15 @@ ${content.slice(0, 3e3)}`);
         } catch (e) {
         }
       }
+    }
+    for (const def of DEFAULT_PROMPT_TEMPLATES) {
+      if (!this.settings.promptTemplates.some((t) => t.id === def.id)) {
+        this.settings.promptTemplates.push({ ...def });
+      }
+    }
+    for (const tpl of this.settings.promptTemplates) {
+      const def = DEFAULT_PROMPT_TEMPLATES.find((d) => d.id === tpl.id);
+      if (def && !tpl.icon) tpl.icon = def.icon;
     }
   }
   async saveSettings() {

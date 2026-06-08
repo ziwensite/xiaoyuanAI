@@ -1015,8 +1015,8 @@ pre:hover .xy-copy-btn {
 /* API Provider Cards */
 .xy-api-provider-row {
   display: grid;
-  gap: 8px;
-  padding: 10px;
+  gap: 14px;
+  padding: 14px;
   margin-bottom: 10px;
   border: 1px solid var(--background-modifier-border);
   border-radius: 7px;

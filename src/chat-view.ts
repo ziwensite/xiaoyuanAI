@@ -355,7 +355,7 @@ export class XiaoyuanAIChatView extends ItemView {
 
     const tplBtn = container.createSpan({ cls: "xiaoyuan-wiki-btn" });
     setIcon(tplBtn, "sparkles");
-    setTooltip(tplBtn, "AI 工具");
+    setTooltip(tplBtn, "小元AI工具");
     tplBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       showPopup(tplBtn, (popup) => {

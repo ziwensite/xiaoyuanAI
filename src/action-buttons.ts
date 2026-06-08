@@ -10,7 +10,7 @@ export const ACTION_LABELS = {
   rename: "重命名",
   open: "在编辑器中打开",
   delete: "删除此对话",
-  aiTools: "小元写作",
+  aiTools: "小元AI工具",
   capture: "捕获",
   template: "选用模板",
 } as const;
