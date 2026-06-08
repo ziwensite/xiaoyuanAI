@@ -95,13 +95,10 @@ export default class XiaoyuanAIPlugin extends Plugin {
     this.addSettingTab(new XiaoyuanAISettingTab(this.app, this));
 
     // 动态注册 wiki skill 命令
-    const wikiSkills = this.settings.skills.filter(s =>
-      s.name.toLowerCase().includes("wiki")
-    );
-    for (const skill of wikiSkills) {
+    for (const skill of this.settings.skills) {
       this.addCommand({
         id: `xiaoyuanAI-skill-${skill.name}`,
-        name: `🧩 ${skill.name} — ${skill.description}`,
+        name: `📖 ${skill.name} — ${skill.description}`,
         callback: () => {
           const leaf = this.activateChatView();
           if (leaf?.view instanceof XiaoyuanAIChatView) {

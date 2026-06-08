@@ -323,12 +323,11 @@ export class XiaoyuanAIChatView extends ItemView {
     wikiBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       showPopup(wikiBtn, (popup) => {
-        const wikiSkills = s.skills.filter(sk => sk.name.toLowerCase().includes("wiki"));
-        if (wikiSkills.length === 0) {
-          popup.createDiv({ cls: "xy-popup-item", text: "未配置 Wiki Skill，请先在设置中同步" });
+        if (s.skills.length === 0) {
+          popup.createDiv({ cls: "xy-popup-item", text: "未配置 Skill，请先在设置中同步" });
           return;
         }
-        for (const skill of wikiSkills) {
+        for (const skill of s.skills) {
           addPopupItem(popup, `${skill.name} — ${skill.description}`, false, () => {
             this.inputEl.value = `/${skill.name} `;
             this.inputEl.focus();

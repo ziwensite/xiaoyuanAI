@@ -2445,12 +2445,11 @@ var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
     wikiBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       showPopup(wikiBtn, (popup) => {
-        const wikiSkills = s.skills.filter((sk) => sk.name.toLowerCase().includes("wiki"));
-        if (wikiSkills.length === 0) {
-          popup.createDiv({ cls: "xy-popup-item", text: "\u672A\u914D\u7F6E Wiki Skill\uFF0C\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u540C\u6B65" });
+        if (s.skills.length === 0) {
+          popup.createDiv({ cls: "xy-popup-item", text: "\u672A\u914D\u7F6E Skill\uFF0C\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u540C\u6B65" });
           return;
         }
-        for (const skill of wikiSkills) {
+        for (const skill of s.skills) {
           addPopupItem(popup, `${skill.name} \u2014 ${skill.description}`, false, () => {
             this.inputEl.value = `/${skill.name} `;
             this.inputEl.focus();
@@ -4279,13 +4278,10 @@ ${content.slice(0, 3e3)}`);
       }
     });
     this.addSettingTab(new XiaoyuanAISettingTab(this.app, this));
-    const wikiSkills = this.settings.skills.filter(
-      (s) => s.name.toLowerCase().includes("wiki")
-    );
-    for (const skill of wikiSkills) {
+    for (const skill of this.settings.skills) {
       this.addCommand({
         id: `xiaoyuanAI-skill-${skill.name}`,
-        name: `\u{1F9E9} ${skill.name} \u2014 ${skill.description}`,
+        name: `\u{1F4D6} ${skill.name} \u2014 ${skill.description}`,
         callback: () => {
           const leaf = this.activateChatView();
           if ((leaf == null ? void 0 : leaf.view) instanceof XiaoyuanAIChatView) {
