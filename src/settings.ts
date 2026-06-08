@@ -511,6 +511,30 @@ private async refreshStatusCard() {
       };
 
       const headActions = head.createDiv({ cls: "xy-api-provider-actions" });
+      const testBtn = headActions.createEl("button", { cls: "xy-status-btn", text: "测试" });
+      testBtn.addEventListener("click", async () => {
+        testBtn.textContent = "测试中...";
+        testBtn.disabled = true;
+        try {
+          const { spawnWithTimeout } = await import("./opencode-server");
+          if (server.type === "local") {
+            const cmd = (server.command || "").split(/\s+/)[0];
+            if (!cmd) { new Notice("请先填写命令"); return; }
+            await spawnWithTimeout(cmd, ["--version"], (await import("./server")).getVaultBasePath(), 5000);
+            new Notice(`✅ ${server.name}：命令可用`);
+          } else {
+            if (!server.url) { new Notice("请先填写 URL"); return; }
+            const resp = await fetch(server.url, { method: "HEAD", signal: AbortSignal.timeout(5000) });
+            new Notice(resp.ok ? `✅ ${server.name}：连接成功` : `❌ ${server.name}：状态码 ${resp.status}`);
+          }
+        } catch (err: unknown) {
+          new Notice(`❌ ${server.name}：${err instanceof Error ? err.message : String(err)}`);
+        } finally {
+          testBtn.textContent = "测试";
+          testBtn.disabled = false;
+        }
+      });
+
       const deleteBtn = headActions.createEl("button", { cls: "xy-status-btn", text: "删除" });
       deleteBtn.addEventListener("click", async () => {
         s.mcpServers.splice(i, 1);
@@ -606,6 +630,29 @@ private async refreshStatusCard() {
       s.mcpServers.push({ name: "新服务器", type: "local", command: "", args: "", enabled: false });
       await this.plugin.saveSettings();
       this.display();
+    });
+
+    const syncBtn = addBtn.createEl("button", { cls: "xy-status-btn", text: "⟳ 同步到 OpenCode" });
+    syncBtn.addEventListener("click", async () => {
+      const missing = s.mcpServers.filter(se => se.enabled && (
+        (se.type === "local" && !se.command) || (se.type === "remote" && !se.url)
+      ));
+      if (missing.length > 0) {
+        new Notice(`请先补全：${missing.map(se => se.name).join("、")}`);
+        return;
+      }
+      syncBtn.disabled = true;
+      syncBtn.textContent = "同步中...";
+      try {
+        const { syncMCPServers } = await import("./ai");
+        const { getVaultBasePath } = await import("./server");
+        const { resetMCPSyncDone } = await import("./ai");
+        resetMCPSyncDone();
+        await syncMCPServers(s, getVaultBasePath());
+      } finally {
+        syncBtn.disabled = false;
+        syncBtn.textContent = "⟳ 同步到 OpenCode";
+      }
     });
   }
 

@@ -4,6 +4,7 @@ import { ensureApiUrl, parseMcpHeaders, parseDiffText } from "./utils";
 import { requestOpenCode, readServerConn, connectSSE, combineSignals } from "./opencode-client";
 import { ensureOpenCodeServer } from "./opencode-server";
 import { callAIWithAPI, processAPISSEStream } from "./api-client";
+import { Notice } from "obsidian";
 
 export { stopOpenCodeServer, ensureOpenCodeServer } from "./opencode-server";
 export { fetchOpenCodeModelsFromCLI, fetchOpenCodeAgents, checkOpenCodeStatus } from "./opencode-config";
@@ -246,6 +247,9 @@ export async function syncMCPServers(
 
   const activeConn = conn;
 
+  let success = 0;
+  let fail = 0;
+
   for (const server of servers) {
     try {
       const config: McpServerConfigPayload = { type: server.type };
@@ -259,9 +263,20 @@ export async function syncMCPServers(
         }
       }
       await requestOpenCode(activeConn.url, "/mcp", "POST", { name: server.name, config }, activeConn.authHeader);
+      success++;
     } catch (err: unknown) {
+      fail++;
       console.warn(`MCP server "${server.name}" sync failed:`, err);
     }
   }
   mcpSyncDone = true;
+
+  if (success === 0 && fail === 0) return;
+  if (fail === 0) {
+    new Notice(`✅ MCP 同步完成：${success} 个服务器已注册`);
+  } else if (success === 0) {
+    new Notice(`❌ MCP 同步失败：${fail} 个服务器注册失败，请查看控制台`);
+  } else {
+    new Notice(`⚠️ MCP 同步：${success} 成功，${fail} 失败`);
+  }
 }
