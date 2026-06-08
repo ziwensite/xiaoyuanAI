@@ -1061,6 +1061,10 @@ pre:hover .xy-copy-btn {
   min-width: 0;
 }
 
+.xy-api-provider-content .xy-api-provider-field + .xy-api-provider-field {
+  margin-top: 12px;
+}
+
   .xy-mcp-disabled {
   color: var(--text-faint);
 }

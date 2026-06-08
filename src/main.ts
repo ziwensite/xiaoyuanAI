@@ -273,6 +273,13 @@ export default class XiaoyuanAIPlugin extends Plugin {
       const def = DEFAULT_PROMPT_TEMPLATES.find(d => d.id === tpl.id);
       if (def && !tpl.icon) tpl.icon = def.icon;
     }
+    // 按默认顺序排序
+    const orderMap = new Map(DEFAULT_PROMPT_TEMPLATES.map((t, i) => [t.id, i]));
+    this.settings.promptTemplates.sort((a, b) => {
+      const ai = orderMap.get(a.id) ?? 999;
+      const bi = orderMap.get(b.id) ?? 999;
+      return ai - bi;
+    });
   }
   async saveSettings() {
     const encoded = this.settings.apiProviders.map(p => ({

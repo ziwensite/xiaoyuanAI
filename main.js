@@ -4641,6 +4641,13 @@ ${content.slice(0, 3e3)}`);
       const def = DEFAULT_PROMPT_TEMPLATES.find((d) => d.id === tpl.id);
       if (def && !tpl.icon) tpl.icon = def.icon;
     }
+    const orderMap = new Map(DEFAULT_PROMPT_TEMPLATES.map((t, i) => [t.id, i]));
+    this.settings.promptTemplates.sort((a, b) => {
+      var _a, _b;
+      const ai = (_a = orderMap.get(a.id)) != null ? _a : 999;
+      const bi = (_b = orderMap.get(b.id)) != null ? _b : 999;
+      return ai - bi;
+    });
   }
   async saveSettings() {
     const encoded = this.settings.apiProviders.map((p) => ({
