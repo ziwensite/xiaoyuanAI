@@ -184,7 +184,7 @@ export class XiaoyuanAIChatView extends ItemView {
 
   private buildHeaderContent(right: HTMLSpanElement) {
     const s = this.plugin.settings;
-    this.connectionStatusEl = right.createSpan({ cls: "xy-server-icon" });
+    this.connectionStatusEl = right.createSpan({ cls: "xiaoyuan-settings-icon" });
     setIcon(this.connectionStatusEl, "server");
     this.updateConnectionStatusUI(false);
     this.connectionStatusEl.addEventListener("click", () => {
@@ -195,7 +195,7 @@ export class XiaoyuanAIChatView extends ItemView {
       }
     });
 
-    this.mcpStatusEl = right.createSpan({ cls: "xy-server-icon" });
+    this.mcpStatusEl = right.createSpan({ cls: "xiaoyuan-settings-icon" });
     setIcon(this.mcpStatusEl, "activity");
     this.updateMCPStatusUI();
     this.mcpStatusEl.addEventListener("click", (e) => {
@@ -206,13 +206,14 @@ export class XiaoyuanAIChatView extends ItemView {
           popup.createDiv({ cls: "xy-popup-item", text: "未配置 MCP 服务器" });
         } else {
           for (const svr of servers) {
-            const dot = svr.enabled ? "🟢" : "⚪";
-            popup.createDiv({ cls: "xy-popup-item", text: `${dot} ${svr.name}` });
+            const item = popup.createDiv({ cls: "xy-popup-item" });
+            item.createSpan({ cls: `xy-mcp-dot ${svr.enabled ? "is-on" : "is-off"}` });
+            item.createSpan({ text: svr.name });
           }
         }
         const sep = popup.createDiv({ cls: "xy-popup-separator" });
         sep.style.cssText = "height:1px;background:var(--background-modifier-border);margin:4px 0;";
-        const mgmt = popup.createDiv({ cls: "xy-popup-item", text: "⚙ 管理 MCP 服务器" });
+        const mgmt = popup.createDiv({ cls: "xy-popup-item", text: "MCP 设置" });
         mgmt.addEventListener("click", () => {
           this.app.setting.open();
           this.app.setting.openTabById("xiaoyuanAI");

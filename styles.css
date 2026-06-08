@@ -167,6 +167,21 @@
   background-color: var(--background-modifier-hover);
 }
 
+.xiaoyuan-settings-icon.is-connected {
+  color: var(--color-green);
+}
+
+.xy-mcp-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+.xy-mcp-dot.is-on { background: var(--color-green); }
+.xy-mcp-dot.is-off { background: var(--text-muted); }
+
 /* ═══════════════════════════════════════════════════════
    Message Bubbles
    ═══════════════════════════════════════════════════════ */
@@ -1207,18 +1222,4 @@ pre:hover .xy-copy-btn {
 .xiaoyuan-wiki-btn:hover {
   background: var(--background-modifier-hover);
   color: var(--text-normal);
-}
-
-.xy-server-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  cursor: pointer;
-  color: var(--color-red);
-}
-
-.xy-server-icon.is-connected {
-  color: var(--color-green);
 }

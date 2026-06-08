@@ -2335,7 +2335,7 @@ var XiaoyuanAIChatView = class extends import_obsidian9.ItemView {
   }
   buildHeaderContent(right) {
     const s = this.plugin.settings;
-    this.connectionStatusEl = right.createSpan({ cls: "xy-server-icon" });
+    this.connectionStatusEl = right.createSpan({ cls: "xiaoyuan-settings-icon" });
     (0, import_obsidian9.setIcon)(this.connectionStatusEl, "server");
     this.updateConnectionStatusUI(false);
     this.connectionStatusEl.addEventListener("click", () => {
@@ -2345,7 +2345,7 @@ var XiaoyuanAIChatView = class extends import_obsidian9.ItemView {
         this.checkConnectionStatus();
       }
     });
-    this.mcpStatusEl = right.createSpan({ cls: "xy-server-icon" });
+    this.mcpStatusEl = right.createSpan({ cls: "xiaoyuan-settings-icon" });
     (0, import_obsidian9.setIcon)(this.mcpStatusEl, "activity");
     this.updateMCPStatusUI();
     this.mcpStatusEl.addEventListener("click", (e) => {
@@ -2356,13 +2356,14 @@ var XiaoyuanAIChatView = class extends import_obsidian9.ItemView {
           popup.createDiv({ cls: "xy-popup-item", text: "\u672A\u914D\u7F6E MCP \u670D\u52A1\u5668" });
         } else {
           for (const svr of servers) {
-            const dot = svr.enabled ? "\u{1F7E2}" : "\u26AA";
-            popup.createDiv({ cls: "xy-popup-item", text: `${dot} ${svr.name}` });
+            const item = popup.createDiv({ cls: "xy-popup-item" });
+            item.createSpan({ cls: `xy-mcp-dot ${svr.enabled ? "is-on" : "is-off"}` });
+            item.createSpan({ text: svr.name });
           }
         }
         const sep = popup.createDiv({ cls: "xy-popup-separator" });
         sep.style.cssText = "height:1px;background:var(--background-modifier-border);margin:4px 0;";
-        const mgmt = popup.createDiv({ cls: "xy-popup-item", text: "\u2699 \u7BA1\u7406 MCP \u670D\u52A1\u5668" });
+        const mgmt = popup.createDiv({ cls: "xy-popup-item", text: "MCP \u8BBE\u7F6E" });
         mgmt.addEventListener("click", () => {
           this.app.setting.open();
           this.app.setting.openTabById("xiaoyuanAI");
