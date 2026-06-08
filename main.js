@@ -2359,16 +2359,18 @@ var XiaoyuanAIChatView = class extends import_obsidian9.ItemView {
             const item = popup.createDiv({ cls: "xy-popup-item" });
             item.createSpan({ cls: `xy-mcp-dot ${svr.enabled ? "is-on" : "is-off"}` });
             item.createSpan({ text: svr.name });
+            item.addEventListener("click", async () => {
+              svr.enabled = !svr.enabled;
+              await this.plugin.saveSettings();
+              const { resetMCPSyncDone: resetMCPSyncDone2, syncMCPServers: syncMCPServers2 } = await Promise.resolve().then(() => (init_ai(), ai_exports));
+              resetMCPSyncDone2();
+              syncMCPServers2(this.plugin.settings, getVaultBasePath()).catch(() => {
+              });
+              this.updateMCPStatusUI();
+              popup.remove();
+            });
           }
         }
-        const sep = popup.createDiv({ cls: "xy-popup-separator" });
-        sep.style.cssText = "height:1px;background:var(--background-modifier-border);margin:4px 0;";
-        const mgmt = popup.createDiv({ cls: "xy-popup-item", text: "MCP \u8BBE\u7F6E" });
-        mgmt.addEventListener("click", () => {
-          this.app.setting.open();
-          this.app.setting.openTabById("xiaoyuanAI");
-          popup.remove();
-        });
       });
     });
     const modeText = right.createSpan({ cls: "xiaoyuan-mode-selector" });
@@ -3549,7 +3551,7 @@ var XiaoyuanAISettingTab = class extends import_obsidian10.PluginSettingTab {
     var _a;
     const s = this.s();
     const card = container.createDiv({ cls: "xy-settings-status" });
-    this.addStatusRow(card, "activity", "\u8FDE\u63A5\u72B6\u6001", "\u68C0\u6D4B\u4E2D...");
+    this.addStatusRow(card, "server", "\u8FDE\u63A5\u72B6\u6001", "\u68C0\u6D4B\u4E2D...");
     this.addStatusRow(card, "box", "\u5F53\u524D\u6A21\u578B", s.execMode === "cli" ? s.opencode.model || "\u672A\u9009\u62E9" : ((_a = getActiveProvider(s)) == null ? void 0 : _a.model) || "\u672A\u9009\u62E9");
     this.addStatusRow(card, "waypoints", "\u4EE3\u7406", s.proxyEnabled ? s.proxyUrl : "\u5DF2\u5173\u95ED");
     const actions = card.createDiv({ cls: "xy-settings-status-actions" });

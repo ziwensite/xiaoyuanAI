@@ -209,16 +209,17 @@ export class XiaoyuanAIChatView extends ItemView {
             const item = popup.createDiv({ cls: "xy-popup-item" });
             item.createSpan({ cls: `xy-mcp-dot ${svr.enabled ? "is-on" : "is-off"}` });
             item.createSpan({ text: svr.name });
+            item.addEventListener("click", async () => {
+              svr.enabled = !svr.enabled;
+              await this.plugin.saveSettings();
+              const { resetMCPSyncDone, syncMCPServers } = await import("./ai");
+              resetMCPSyncDone();
+              syncMCPServers(this.plugin.settings, getVaultBasePath()).catch(() => {});
+              this.updateMCPStatusUI();
+              popup.remove();
+            });
           }
         }
-        const sep = popup.createDiv({ cls: "xy-popup-separator" });
-        sep.style.cssText = "height:1px;background:var(--background-modifier-border);margin:4px 0;";
-        const mgmt = popup.createDiv({ cls: "xy-popup-item", text: "MCP 设置" });
-        mgmt.addEventListener("click", () => {
-          this.app.setting.open();
-          this.app.setting.openTabById("xiaoyuanAI");
-          popup.remove();
-        });
       });
     });
 

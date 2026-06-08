@@ -105,7 +105,7 @@ private async refreshStatusCard() {
     const s = this.s();
     const card = container.createDiv({ cls: "xy-settings-status" });
 
-    this.addStatusRow(card, "activity", "连接状态", "检测中...");
+    this.addStatusRow(card, "server", "连接状态", "检测中...");
     this.addStatusRow(card, "box", "当前模型", s.execMode === "cli" ? (s.opencode.model || "未选择") : (getActiveProvider(s)?.model || "未选择"));
     this.addStatusRow(card, "waypoints", "代理", s.proxyEnabled ? s.proxyUrl : "已关闭");
 
