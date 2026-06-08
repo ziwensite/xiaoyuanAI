@@ -1181,7 +1181,6 @@ pre:hover .xy-copy-btn {
   gap: 4px;
   padding: 2px 10px;
   min-height: 28px;
-  border-bottom: 1px solid var(--background-modifier-border);
 }
 
 .xiaoyuan-wiki-btn {
