@@ -2423,15 +2423,12 @@ var XiaoyuanAIChatView = class extends import_obsidian9.ItemView {
   handleSkillInput() {
     document.querySelectorAll(".xy-skill-popup").forEach((el) => el.remove());
     const text = this.inputEl.value;
-    if (!text.startsWith("/") || text.length < 2) return;
+    if (!text.startsWith("/") || text.length < 1) return;
     const query = text.slice(1).toLowerCase();
     const s = this.plugin.settings;
-    const matchedSkills = s.skills.filter(
-      (sk) => sk.name.toLowerCase().includes(query)
-    );
-    const matchedTemplates = s.promptTemplates.filter(
-      (tp) => tp.name.toLowerCase().includes(query)
-    );
+    const hasQuery = query.length > 0;
+    const matchedSkills = hasQuery ? s.skills.filter((sk) => sk.name.toLowerCase().includes(query)) : s.skills;
+    const matchedTemplates = hasQuery ? s.promptTemplates.filter((tp) => tp.name.toLowerCase().includes(query)) : s.promptTemplates;
     if (matchedSkills.length === 0 && matchedTemplates.length === 0) return;
     const parentEl = this.inputEl.parentElement;
     if (!parentEl) return;
