@@ -19,11 +19,6 @@ export async function callAIWithAPI(
   return resp;
 }
 
-function ensureApiUrl(baseUrl: string): string {
-  const trimmed = baseUrl.replace(/\/+$/, "");
-  return trimmed.endsWith("/chat/completions") ? trimmed : trimmed + "/chat/completions";
-}
-
 export async function processAPISSEStream(
   resp: Response,
   onThinking?: (text: string) => void,
@@ -61,5 +56,3 @@ export async function processAPISSEStream(
   };
   return read();
 }
-
-export { ensureApiUrl };

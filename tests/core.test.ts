@@ -1,14 +1,6 @@
 import { describe, it, expect } from "vitest";
-
-// ─── estimateTokens ──────────────────────────────────────────
-
-function estimateTokens(text: string): number {
-  let tokens = 0;
-  for (const ch of text) {
-    tokens += ch.charCodeAt(0) > 127 ? 1.5 : 0.25;
-  }
-  return Math.ceil(tokens);
-}
+import { estimateTokens, parseDiffText, simpleHash, ensureApiUrl, parseMcpHeaders } from "../src/utils";
+import { getActiveProvider } from "../src/constants";
 
 describe("estimateTokens", () => {
   it("counts ASCII chars as 0.25 tokens each", () => {
@@ -25,51 +17,17 @@ describe("estimateTokens", () => {
 
   it("handles mixed content", () => {
     const t = estimateTokens("hello你好");
-    expect(t).toBe(5); // 5*0.25 + 2*1.5 = 1.25 + 3 = 4.25 → Math.ceil = 5
+    expect(t).toBe(5);
   });
 
   it("always rounds up", () => {
-    expect(estimateTokens("a")).toBe(1); // 0.25 → 1
-    expect(estimateTokens("ab")).toBe(1); // 0.5 → 1
-    expect(estimateTokens("abc")).toBe(1); // 0.75 → 1
-    expect(estimateTokens("abcd")).toBe(1); // 1.0 → 1
-    expect(estimateTokens("abcde")).toBe(2); // 1.25 → 2
+    expect(estimateTokens("a")).toBe(1);
+    expect(estimateTokens("ab")).toBe(1);
+    expect(estimateTokens("abc")).toBe(1);
+    expect(estimateTokens("abcd")).toBe(1);
+    expect(estimateTokens("abcde")).toBe(2);
   });
 });
-
-// ─── parseDiffText ───────────────────────────────────────────
-
-interface FileDiff {
-  file: string;
-  before: string;
-  after: string;
-  additions: number;
-  deletions: number;
-}
-
-function parseDiffText(text: string): FileDiff[] {
-  const result: FileDiff[] = [];
-  const blocks = text.split(/(?=^diff --git )/m);
-  for (const block of blocks) {
-    if (!block.trim()) continue;
-    const file = block.match(/^\+\+\+ b\/(.+)$/m)?.[1] || "";
-    if (!file) continue;
-    const lines = block.split("\n");
-    const startIdx = lines.findIndex(l => l.startsWith("@@"));
-    const beforeLines: string[] = [];
-    const afterLines: string[] = [];
-    for (let i = startIdx + 1; i < lines.length; i++) {
-      const l = lines[i];
-      if (l.startsWith("-")) beforeLines.push(l.slice(1));
-      else if (l.startsWith("+")) afterLines.push(l.slice(1));
-      else { beforeLines.push(l); afterLines.push(l); }
-    }
-    const addCount = lines.filter(l => l.startsWith("+") && !l.startsWith("+++")).length;
-    const delCount = lines.filter(l => l.startsWith("-") && !l.startsWith("---")).length;
-    result.push({ file, before: beforeLines.join("\n"), after: afterLines.join("\n"), additions: addCount, deletions: delCount });
-  }
-  return result;
-}
 
 describe("parseDiffText", () => {
   it("parses a simple unified diff", () => {
@@ -124,17 +82,6 @@ diff --git a/b.ts b/b.ts
   });
 });
 
-// ─── simpleHash ──────────────────────────────────────────────
-
-function simpleHash(s: string): string {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) {
-    h = ((h << 5) - h) + s.charCodeAt(i);
-    h |= 0;
-  }
-  return (h >>> 0).toString(36);
-}
-
 describe("simpleHash", () => {
   it("returns consistent results for same input", () => {
     expect(simpleHash("hello")).toBe(simpleHash("hello"));
@@ -154,16 +101,9 @@ describe("simpleHash", () => {
   });
 });
 
-// ─── ensureApiUrl ────────────────────────────────────────────
-
-const BASE_URL = "https://api.openai.com/v1";
-
-function ensureApiUrl(baseUrl: string): string {
-  const trimmed = baseUrl.replace(/\/+$/, "");
-  return trimmed.endsWith("/chat/completions") ? trimmed : trimmed + "/chat/completions";
-}
-
 describe("ensureApiUrl", () => {
+  const BASE_URL = "https://api.openai.com/v1";
+
   it("appends /chat/completions when missing", () => {
     expect(ensureApiUrl(BASE_URL)).toBe(`${BASE_URL}/chat/completions`);
   });
@@ -178,28 +118,52 @@ describe("ensureApiUrl", () => {
   });
 });
 
-// ─── formatDate / formatTime (from session.ts) ───────────────
+describe("getActiveProvider", () => {
+  const providers = [
+    { id: "p1", name: "Provider 1", baseUrl: "https://api1.com/v1", model: "gpt-4", apiKey: "key1" },
+    { id: "p2", name: "Provider 2", baseUrl: "https://api2.com/v1", model: "claude-3", apiKey: "key2" },
+  ];
 
-function formatDate(ts: number): string {
-  const d = new Date(ts);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
+  it("returns the active provider by id", () => {
+    const result = getActiveProvider({ apiProviders: providers, activeApiProviderId: "p2" });
+    expect(result?.id).toBe("p2");
+  });
 
-function formatTime(ts: number): string {
-  const d = new Date(ts);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-}
+  it("returns the first provider when no activeApiProviderId", () => {
+    const result = getActiveProvider({ apiProviders: providers, activeApiProviderId: "" });
+    expect(result?.id).toBe("p1");
+  });
 
-describe("formatDate", () => {
-  it("formats a timestamp correctly", () => {
-    const d = new Date(2025, 0, 15); // Jan 15, 2025
-    expect(formatDate(d.getTime())).toBe("2025-01-15");
+  it("returns undefined when activeApiProviderId does not match", () => {
+    const result = getActiveProvider({ apiProviders: providers, activeApiProviderId: "nonexistent" });
+    expect(result).toBeUndefined();
+  });
+
+  it("returns the first provider when activeApiProviderId is undefined-like", () => {
+    const result = getActiveProvider({ apiProviders: providers, activeApiProviderId: "" });
+    expect(result?.name).toBe("Provider 1");
   });
 });
 
-describe("formatTime", () => {
-  it("includes hours and minutes", () => {
-    const d = new Date(2025, 5, 10, 14, 30);
-    expect(formatTime(d.getTime())).toContain("14:30");
+describe("parseMcpHeaders", () => {
+  it("returns empty object for empty string", () => {
+    expect(parseMcpHeaders("")).toEqual({});
+  });
+
+  it("parses valid JSON headers", () => {
+    const result = parseMcpHeaders('{"Authorization":"Bearer xxx"}');
+    expect(result).toEqual({ Authorization: "Bearer xxx" });
+  });
+
+  it("returns empty object for invalid JSON", () => {
+    expect(parseMcpHeaders("{invalid}")).toEqual({});
+  });
+
+  it("returns empty object for JSON array", () => {
+    expect(parseMcpHeaders('["a","b"]')).toEqual({});
+  });
+
+  it("returns empty object for JSON primitive", () => {
+    expect(parseMcpHeaders('"string"')).toEqual({});
   });
 });

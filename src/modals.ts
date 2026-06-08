@@ -128,7 +128,7 @@ export class TextOperationModal extends Modal {
         }
         if (leaf) this.app.workspace.revealLeaf(leaf);
         if (leaf?.view) {
-          (leaf.view as unknown as { quote: (t: string) => void }).quote(text);
+          leaf.view.quote?.(text);
         }
       },
       onAITools: (text, e) => {

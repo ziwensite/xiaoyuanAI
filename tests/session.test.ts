@@ -1,100 +1,7 @@
 import { describe, it, expect } from "vitest";
-
-interface ChatMessage {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  thinking?: string;
-  timestamp?: number;
-}
-
-interface ChatSession {
-  id: string;
-  title: string;
-  createdAt: number;
-  updatedAt: number;
-}
-
-// ─── Markdown Parsing (from session.ts) ──────────────────────
-
-function parseMarkdownToMessages(content: string): ChatMessage[] {
-  const messages: ChatMessage[] = [];
-  const parts = content.split(/\n---\n+/);
-  let idCounter = 0;
-
-  for (let i = 1; i < parts.length; i++) {
-    const part = parts[i].trim();
-    if (!part) continue;
-
-    const lines = part.split("\n");
-    let role: "user" | "assistant" | null = null;
-    let msgContent = "";
-    const thinkingLines: string[] = [];
-    let inThinking = false;
-    let ts: number | undefined;
-
-    const headerRegex = /^\*\*(你|小元)\*\* \((?:CLI|API) · (\d{4}-\d{2}-\d{2} \d{2}:\d{2})\):$/;
-
-    for (const line of lines) {
-      const hMatch = line.match(headerRegex);
-      if (hMatch) {
-        role = hMatch[1] === "你" ? "user" : "assistant";
-        ts = new Date(hMatch[2]).getTime();
-        continue;
-      }
-
-      if (line.trim() === "> [!thinking] 思考过程") { inThinking = true; continue; }
-      if (inThinking) {
-        if (line.startsWith("> ")) { thinkingLines.push(line.slice(2)); continue; }
-        inThinking = false;
-      }
-
-      if (role) msgContent += line + "\n";
-    }
-
-    if (role && msgContent.trim()) {
-      const msg: ChatMessage = {
-        id: "msg-" + (++idCounter),
-        role,
-        content: msgContent.trim(),
-      };
-      if (thinkingLines.length > 0) msg.thinking = thinkingLines.join("\n").trim();
-      if (ts) msg.timestamp = ts;
-      messages.push(msg);
-    }
-  }
-
-  return messages;
-}
-
-function formatDate(ts: number): string {
-  const d = new Date(ts);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-function formatTime(ts: number): string {
-  const d = new Date(ts);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-}
-
-function sessionToMarkdown(session: ChatSession | undefined, messages: ChatMessage[], execMode: string): string {
-  const now = Date.now();
-  const created = session?.createdAt || now;
-  let content = `---\ntitle: ${session?.title || "新对话"}\ncreated: ${formatDate(created)}\nupdated: ${formatDate(now)}\n---\n\n`;
-  messages.forEach((msg) => {
-    const ts = msg.timestamp
-      ? ` (${execMode.toUpperCase()} · ${formatTime(msg.timestamp)}):`
-      : ":";
-    content += `**${msg.role === "user" ? "你" : "小元"}**${ts}\n\n${msg.content}\n\n`;
-    if (msg.thinking) {
-      content += `> [!thinking] 思考过程\n> ${msg.thinking.replace(/\n/g, "\n> ")}\n\n`;
-    }
-    content += `---\n\n`;
-  });
-  return content;
-}
-
-// ─── Tests ───────────────────────────────────────────────────
+import type { ChatMessage, ChatSession } from "../src/types";
+import { parseMarkdownToMessages, sessionToMarkdown } from "../src/session";
+import { formatDate, formatTime } from "../src/utils";
 
 describe("session Markdown round-trip", () => {
   const ts = new Date("2025-06-05T10:30:00").getTime();
@@ -170,9 +77,22 @@ describe("parseMarkdownToMessages edge cases", () => {
 title: test
 ---
 
-**你**:\\n\\nline1\\nline2\\nline3\\n\\n---`;
-    // This will fail parsing since header doesn't match regex; testing robustness
+**你**:\n\nline1\nline2\nline3\n\n---`;
     const result = parseMarkdownToMessages(md);
     expect(Array.isArray(result)).toBe(true);
+  });
+});
+
+describe("formatDate", () => {
+  it("formats a timestamp correctly", () => {
+    const d = new Date(2025, 0, 15);
+    expect(formatDate(d.getTime())).toBe("2025-01-15");
+  });
+});
+
+describe("formatTime", () => {
+  it("includes hours and minutes", () => {
+    const d = new Date(2025, 5, 10, 14, 30);
+    expect(formatTime(d.getTime())).toContain("14:30");
   });
 });

@@ -11,4 +11,8 @@ declare module "obsidian" {
   interface MenuItem {
     setSubmenu(): Menu;
   }
+
+  interface View {
+    quote?(text: string): void;
+  }
 }

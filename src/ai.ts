@@ -1,36 +1,13 @@
 import { getActiveProvider } from "./constants";
-import type { XiaoyuanAISettings, FileDiff } from "./types";
+import type { XiaoyuanAISettings, FileDiff, SSEEventPart } from "./types";
+import { ensureApiUrl, parseMcpHeaders, parseDiffText } from "./utils";
 import { requestOpenCode, readServerConn, connectSSE, combineSignals } from "./opencode-client";
 import { ensureOpenCodeServer } from "./opencode-server";
-import { callAIWithAPI, ensureApiUrl, processAPISSEStream } from "./api-client";
+import { callAIWithAPI, processAPISSEStream } from "./api-client";
 
 export { stopOpenCodeServer, ensureOpenCodeServer } from "./opencode-server";
 export { fetchOpenCodeModelsFromCLI, fetchOpenCodeAgents, checkOpenCodeStatus } from "./opencode-config";
 export { getVaultBasePath } from "./server";
-
-function parseDiffText(text: string): FileDiff[] {
-  const result: FileDiff[] = [];
-  const blocks = text.split(/(?=^diff --git )/m);
-  for (const block of blocks) {
-    if (!block.trim()) continue;
-    const file = block.match(/^\+\+\+ b\/(.+)$/m)?.[1] || "";
-    if (!file) continue;
-    const lines = block.split("\n");
-    const startIdx = lines.findIndex(l => l.startsWith("@@"));
-    const beforeLines: string[] = [];
-    const afterLines: string[] = [];
-    for (let i = startIdx + 1; i < lines.length; i++) {
-      const l = lines[i];
-      if (l.startsWith("-")) beforeLines.push(l.slice(1));
-      else if (l.startsWith("+")) afterLines.push(l.slice(1));
-      else { beforeLines.push(l); afterLines.push(l); }
-    }
-    const addCount = lines.filter(l => l.startsWith("+") && !l.startsWith("+++")).length;
-    const delCount = lines.filter(l => l.startsWith("-") && !l.startsWith("---")).length;
-    result.push({ file, before: beforeLines.join("\n"), after: afterLines.join("\n"), additions: addCount, deletions: delCount });
-  }
-  return result;
-}
 
 interface SessionMessage {
   info?: { role: string };
@@ -42,6 +19,7 @@ interface SessionPayload {
   agent?: string;
   variant?: string;
   model?: { providerID: string; modelID: string };
+  [key: string]: unknown;
 }
 
 type PartCallback = () => void;
@@ -85,7 +63,7 @@ export async function callAIWithHTTPStreaming(
         payload.model = { providerID: parts[0], modelID: parts.slice(1).join("/") };
       }
     }
-    await requestOpenCode(conn.url, `/session/${sessionId}/prompt_async`, "POST", payload as unknown as Record<string, unknown>, conn.authHeader);
+    await requestOpenCode(conn.url, `/session/${sessionId}/prompt_async`, "POST", payload, conn.authHeader);
 
     let accumulatedText = "";
     let accumulatedThinking = "";
@@ -107,38 +85,38 @@ export async function callAIWithHTTPStreaming(
         const props = evt.properties || {};
         if (props.sessionID !== sessionId) return;
         if (evt.type === "message.part.updated") {
-          const part = props.part || {};
-          const partId = part.id as string | undefined;
+          const part: SSEEventPart = props.part || {};
+          const partId = part.id;
           if (partId) {
-            partTypes.set(partId, (part.type as string) || "");
+            partTypes.set(partId, part.type || "");
             if (part.type === "text") {
-              accumulatedText = (part.text as string) || "";
+              accumulatedText = part.text || "";
               partTexts.set(partId, accumulatedText);
               onTextUpdate?.(accumulatedText, accumulatedThinking);
             } else if (part.type === "thinking" || part.type === "reasoning") {
-              accumulatedThinking = (part.text as string) || "";
+              accumulatedThinking = part.text || "";
               partTexts.set(partId, accumulatedThinking);
               onThinking?.(accumulatedThinking);
             }
           }
           if (part.type === "tool") {
-            const toolName = (part.tool || part.name || "") as string;
-            const partState = part.state as { status?: string } | undefined;
-            const st = (partState?.status || "running") as string;
+            const toolName = part.tool || part.name || "";
+            const st = part.state?.status || "running";
             if (toolName) onToolProgress?.(toolName, st);
           } else if (part.type === "diff" || part.type === "patch") {
-            const diffText = (part.text ?? part.diff ?? "") as string;
+            const diffText = part.text ?? part.diff ?? "";
             if (diffText) {
               const diffs = parseDiffText(diffText);
               if (diffs.length) onDiffs?.(diffs);
             }
           }
         } else if (evt.type === "message.part.delta") {
-          const partId = props.partID as string;
+          const partId = props.partID;
+          if (!partId) return;
           const pType = partTypes.get(partId);
           if (props.field === "text" && props.delta) {
             const prev = partTexts.get(partId) || "";
-            const updated = prev + (props.delta as string);
+            const updated = prev + props.delta;
             partTexts.set(partId, updated);
             if (pType === "text") {
               accumulatedText = updated;
@@ -199,14 +177,6 @@ export async function callAIWithHTTPStreaming(
   }
 }
 
-export function estimateTokens(text: string): number {
-  let tokens = 0;
-  for (const ch of text) {
-    tokens += ch.charCodeAt(0) > 127 ? 1.5 : 0.25;
-  }
-  return Math.ceil(tokens);
-}
-
 export interface CallAISessionOptions {
   prompt: string;
   settings: XiaoyuanAISettings;
@@ -241,6 +211,7 @@ interface McpServerConfigPayload {
   args?: string[];
   url?: string;
   headers?: Record<string, string>;
+  [key: string]: unknown;
 }
 
 export function resetMCPSyncDone(): void {
@@ -284,11 +255,11 @@ export async function syncMCPServers(
       } else {
         if (server.url) config.url = server.url;
         if (server.headers) {
-          try { config.headers = JSON.parse(server.headers) as Record<string, string>; } catch { config.headers = {}; }
+          config.headers = parseMcpHeaders(server.headers);
         }
       }
-      await requestOpenCode(activeConn.url, "/mcp", "POST", { name: server.name, config } as unknown as Record<string, unknown>, activeConn.authHeader);
-    } catch (err) {
+      await requestOpenCode(activeConn.url, "/mcp", "POST", { name: server.name, config }, activeConn.authHeader);
+    } catch (err: unknown) {
       console.warn(`MCP server "${server.name}" sync failed:`, err);
     }
   }

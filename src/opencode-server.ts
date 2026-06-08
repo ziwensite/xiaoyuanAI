@@ -40,7 +40,7 @@ export function spawnWithTimeout(bin: string, args: string[], cwd: string, timeo
         else reject(new Error(stderr.trim() || `进程异常退出 (${code})`));
       });
       proc.on("error", (err) => { clearTimeout(timer); reject(err); });
-    } catch (err) {
+    } catch (err: unknown) {
       clearTimeout(timer);
       reject(err);
     }

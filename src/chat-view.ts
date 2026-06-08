@@ -7,7 +7,8 @@ import {
   Attachment,
 } from "./types";
 import { VIEW_TYPE_XIAOYUAN_AI_CHAT, getActiveProvider, OPERATIONS, OPERATION_LABELS, OPERATION_ICONS } from "./constants";
-import { callAIWithHTTPStreaming, callAISession, getVaultBasePath, estimateTokens, ensureOpenCodeServer, syncMCPServers } from "./ai";
+import { callAIWithHTTPStreaming, callAISession, getVaultBasePath, ensureOpenCodeServer, syncMCPServers } from "./ai";
+import { estimateTokens } from "./utils";
 import { fetchOpenCodeModelsFromCLI } from "./opencode-config";
 import { checkConnection } from "./connection-checker";
 import {
@@ -22,7 +23,7 @@ import {
   migrateOldData,
 } from "./session";
 import { showPopup, addPopupItem } from "./popup";
-import { buildToolbarContent as toolbarBuildToolbarContent } from "./toolbar";
+import { buildToolbarContent as renderToolbar } from "./toolbar";
 import { buildActionBar } from "./action-bar";
 import { registerSelectionListener } from "./selection-popup";
 import { renderQuoteBar } from "./quote-bar";
@@ -301,7 +302,7 @@ export class XiaoyuanAIChatView extends ItemView {
   }
 
   private buildToolbarContent(container: HTMLElement) {
-    this.sendBtn = toolbarBuildToolbarContent(container, this);
+    this.sendBtn = renderToolbar(container, this);
     this.setProcessingState(false);
   }
 
@@ -446,7 +447,7 @@ export class XiaoyuanAIChatView extends ItemView {
     await openInEditor(content, this.app.vault, this.app.workspace, this.plugin.settings.chatHistoryPath, ts, "bubble");
   }
 
-  private quote(text: string) {
+  public quote(text: string) {
     this.quoteText = text;
     this.renderQuoteBar();
     this.inputEl.focus();
@@ -775,7 +776,7 @@ private addStreamingMessage(content: string, thinking?: string): string {
   private updateStreamingMessage(messageId: string, content: string) {
     const msgEl = this.messagesEl.querySelector(`[id="${messageId}"]`);
     if (!msgEl) return;
-    const contentEl = msgEl.querySelector(".xy-stream-content") as HTMLElement;
+    const contentEl = msgEl.querySelector<HTMLElement>(".xy-stream-content");
     if (contentEl) contentEl.textContent = content;
     const idx = this.messages.findIndex((m) => m.id === messageId);
     if (idx !== -1) this.messages[idx].content = content;
@@ -785,7 +786,7 @@ private addStreamingMessage(content: string, thinking?: string): string {
   private updateStreamingThinking(messageId: string, thinking: string) {
     const msgEl = this.messagesEl.querySelector(`[id="${messageId}"]`);
     if (!msgEl || !this.plugin.settings.showThinking) return;
-    let tc = msgEl.querySelector(".xiaoyuan-thinking-content") as HTMLElement;
+    let tc = msgEl.querySelector<HTMLElement>(".xiaoyuan-thinking-content");
     const idx = this.messages.findIndex((m) => m.id === messageId);
     if (idx !== -1) this.messages[idx].thinking = thinking;
     if (tc) {
@@ -805,7 +806,7 @@ private addStreamingMessage(content: string, thinking?: string): string {
   private addToolLogEntry(messageId: string, toolName: string, status: string) {
     const msgEl = this.messagesEl.querySelector(`[id="${messageId}"]`);
     if (!msgEl) return;
-    let logEl = msgEl.querySelector(".xy-tool-log") as HTMLElement;
+    let logEl = msgEl.querySelector<HTMLElement>(".xy-tool-log");
     if (!logEl) {
       const bubbleEl = msgEl.querySelector(".xiaoyuan-msg-bubble");
       if (!bubbleEl) return;
@@ -813,7 +814,7 @@ private addStreamingMessage(content: string, thinking?: string): string {
     }
     const toolLabel = toolName === "bash" ? "执行命令" : toolName === "write" ? "写入文件" : toolName === "edit" ? "编辑文件" : toolName === "read" ? "读取文件" : toolName;
     const icon = status === "running" ? "\u{23F3}" : "\u{2705}";
-    let entry = logEl.querySelector(`[data-tool="${toolName}"]`) as HTMLElement;
+    let entry = logEl.querySelector<HTMLElement>(`[data-tool="${toolName}"]`);
     if (!entry) {
       entry = logEl.createDiv({ cls: "xy-tool-entry" });
       entry.setAttribute("data-tool", toolName);
@@ -827,7 +828,7 @@ private addStreamingMessage(content: string, thinking?: string): string {
     const msgEl = this.messagesEl.querySelector(`[id="${lastMsg.id}"]`);
     if (!msgEl) return null;
 
-    const bubbleEl = msgEl.querySelector(".xiaoyuan-msg-bubble") as HTMLElement;
+    const bubbleEl = msgEl.querySelector<HTMLElement>(".xiaoyuan-msg-bubble");
     if (!bubbleEl) return null;
 
     const streamContent = bubbleEl.querySelector(".xy-stream-content");
@@ -922,7 +923,8 @@ private addStreamingMessage(content: string, thinking?: string): string {
       this.currentSessionId = meta.currentSessionId;
 
       if (this.sessions.length === 0) {
-        const oldMessages = migrateOldData(meta as unknown as Record<string, unknown>);
+        const rawData = await this.plugin.loadData();
+        const oldMessages = rawData ? migrateOldData(rawData) : null;
         if (oldMessages && oldMessages.length > 0) {
           const now = Date.now();
           const newSession: ChatSession = {
@@ -936,8 +938,8 @@ private addStreamingMessage(content: string, thinking?: string): string {
           await saveSessionToFile(this.app.vault, path, newSession.id, newSession, oldMessages, this.plugin.settings.execMode);
         }
       }
-    } catch (e) {
-      console.warn("加载会话失败:", e);
+    } catch (err: unknown) {
+      console.warn("加载会话失败:", err);
     }
 
     if (this.sessions.length === 0) {
@@ -1079,7 +1081,8 @@ private addStreamingMessage(content: string, thinking?: string): string {
     }
     await saveSessionsMeta(this.plugin, this.sessions, this.currentSessionId);
 
-    const headerEl = this.viewContainer.querySelector(".xiaoyuan-chat-header") as HTMLElement;
+    const headerEl = this.viewContainer.querySelector<HTMLElement>(".xiaoyuan-chat-header");
+    if (!headerEl) return;
     showPopup(headerEl, (popup) => {
       const searchInput = popup.createEl("input", { cls: "xy-popup-search", type: "text", placeholder: "搜索会话..." });
       const listEl = popup.createDiv({ cls: "xy-popup-session-list" });
@@ -1095,7 +1098,7 @@ private addStreamingMessage(content: string, thinking?: string): string {
 
         const startRename = (ev: Event) => {
           ev.stopPropagation();
-          const popupEl = titleEl.closest(".xy-popup") as HTMLElement;
+          const popupEl = titleEl.closest<HTMLElement>(".xy-popup");
           const origWidth = popupEl ? popupEl.style.width : "";
           if (popupEl) popupEl.style.width = "auto";
           const input = document.createElement("input");

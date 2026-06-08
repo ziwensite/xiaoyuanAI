@@ -29,9 +29,9 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
   private s(): XiaoyuanAISettings { return this.plugin.settings; }
 
   private decorateSetting(setting: Setting, iconName: string): Setting {
-    const nameEl = setting.nameEl as HTMLElement | undefined;
+    const nameEl = setting.nameEl;
     if (!nameEl) return setting;
-    const settingEl = setting.settingEl as HTMLElement | undefined;
+    const settingEl = setting.settingEl;
     settingEl?.addClass("xy-setting-with-icon");
     nameEl.addClass("xy-setting-name-with-icon");
     const icon = document.createElement("span");
@@ -404,7 +404,8 @@ private async refreshStatusCard() {
       content.style.display = "none";
       head.style.cursor = "pointer";
       head.addEventListener("click", (e) => {
-        if ((e.target as HTMLElement).closest("button")) return;
+        const target = e.target instanceof HTMLElement ? e.target : null;
+        if (target?.closest("button")) return;
         collapsed = !collapsed;
         content.style.display = collapsed ? "none" : "";
       });
@@ -522,7 +523,8 @@ private async refreshStatusCard() {
       content.style.display = "none";
       head.style.cursor = "pointer";
       head.addEventListener("click", (e) => {
-        if ((e.target as HTMLElement).closest("button")) return;
+        const target = e.target instanceof HTMLElement ? e.target : null;
+        if (target?.closest("button")) return;
         collapsed = !collapsed;
         content.style.display = collapsed ? "none" : "";
       });
@@ -675,8 +677,8 @@ ${text}
             inputEl.value = "";
             btn.setDisabled(false);
             btn.setButtonText("创建");
-          } catch (e) {
-            const msg = e instanceof Error ? e.message : String(e);
+          } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err);
             if (msg.includes("configure") || msg.includes("connection") || msg.includes("API") || msg.includes("key")) {
               new Notice("请先配置 AI 连接");
             } else {
@@ -740,8 +742,8 @@ ${text}
             await this.plugin.saveSettings();
             new Notice(`已同步 ${skills.length} 个 skill`);
             this.display();
-          } catch (e) {
-            const msg = e instanceof Error ? e.message : String(e);
+          } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err);
             if (msg.includes("configure") || msg.includes("connection") || msg.includes("API") || msg.includes("key")) {
               new Notice("请先配置 AI 连接");
             } else {

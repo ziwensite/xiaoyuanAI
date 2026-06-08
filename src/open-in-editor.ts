@@ -1,15 +1,7 @@
 import { TFile, Notice } from "obsidian";
 import type { Vault } from "obsidian";
 import type { Workspace } from "obsidian";
-
-export function simpleHash(s: string): string {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) {
-    h = ((h << 5) - h) + s.charCodeAt(i);
-    h |= 0;
-  }
-  return (h >>> 0).toString(36);
-}
+import { simpleHash } from "./utils";
 
 export async function openInEditor(
   content: string,

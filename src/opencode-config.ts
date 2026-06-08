@@ -3,6 +3,7 @@ import * as path from "path";
 import type { ModelEntry, ModelCaps } from "./types";
 import { httpGetOpenCode } from "./opencode-client";
 import { resolveOpenCodePath, spawnWithTimeout, startTempOpenCodeServer, stopTempServer } from "./opencode-server";
+import { tryParseJson } from "./utils";
 
 interface OpenCodeModelDef {
   id: string;
@@ -44,7 +45,7 @@ interface AgentEntry {
   description?: string;
 }
 
-function flattenProviders(providers: OpenCodeProvider[]): FlattenResult {
+export function flattenProviders(providers: OpenCodeProvider[]): FlattenResult {
   const result = new Map<string, ModelEntry>();
   const caps: Record<string, ModelCaps> = {};
   for (const p of providers) {
@@ -128,7 +129,8 @@ function findOpenCodeConfigFiles(vaultDir: string): Record<string, unknown>[] {
     seen.add(p);
     try {
       const content = fs.readFileSync(p, "utf-8");
-      results.push(JSON.parse(content) as Record<string, unknown>);
+      const parsed = tryParseJson<Record<string, unknown>>(content);
+      if (parsed !== null) results.push(parsed);
     } catch {}
   }
   return results;
@@ -139,7 +141,7 @@ interface ProviderConfig {
   models?: Record<string, unknown> | unknown[];
 }
 
-function extractModelsFromConfig(parsed: Record<string, unknown>): ModelEntry[] {
+export function extractModelsFromConfig(parsed: Record<string, unknown>): ModelEntry[] {
   const result = new Map<string, ModelEntry>();
   const providers = (parsed?.providers ?? parsed?.profiles ?? {}) as Record<string, unknown>;
   for (const [providerId, cfg] of Object.entries(providers)) {
@@ -184,7 +186,7 @@ export async function fetchOpenCodeModelsFromCLI(
       const result = await fetchModelsViaServer(effectiveBin, vaultDir, port);
       for (const m of result.models) modelMap.set(m.id, m);
       caps = result.caps;
-    } catch (err) {
+    } catch (err: unknown) {
       console.warn("Server-based model fetch failed:", err);
     }
   }
@@ -236,7 +238,7 @@ export async function fetchOpenCodeAgents(
   return [];
 }
 
-function filterAgents(agents: AgentEntry[]): { name: string; description?: string }[] {
+export function filterAgents(agents: AgentEntry[]): { name: string; description?: string }[] {
   return agents
     .filter((a) => a.mode === "primary" && !a.hidden)
     .map((a) => ({ name: a.name, description: a.description }));

@@ -10,7 +10,7 @@ export function showPopup(
   const popup = document.body.createDiv({ cls: "xy-popup" });
   const rect = trigger.getBoundingClientRect();
   if (options?.fullWidth) {
-    const container = trigger.closest(".xiaoyuan-chat") as HTMLElement | null;
+    const container = trigger.closest<HTMLElement>(".xiaoyuan-chat");
     if (container) {
       const cr = container.getBoundingClientRect();
       popup.style.cssText = `position:fixed;left:${cr.left}px;width:${cr.width}px;`;

@@ -23,7 +23,7 @@ export function registerSelectionListener(
     }, 10);
   });
   document.addEventListener("mousedown", (e) => {
-    if (!(e.target as HTMLElement)?.closest?.(".xy-selection-popup")) {
+    if (!(e.target instanceof HTMLElement) || !e.target.closest(".xy-selection-popup")) {
       removeSelectionPopup();
     }
   });

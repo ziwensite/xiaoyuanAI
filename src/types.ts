@@ -81,6 +81,20 @@ export interface SkillEntry {
   description: string;
 }
 
+export interface SSEPartState {
+  status?: string;
+}
+
+export interface SSEEventPart {
+  id?: string;
+  type?: string;
+  text?: string;
+  tool?: string;
+  name?: string;
+  state?: SSEPartState;
+  diff?: string;
+}
+
 export interface XiaoyuanAISettings {
   execMode: "api" | "cli";
 

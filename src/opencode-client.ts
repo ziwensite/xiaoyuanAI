@@ -1,6 +1,8 @@
 import * as http from "http";
 import * as path from "path";
 import * as fs from "fs";
+import type { SSEEventPart } from "./types";
+import { tryParseJson } from "./utils";
 
 interface ServerConn { url: string; authHeader: string }
 
@@ -9,7 +11,7 @@ interface SSEEventProperties {
   partID?: string;
   field?: string;
   delta?: string;
-  part?: Record<string, unknown>;
+  part?: SSEEventPart;
   status?: { type: string };
 }
 
@@ -44,7 +46,7 @@ export function httpGetOpenCode(baseUrl: string, path: string, directory: string
         }
         let parsed: unknown;
         try { parsed = JSON.parse(body); }
-        catch (e) { reject(new Error(`OpenCode API ${path}: JSON 解析失败 — ${(e as Error).message}`)); return; }
+        catch (err: unknown) { reject(new Error(`OpenCode API ${path}: JSON 解析失败 — ${err instanceof Error ? err.message : String(err)}`)); return; }
         if (parsed && typeof parsed === "object" && "error" in parsed && parsed.error) {
           const errObj = (parsed as Record<string, unknown>).error;
           const errMap = errObj as Record<string, unknown>;
@@ -85,8 +87,11 @@ export function requestOpenCode<T>(
           return;
         }
         if (res.statusCode === 204) { resolve({} as T); return; }
-        try { resolve(JSON.parse(raw) as T); }
-        catch (e) { reject(new Error(`OpenCode ${method} ${apiPath}: JSON parse error — ${(e as Error).message}`)); }
+        try {
+          const parsed = tryParseJson<T>(raw);
+          if (parsed === null) throw new Error("Invalid JSON response");
+          resolve(parsed);
+        } catch (err: unknown) { reject(new Error(`OpenCode ${method} ${apiPath}: JSON parse error — ${err instanceof Error ? err.message : String(err)}`)); }
       });
     });
     req.on("error", reject);

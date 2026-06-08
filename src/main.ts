@@ -151,8 +151,8 @@ export default class XiaoyuanAIPlugin extends Plugin {
         quoteBtn.addEventListener("click", () => {
           this.activateChatView();
           const chatLeaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_XIAOYUAN_AI_CHAT).first();
-          if (chatLeaf?.view && typeof (chatLeaf.view as unknown as { quote: unknown }).quote === "function") {
-            (chatLeaf.view as unknown as { quote: (t: string) => void }).quote(text);
+          if (chatLeaf?.view instanceof XiaoyuanAIChatView) {
+            chatLeaf.view.quote(text);
           }
           popup.remove();
         });
@@ -194,7 +194,7 @@ export default class XiaoyuanAIPlugin extends Plugin {
           await fs.unlink(fp);
         }
       }
-    } catch (e) { console.warn("清理临时文件失败:", e); }
+    } catch (err: unknown) { console.warn("清理临时文件失败:", err); }
   }
 
   private async autoStartServer(): Promise<void> {
@@ -207,7 +207,7 @@ export default class XiaoyuanAIPlugin extends Plugin {
         vaultDir,
         true,
       );
-    } catch (err) {
+    } catch (err: unknown) {
       console.warn("自动启动 opencode serve 失败:", err);
     }
   }

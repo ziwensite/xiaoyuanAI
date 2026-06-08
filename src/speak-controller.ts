@@ -30,7 +30,7 @@ export class SpeakController {
       };
       speechSynthesis.speak(this.utterance);
       this.notifyChange(true);
-    } catch (err) {
+    } catch (err: unknown) {
       console.warn("[xiaoyuanAI] failed to start speech synthesis:", err);
       this.utterance = null;
       this.notifyChange(false);
@@ -40,7 +40,7 @@ export class SpeakController {
   stop() {
     this.generation++;
     if (typeof speechSynthesis !== "undefined") {
-      try { speechSynthesis.cancel(); } catch (err) {
+      try { speechSynthesis.cancel(); } catch (err: unknown) {
         console.warn("[xiaoyuanAI] speechSynthesis.cancel failed:", err);
       }
     }
@@ -49,7 +49,7 @@ export class SpeakController {
   }
 
   private notifyChange(speaking: boolean) {
-    try { this.onChange?.(speaking); } catch (err) {
+    try { this.onChange?.(speaking); } catch (err: unknown) {
       console.warn("[xiaoyuanAI] onChange callback failed:", err);
     }
   }

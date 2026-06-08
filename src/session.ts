@@ -2,6 +2,7 @@ import { Vault } from "obsidian";
 import type { ChatMessage, ChatSession } from "./types";
 import type XiaoyuanAIPlugin from "./main";
 import { CHAT_SESSIONS_KEY, CURRENT_SESSION_KEY } from "./constants";
+import { formatDate, formatTime } from "./utils";
 
 export function getChatHistoryPath(chatHistoryPath: string): string {
   return chatHistoryPath || ".chatHistory";
@@ -16,13 +17,13 @@ export async function ensureChatHistoryFolder(vault: Vault, path: string): Promi
   if (folder) return;
   try {
     await vault.createFolder(path);
-  } catch (e) {
+  } catch (err: unknown) {
     if (vault.getFolderByPath(path)) return;
-    throw e;
+    throw err;
   }
 }
 
-function parseMarkdownToMessages(content: string): ChatMessage[] {
+export function parseMarkdownToMessages(content: string): ChatMessage[] {
   const messages: ChatMessage[] = [];
   const parts = content.split(/\n---\n+/);
   let idCounter = 0;
@@ -72,17 +73,7 @@ function parseMarkdownToMessages(content: string): ChatMessage[] {
   return messages;
 }
 
-function formatDate(ts: number): string {
-  const d = new Date(ts);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-function formatTime(ts: number): string {
-  const d = new Date(ts);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-}
-
-function sessionToMarkdown(session: ChatSession | undefined, messages: ChatMessage[], execMode: string): string {
+export function sessionToMarkdown(session: ChatSession | undefined, messages: ChatMessage[], execMode: string): string {
   const now = Date.now();
   const created = session?.createdAt || now;
   let content = `---\ntitle: ${session?.title || "新对话"}\ncreated: ${formatDate(created)}\nupdated: ${formatDate(now)}\n---\n\n`;
@@ -157,15 +148,15 @@ export async function scanChatHistoryFolder(
           createdAt,
           updatedAt,
         });
-      } catch (e) {
-        console.warn(`读取会话文件 ${filePath} 失败:`, e);
+      } catch (err: unknown) {
+        console.warn(`读取会话文件 ${filePath} 失败:`, err);
       }
     }
 
     loaded.sort((a, b) => b.updatedAt - a.updatedAt);
     return loaded;
-  } catch (e) {
-    console.warn("扫描历史会话文件夹失败:", e);
+  } catch (err: unknown) {
+    console.warn("扫描历史会话文件夹失败:", err);
     return [];
   }
 }
@@ -212,8 +203,8 @@ export async function saveSessionToFile(
     } else {
       await vault.create(filePath, content);
     }
-  } catch (e) {
-    console.warn(`保存会话文件 ${filePath} 失败:`, e);
+  } catch (err: unknown) {
+    console.warn(`保存会话文件 ${filePath} 失败:`, err);
   }
 }
 
@@ -227,8 +218,8 @@ export async function deleteSessionFile(
     if (await vault.adapter.exists(filePath)) {
       await vault.adapter.remove(filePath);
     }
-  } catch (e) {
-    console.warn(`删除会话文件 ${filePath} 失败:`, e);
+  } catch (err: unknown) {
+    console.warn(`删除会话文件 ${filePath} 失败:`, err);
   }
 }
 
@@ -239,9 +230,10 @@ export async function loadSessionsMeta(
   let sessions: ChatSession[] = [];
   let currentSessionId = "";
 
-  if (data?.[CHAT_SESSIONS_KEY]) {
+  if (data?.[CHAT_SESSIONS_KEY] && typeof data[CHAT_SESSIONS_KEY] === "string") {
     try {
-      sessions = JSON.parse(data[CHAT_SESSIONS_KEY]);
+      const parsed = JSON.parse(data[CHAT_SESSIONS_KEY] as string);
+      if (Array.isArray(parsed)) sessions = parsed;
     } catch {}
   }
 
@@ -269,12 +261,12 @@ export async function saveSessionsMeta(
 export function migrateOldData(
   data: Record<string, unknown>,
 ): ChatMessage[] | null {
-  if (data?.["xiaoyuan-chat-history"]) {
-    try {
-      return JSON.parse(data["xiaoyuan-chat-history"] as string) as ChatMessage[];
-    } catch {
-      return null;
-    }
+  const raw = data?.["xiaoyuan-chat-history"];
+  if (typeof raw !== "string") return null;
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed as ChatMessage[] : null;
+  } catch {
+    return null;
   }
-  return null;
 }
