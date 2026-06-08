@@ -1146,6 +1146,11 @@ pre:hover .xy-copy-btn {
   background: var(--background-modifier-hover);
 }
 
+.xy-skill-popup-item.is-selected {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
 .xy-skill-popup-name {
   font-weight: 600;
   font-size: 13px;

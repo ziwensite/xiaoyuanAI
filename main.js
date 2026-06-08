@@ -2217,6 +2217,7 @@ var XiaoyuanAIChatView = class extends import_obsidian9.ItemView {
     this.attachments = [];
     this.quoteText = "";
     this.speakController = new SpeakController();
+    this.skillIndex = -1;
     this.plugin = plugin;
   }
   getViewType() {
@@ -2391,6 +2392,27 @@ var XiaoyuanAIChatView = class extends import_obsidian9.ItemView {
     this.buildToolbarContent(this.toolbarEl);
     this.updateAgentBorderClass();
     this.inputEl.addEventListener("keydown", (e) => {
+      const popup = document.querySelector(".xy-skill-popup");
+      if (popup) {
+        const items = popup.querySelectorAll(".xy-skill-popup-item");
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          this.skillIndex = (this.skillIndex + 1) % items.length;
+          this.highlightSkillItem(items);
+          return;
+        }
+        if (e.key === "ArrowUp") {
+          e.preventDefault();
+          this.skillIndex = (this.skillIndex - 1 + items.length) % items.length;
+          this.highlightSkillItem(items);
+          return;
+        }
+        if (e.key === "Enter" && this.skillIndex >= 0 && items[this.skillIndex]) {
+          e.preventDefault();
+          items[this.skillIndex].click();
+          return;
+        }
+      }
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         this.sendMessage();
@@ -2421,7 +2443,11 @@ var XiaoyuanAIChatView = class extends import_obsidian9.ItemView {
     });
   }
   handleSkillInput() {
-    document.querySelectorAll(".xy-skill-popup").forEach((el) => el.remove());
+    const existing = document.querySelector(".xy-skill-popup");
+    if (existing) {
+      existing.remove();
+      this.skillIndex = -1;
+    }
     const text = this.inputEl.value;
     if (!text.startsWith("/") || text.length < 1) return;
     const query = text.slice(1).toLowerCase();
@@ -2441,6 +2467,7 @@ var XiaoyuanAIChatView = class extends import_obsidian9.ItemView {
         this.inputEl.value = "/" + skill.name + " ";
         this.inputEl.focus();
         popup.remove();
+        this.skillIndex = -1;
       });
     }
     for (const tpl of matchedTemplates) {
@@ -2451,8 +2478,16 @@ var XiaoyuanAIChatView = class extends import_obsidian9.ItemView {
         this.inputEl.value = `/template:${tpl.name} `;
         this.inputEl.focus();
         popup.remove();
+        this.skillIndex = -1;
       });
     }
+    this.skillIndex = 0;
+    const firstItem = popup.querySelector(".xy-skill-popup-item");
+    if (firstItem) firstItem.classList.add("is-selected");
+  }
+  highlightSkillItem(items) {
+    items.forEach((el) => el.classList.remove("is-selected"));
+    if (items[this.skillIndex]) items[this.skillIndex].classList.add("is-selected");
   }
   updateAgentBorderClass() {
     const agent = this.plugin.settings.opencode.agent;

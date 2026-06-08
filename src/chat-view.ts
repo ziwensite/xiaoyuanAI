@@ -55,6 +55,7 @@ export class XiaoyuanAIChatView extends ItemView {
   private quoteText = "";
   speakController = new SpeakController();
   private speakIndicator!: HTMLSpanElement;
+  private skillIndex = -1;
 
   constructor(leaf: WorkspaceLeaf, plugin: XiaoyuanAIPlugin) {
     super(leaf);
@@ -249,6 +250,27 @@ export class XiaoyuanAIChatView extends ItemView {
     this.updateAgentBorderClass();
 
     this.inputEl.addEventListener("keydown", (e) => {
+      const popup = document.querySelector(".xy-skill-popup");
+      if (popup) {
+        const items = popup.querySelectorAll(".xy-skill-popup-item");
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          this.skillIndex = (this.skillIndex + 1) % items.length;
+          this.highlightSkillItem(items);
+          return;
+        }
+        if (e.key === "ArrowUp") {
+          e.preventDefault();
+          this.skillIndex = (this.skillIndex - 1 + items.length) % items.length;
+          this.highlightSkillItem(items);
+          return;
+        }
+        if (e.key === "Enter" && this.skillIndex >= 0 && items[this.skillIndex]) {
+          e.preventDefault();
+          (items[this.skillIndex] as HTMLElement).click();
+          return;
+        }
+      }
       if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); this.sendMessage(); }
       if (e.key === "Escape") {
         document.querySelectorAll(".xy-skill-popup").forEach((el) => el.remove());
@@ -278,7 +300,11 @@ export class XiaoyuanAIChatView extends ItemView {
   }
 
   private handleSkillInput() {
-    document.querySelectorAll(".xy-skill-popup").forEach((el) => el.remove());
+    const existing = document.querySelector(".xy-skill-popup");
+    if (existing) {
+      existing.remove();
+      this.skillIndex = -1;
+    }
     const text = this.inputEl.value;
     if (!text.startsWith("/") || text.length < 1) return;
 
@@ -306,6 +332,7 @@ export class XiaoyuanAIChatView extends ItemView {
         this.inputEl.value = "/" + skill.name + " ";
         this.inputEl.focus();
         popup.remove();
+        this.skillIndex = -1;
       });
     }
 
@@ -317,8 +344,18 @@ export class XiaoyuanAIChatView extends ItemView {
         this.inputEl.value = `/template:${tpl.name} `;
         this.inputEl.focus();
         popup.remove();
+        this.skillIndex = -1;
       });
     }
+
+    this.skillIndex = 0;
+    const firstItem = popup.querySelector(".xy-skill-popup-item");
+    if (firstItem) firstItem.classList.add("is-selected");
+  }
+
+  private highlightSkillItem(items: NodeListOf<Element>) {
+    items.forEach((el) => el.classList.remove("is-selected"));
+    if (items[this.skillIndex]) items[this.skillIndex].classList.add("is-selected");
   }
 
   private updateAgentBorderClass() {
