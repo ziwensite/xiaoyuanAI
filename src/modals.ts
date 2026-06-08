@@ -194,7 +194,6 @@ export class TextOperationModal extends Modal {
     this.contentAreaEl.textContent = "已连接，等待响应...";
     this.contentAreaEl.contentEditable = "false";
 
-    this.toolsBtn.toggleClass("is-disabled", true);
     this.thinkingBarEl.classList.add("is-active");
     try {
       const s = this.plugin.settings;
@@ -210,13 +209,11 @@ export class TextOperationModal extends Modal {
     } catch (err: unknown) {
       this.contentAreaEl.textContent = `\u274C 错误：${err instanceof Error ? err.message : String(err)}`;
     } finally {
-      this.toolsBtn.toggleClass("is-disabled", false);
       this.thinkingBarEl.classList.remove("is-active");
     }
   }
 
   private async processOperation() {
-    this.toolsBtn.toggleClass("is-disabled", true);
     this.thinkingBarEl.classList.add("is-active");
     try {
       const s = this.plugin.settings;
@@ -232,7 +229,6 @@ export class TextOperationModal extends Modal {
     } catch (err: unknown) {
       this.contentAreaEl.textContent = `\u274C 错误：${err instanceof Error ? err.message : String(err)}`;
     } finally {
-      this.toolsBtn.toggleClass("is-disabled", false);
       this.thinkingBarEl.classList.remove("is-active");
     }
   }

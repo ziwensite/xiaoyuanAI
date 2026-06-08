@@ -62,7 +62,7 @@
   height: 100%;
   width: 0;
   background: var(--interactive-accent);
-  animation: xy-thinking-slide 3s ease-in-out infinite;
+  animation: xy-thinking-slide 2s ease-in-out infinite;
 }
 
 @keyframes xy-thinking-slide {
@@ -70,7 +70,7 @@
   50%  { width: 100%; opacity: 1; }
   53%  { opacity: 0; }
   55%  { width: 100%; opacity: 0; }
-  56%  { width: 0; }
+  80%  { width: 0; }
   100% { width: 0; opacity: 0; }
 }
 

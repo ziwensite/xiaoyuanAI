@@ -2132,7 +2132,6 @@ var TextOperationModal = class extends import_obsidian7.Modal {
     this.titleEl.textContent = `AI ${OPERATION_LABELS[operation]}`;
     this.contentAreaEl.textContent = "\u5DF2\u8FDE\u63A5\uFF0C\u7B49\u5F85\u54CD\u5E94...";
     this.contentAreaEl.contentEditable = "false";
-    this.toolsBtn.toggleClass("is-disabled", true);
     this.thinkingBarEl.classList.add("is-active");
     try {
       const s = this.plugin.settings;
@@ -2154,12 +2153,10 @@ var TextOperationModal = class extends import_obsidian7.Modal {
     } catch (err) {
       this.contentAreaEl.textContent = `\u274C \u9519\u8BEF\uFF1A${err instanceof Error ? err.message : String(err)}`;
     } finally {
-      this.toolsBtn.toggleClass("is-disabled", false);
       this.thinkingBarEl.classList.remove("is-active");
     }
   }
   async processOperation() {
-    this.toolsBtn.toggleClass("is-disabled", true);
     this.thinkingBarEl.classList.add("is-active");
     try {
       const s = this.plugin.settings;
@@ -2181,7 +2178,6 @@ var TextOperationModal = class extends import_obsidian7.Modal {
     } catch (err) {
       this.contentAreaEl.textContent = `\u274C \u9519\u8BEF\uFF1A${err instanceof Error ? err.message : String(err)}`;
     } finally {
-      this.toolsBtn.toggleClass("is-disabled", false);
       this.thinkingBarEl.classList.remove("is-active");
     }
   }
