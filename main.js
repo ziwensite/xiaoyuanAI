@@ -2285,6 +2285,10 @@ var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
     });
     this.connectionStatusEl = right.createSpan({ cls: "xiaoyuan-settings-icon" });
     (0, import_obsidian8.setIcon)(this.connectionStatusEl, "activity");
+    const openCodeEl = right.createSpan({ cls: "xiaoyuan-settings-icon" });
+    this.openCodeEl = openCodeEl;
+    (0, import_obsidian8.setIcon)(openCodeEl, "server");
+    openCodeEl.classList.add("is-disconnected");
     this.updateConnectionStatusUI(false);
     this.connectionStatusEl.addEventListener("click", () => {
       if (s.execMode === "cli") {
@@ -2293,10 +2297,6 @@ var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
         this.checkConnectionStatus();
       }
     });
-    const openCodeEl = right.createSpan({ cls: "xiaoyuan-settings-icon" });
-    this.openCodeEl = openCodeEl;
-    (0, import_obsidian8.setIcon)(openCodeEl, "server");
-    openCodeEl.classList.add("is-disconnected");
     openCodeEl.addEventListener("click", (e) => {
       e.stopPropagation();
       const port = s.opencode.port || 16226;

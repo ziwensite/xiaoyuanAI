@@ -213,6 +213,12 @@ export class XiaoyuanAIChatView extends ItemView {
 
     this.connectionStatusEl = right.createSpan({ cls: "xiaoyuan-settings-icon" });
     setIcon(this.connectionStatusEl, "activity");
+
+    const openCodeEl = right.createSpan({ cls: "xiaoyuan-settings-icon" });
+    this.openCodeEl = openCodeEl;
+    setIcon(openCodeEl, "server");
+    openCodeEl.classList.add("is-disconnected");
+
     this.updateConnectionStatusUI(false);
     this.connectionStatusEl.addEventListener("click", () => {
       if (s.execMode === "cli") {
@@ -221,11 +227,6 @@ export class XiaoyuanAIChatView extends ItemView {
         this.checkConnectionStatus();
       }
     });
-
-    const openCodeEl = right.createSpan({ cls: "xiaoyuan-settings-icon" });
-    this.openCodeEl = openCodeEl;
-    setIcon(openCodeEl, "server");
-    openCodeEl.classList.add("is-disconnected");
     openCodeEl.addEventListener("click", (e) => {
       e.stopPropagation();
       const port = s.opencode.port || 16226;
