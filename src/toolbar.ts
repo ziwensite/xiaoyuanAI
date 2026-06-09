@@ -9,7 +9,7 @@ interface ToolbarHost {
   abortController: AbortController | null;
   pickFiles(): void;
   sendMessage(): void;
-  syncCLIModels(): Promise<void>;
+  syncOpenCodeState(): Promise<void>;
 }
 
 export function buildToolbarContent(container: HTMLElement, view: ToolbarHost): HTMLSpanElement {
@@ -71,7 +71,7 @@ export function buildToolbarContent(container: HTMLElement, view: ToolbarHost): 
         if (models.length === 0) {
           const loadingItem = popup.createDiv({ cls: "xy-popup-item" });
           loadingItem.createSpan({ cls: "xy-popup-label" }).textContent = "正在同步模型列表...";
-          await view.syncCLIModels().catch(() => {});
+          await view.syncOpenCodeState().catch(() => {});
           models = s.opencodeModels || [];
           popup.empty();
         }
@@ -126,7 +126,7 @@ export function buildToolbarContent(container: HTMLElement, view: ToolbarHost): 
         syncBtn.addEventListener("click", (ev) => {
           ev.stopPropagation();
           popup.remove();
-          view.syncCLIModels();
+          view.syncOpenCodeState();
         });
       } else {
         const providers = s.apiProviders;

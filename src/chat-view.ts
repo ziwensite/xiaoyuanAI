@@ -57,6 +57,7 @@ export class XiaoyuanAIChatView extends ItemView {
   speakController = new SpeakController();
   private speakIndicator!: HTMLSpanElement;
   private skillIndex = -1;
+private mcpSyncOk = false;
 
   constructor(leaf: WorkspaceLeaf, plugin: XiaoyuanAIPlugin) {
     super(leaf);
@@ -97,7 +98,7 @@ export class XiaoyuanAIChatView extends ItemView {
       },
     });
     if (this.plugin.settings.execMode === "cli") {
-      this.syncCLIModels();
+      this.syncOpenCodeState();
     } else {
       this.checkConnectionStatus();
     }
@@ -139,7 +140,7 @@ export class XiaoyuanAIChatView extends ItemView {
     this.buildToolbarContent(this.toolbarEl);
     this.updateAgentBorderClass();
     if (this.plugin.settings.execMode === "cli") {
-      this.syncCLIModels();
+      this.syncOpenCodeState();
     } else {
       this.checkConnectionStatus();
     }
@@ -194,7 +195,7 @@ export class XiaoyuanAIChatView extends ItemView {
     this.updateConnectionStatusUI(false);
     this.connectionStatusEl.addEventListener("click", () => {
       if (s.execMode === "cli") {
-        this.syncCLIModels();
+        this.syncOpenCodeState();
       } else {
         this.checkConnectionStatus();
       }
@@ -448,7 +449,7 @@ export class XiaoyuanAIChatView extends ItemView {
     });
   }
 
-  async syncCLIModels() {
+  async syncOpenCodeState() {
     const s = this.plugin.settings;
     try {
       if (s.opencode.autoStart) {
@@ -467,17 +468,17 @@ export class XiaoyuanAIChatView extends ItemView {
         s.opencode.model = result.defaultModel || result.models[0].id;
       }
       await this.plugin.saveSettings();
-      if (result.models.length === 0) {
-        new Notice("未找到模型，请检查 opencode 配置");
-      } else {
-        new Notice(`已同步 ${result.models.length} 个模型`);
-      }
       this.updateConnectionStatusUI(true);
-      syncMCPServers(s, getVaultBasePath()).catch(() => {});
+      if (result.models.length > 0) new Notice(`已同步 ${result.models.length} 个模型`);
+
+      const mcpOk = await syncMCPServers(s, getVaultBasePath());
+      this.mcpSyncOk = mcpOk;
       this.updateMCPStatusUI();
     } catch (err: unknown) {
       this.updateConnectionStatusUI(false);
-      new Notice(`同步模型失败：${err instanceof Error ? err.message : String(err)}`);
+      this.mcpSyncOk = false;
+      this.updateMCPStatusUI();
+      new Notice(`同步失败：${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
@@ -499,10 +500,11 @@ export class XiaoyuanAIChatView extends ItemView {
 
   private updateMCPStatusUI() {
     if (!this.mcpStatusEl || !this.mcpStatusEl.isConnected) return;
-    const count = this.plugin.settings.mcpServers.filter(s => s.enabled).length;
+    const hasServers = this.plugin.settings.mcpServers.some(s => s.enabled);
+    const ok = hasServers && this.mcpSyncOk;
     this.mcpStatusEl.removeClass("is-connected", "is-disconnected");
-    this.mcpStatusEl.addClass(count > 0 ? "is-connected" : "is-disconnected");
-    setTooltip(this.mcpStatusEl, count > 0 ? `${count} 个 MCP 服务器已连接` : "未连接 MCP 服务器");
+    this.mcpStatusEl.addClass(ok ? "is-connected" : "is-disconnected");
+    setTooltip(this.mcpStatusEl, ok ? "MCP 已同步" : hasServers ? "MCP 同步失败" : "未配置 MCP");
   }
 
   // ─── Message rendering ───────────────────────────────────────────

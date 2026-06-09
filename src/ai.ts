@@ -4,7 +4,6 @@ import { ensureApiUrl, parseMcpHeaders, parseDiffText } from "./utils";
 import { requestOpenCode, readServerConn, connectSSE, combineSignals } from "./opencode-client";
 import { ensureOpenCodeServer } from "./opencode-server";
 import { callAIWithAPI, processAPISSEStream } from "./api-client";
-import { Notice } from "obsidian";
 
 export { stopOpenCodeServer, ensureOpenCodeServer } from "./opencode-server";
 export { fetchOpenCodeModelsFromCLI, fetchOpenCodeAgents, checkOpenCodeStatus } from "./opencode-config";
@@ -222,11 +221,11 @@ export function resetMCPSyncDone(): void {
 export async function syncMCPServers(
   settings: XiaoyuanAISettings,
   vaultDir: string,
-): Promise<void> {
-  if (mcpSyncDone) return;
+): Promise<boolean> {
+  if (mcpSyncDone) return true;
 
   const servers = settings.mcpServers?.filter(s => s.enabled) || [];
-  if (servers.length === 0) return;
+  if (servers.length === 0) return true;
 
   let conn = readServerConn(vaultDir, settings.opencode.port || 16226);
   if (conn) {
@@ -241,7 +240,7 @@ export async function syncMCPServers(
       );
       conn = { url: base, authHeader: readServerConn(vaultDir, settings.opencode.port || 16226)?.authHeader || "" };
     } catch {
-      return;
+      return false;
     }
   }
 
@@ -271,12 +270,6 @@ export async function syncMCPServers(
   }
   mcpSyncDone = true;
 
-  if (success === 0 && fail === 0) return;
-  if (fail === 0) {
-    new Notice(`✅ MCP 同步完成：${success} 个服务器已注册`);
-  } else if (success === 0) {
-    new Notice(`❌ MCP 同步失败：${fail} 个服务器注册失败，请查看控制台`);
-  } else {
-    new Notice(`⚠️ MCP 同步：${success} 成功，${fail} 失败`);
-  }
+  if (success > 0 && fail === 0) return true;
+  return false;
 }
