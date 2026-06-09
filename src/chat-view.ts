@@ -180,6 +180,7 @@ export class XiaoyuanAIChatView extends ItemView {
     // remove old mode selector & settings icon (recreated by buildHeader)
     (right as HTMLSpanElement).empty();
     this.buildHeaderContent(right as HTMLSpanElement);
+    this.updateMCPStatusUI();
   }
 
   private buildHeaderContent(right: HTMLSpanElement) {
@@ -200,6 +201,7 @@ export class XiaoyuanAIChatView extends ItemView {
     this.updateMCPStatusUI();
     this.mcpStatusEl.addEventListener("click", (e) => {
       e.stopPropagation();
+      this.updateMCPStatusUI();
       showPopup(this.mcpStatusEl, (popup) => {
         const servers = s.mcpServers || [];
         if (servers.length === 0) {

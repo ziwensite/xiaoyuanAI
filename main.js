@@ -2341,6 +2341,7 @@ var XiaoyuanAIChatView = class extends import_obsidian9.ItemView {
     if (oldDot) oldDot.remove();
     right.empty();
     this.buildHeaderContent(right);
+    this.updateMCPStatusUI();
   }
   buildHeaderContent(right) {
     const s = this.plugin.settings;
@@ -2359,6 +2360,7 @@ var XiaoyuanAIChatView = class extends import_obsidian9.ItemView {
     this.updateMCPStatusUI();
     this.mcpStatusEl.addEventListener("click", (e) => {
       e.stopPropagation();
+      this.updateMCPStatusUI();
       showPopup(this.mcpStatusEl, (popup) => {
         const servers = s.mcpServers || [];
         if (servers.length === 0) {
