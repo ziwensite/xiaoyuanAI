@@ -2276,6 +2276,13 @@ var XiaoyuanAIChatView = class extends import_obsidian9.ItemView {
       this.checkConnectionStatus();
     }
     await this.loadSessions();
+    this.registerEvent(
+      this.app.workspace.on("active-leaf-change", (leaf) => {
+        if ((leaf == null ? void 0 : leaf.view) === this) {
+          this.updateMCPStatusUI();
+        }
+      })
+    );
   }
   async onClose() {
     this.speakController.stop();

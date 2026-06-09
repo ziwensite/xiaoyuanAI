@@ -102,6 +102,14 @@ export class XiaoyuanAIChatView extends ItemView {
       this.checkConnectionStatus();
     }
     await this.loadSessions();
+
+    this.registerEvent(
+      this.app.workspace.on("active-leaf-change", (leaf) => {
+        if (leaf?.view === this) {
+          this.updateMCPStatusUI();
+        }
+      }),
+    );
   }
 
   async onClose() {
