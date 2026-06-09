@@ -1182,6 +1182,16 @@ private addStreamingMessage(content: string, thinking?: string): string {
   private async switchSession(sessionId: string) {
     if (this.abortController) { new Notice("请等待当前 AI 回复完成"); return; }
     await this.saveCurrentSession();
+
+    const filePath = getChatHistoryPath(this.plugin.settings.chatHistoryPath) + "/" + sessionId + ".md";
+    const exists = await this.app.vault.adapter.exists(filePath).catch(() => false);
+    if (!exists) {
+      new Notice("会话文件已被删除");
+      this.sessions = this.sessions.filter(s => s.id !== sessionId);
+      this.updateSessionSelector();
+      return;
+    }
+
     const session = this.sessions.find((s) => s.id === sessionId);
     if (session) {
       this.currentSessionId = sessionId;
@@ -1222,23 +1232,6 @@ private addStreamingMessage(content: string, thinking?: string): string {
       return;
     }
     await this.saveCurrentSession();
-
-    const path = getChatHistoryPath(this.plugin.settings.chatHistoryPath);
-    const diskSessions = await scanChatHistoryFolder(this.app.vault, path);
-    const diskIds = new Set(diskSessions.map((s) => s.id));
-    const unsaved = this.sessions.filter((s) => !diskIds.has(s.id));
-    this.sessions = [...diskSessions, ...unsaved];
-
-    if (!this.sessions.find((s) => s.id === this.currentSessionId)) {
-      if (this.sessions.length > 0) {
-        this.currentSessionId = this.sessions[0].id;
-        await this.loadSession(this.sessions[0]);
-      } else {
-        await this.createNewSession();
-      }
-      this.updateSessionSelector();
-    }
-    await saveSessionsMeta(this.plugin, this.sessions, this.currentSessionId);
 
     const headerEl = this.viewContainer.querySelector<HTMLElement>(".xiaoyuan-chat-header");
     if (!headerEl) return;

@@ -3170,6 +3170,14 @@ ${enrichedMessage}`;
       return;
     }
     await this.saveCurrentSession();
+    const filePath = getChatHistoryPath(this.plugin.settings.chatHistoryPath) + "/" + sessionId + ".md";
+    const exists = await this.app.vault.adapter.exists(filePath).catch(() => false);
+    if (!exists) {
+      new import_obsidian8.Notice("\u4F1A\u8BDD\u6587\u4EF6\u5DF2\u88AB\u5220\u9664");
+      this.sessions = this.sessions.filter((s) => s.id !== sessionId);
+      this.updateSessionSelector();
+      return;
+    }
     const session = this.sessions.find((s) => s.id === sessionId);
     if (session) {
       this.currentSessionId = sessionId;
@@ -3207,21 +3215,6 @@ ${enrichedMessage}`;
       return;
     }
     await this.saveCurrentSession();
-    const path5 = getChatHistoryPath(this.plugin.settings.chatHistoryPath);
-    const diskSessions = await scanChatHistoryFolder(this.app.vault, path5);
-    const diskIds = new Set(diskSessions.map((s) => s.id));
-    const unsaved = this.sessions.filter((s) => !diskIds.has(s.id));
-    this.sessions = [...diskSessions, ...unsaved];
-    if (!this.sessions.find((s) => s.id === this.currentSessionId)) {
-      if (this.sessions.length > 0) {
-        this.currentSessionId = this.sessions[0].id;
-        await this.loadSession(this.sessions[0]);
-      } else {
-        await this.createNewSession();
-      }
-      this.updateSessionSelector();
-    }
-    await saveSessionsMeta(this.plugin, this.sessions, this.currentSessionId);
     const headerEl = this.viewContainer.querySelector(".xiaoyuan-chat-header");
     if (!headerEl) return;
     showPopup(headerEl, (popup) => {
