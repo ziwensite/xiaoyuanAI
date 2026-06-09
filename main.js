@@ -2287,16 +2287,21 @@ var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
       showPopup(openCodeEl, (popup) => {
         popup.style.left = "auto";
         popup.style.right = "10px";
-        const item = popup.createDiv({ cls: "xy-popup-item" });
-        item.createSpan({ cls: "xy-mcp-dot is-on" });
-        item.createSpan({ text: connAddr });
-        const openItem = popup.createDiv({ cls: "xy-popup-item", text: "\u6253\u5F00\u7F51\u9875\u7AEF" });
-        openItem.addEventListener("click", () => {
+        const row = popup.createDiv({ cls: "xy-popup-item" });
+        row.createSpan({ cls: "xy-mcp-dot is-on" });
+        row.createSpan({ text: connAddr });
+        const actions = row.createDiv({ cls: "xy-open-code-actions" });
+        const openIcon = actions.createSpan({ cls: "xy-open-code-btn" });
+        (0, import_obsidian8.setIcon)(openIcon, "external-link");
+        openIcon.addEventListener("click", (ev) => {
+          ev.stopPropagation();
           window.open(`http://${connAddr}`, "_blank");
           popup.remove();
         });
-        const closeItem = popup.createDiv({ cls: "xy-popup-item", text: "\u5173\u95ED opencode \u8FDB\u7A0B" });
-        closeItem.addEventListener("click", async () => {
+        const closeIcon = actions.createSpan({ cls: "xy-open-code-btn" });
+        (0, import_obsidian8.setIcon)(closeIcon, "x");
+        closeIcon.addEventListener("click", async (ev) => {
+          ev.stopPropagation();
           const { stopOpenCodeServer: stopOpenCodeServer2 } = await Promise.resolve().then(() => (init_opencode_server(), opencode_server_exports));
           stopOpenCodeServer2();
           popup.remove();

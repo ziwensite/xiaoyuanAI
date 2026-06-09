@@ -182,6 +182,29 @@
 .xy-mcp-dot.is-on { background: var(--color-green); }
 .xy-mcp-dot.is-off { background: var(--text-muted); }
 
+.xy-open-code-actions {
+  display: none;
+  margin-left: auto;
+  gap: 2px;
+}
+.xy-popup-item:hover .xy-open-code-actions {
+  display: flex;
+}
+.xy-open-code-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  border-radius: 3px;
+  color: var(--text-muted);
+}
+.xy-open-code-btn:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
 /* ═══════════════════════════════════════════════════════
    Message Bubbles
    ═══════════════════════════════════════════════════════ */

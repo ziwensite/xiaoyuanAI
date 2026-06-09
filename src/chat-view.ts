@@ -235,16 +235,21 @@ export class XiaoyuanAIChatView extends ItemView {
       showPopup(openCodeEl, (popup) => {
         popup.style.left = "auto";
         popup.style.right = "10px";
-        const item = popup.createDiv({ cls: "xy-popup-item" });
-        item.createSpan({ cls: "xy-mcp-dot is-on" });
-        item.createSpan({ text: connAddr });
-        const openItem = popup.createDiv({ cls: "xy-popup-item", text: "打开网页端" });
-        openItem.addEventListener("click", () => {
+        const row = popup.createDiv({ cls: "xy-popup-item" });
+        row.createSpan({ cls: "xy-mcp-dot is-on" });
+        row.createSpan({ text: connAddr });
+        const actions = row.createDiv({ cls: "xy-open-code-actions" });
+        const openIcon = actions.createSpan({ cls: "xy-open-code-btn" });
+        setIcon(openIcon, "external-link");
+        openIcon.addEventListener("click", (ev) => {
+          ev.stopPropagation();
           window.open(`http://${connAddr}`, "_blank");
           popup.remove();
         });
-        const closeItem = popup.createDiv({ cls: "xy-popup-item", text: "关闭 opencode 进程" });
-        closeItem.addEventListener("click", async () => {
+        const closeIcon = actions.createSpan({ cls: "xy-open-code-btn" });
+        setIcon(closeIcon, "x");
+        closeIcon.addEventListener("click", async (ev) => {
+          ev.stopPropagation();
           const { stopOpenCodeServer } = await import("./opencode-server");
           stopOpenCodeServer();
           popup.remove();
