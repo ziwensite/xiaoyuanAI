@@ -2257,16 +2257,6 @@ var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
   }
   buildHeaderContent(right) {
     const s = this.plugin.settings;
-    this.connectionStatusEl = right.createSpan({ cls: "xiaoyuan-settings-icon" });
-    (0, import_obsidian8.setIcon)(this.connectionStatusEl, "activity");
-    this.updateConnectionStatusUI(false);
-    this.connectionStatusEl.addEventListener("click", () => {
-      if (s.execMode === "cli") {
-        this.syncOpenCodeState();
-      } else {
-        this.checkConnectionStatus();
-      }
-    });
     const openCodeEl = right.createSpan({ cls: "xiaoyuan-settings-icon" });
     this.openCodeEl = openCodeEl;
     (0, import_obsidian8.setIcon)(openCodeEl, "server");
@@ -2292,6 +2282,16 @@ var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
           popup.remove();
         });
       });
+    });
+    this.connectionStatusEl = right.createSpan({ cls: "xiaoyuan-settings-icon" });
+    (0, import_obsidian8.setIcon)(this.connectionStatusEl, "activity");
+    this.updateConnectionStatusUI(false);
+    this.connectionStatusEl.addEventListener("click", () => {
+      if (s.execMode === "cli") {
+        this.syncOpenCodeState();
+      } else {
+        this.checkConnectionStatus();
+      }
     });
     const modeText = right.createSpan({ cls: "xiaoyuan-mode-selector" });
     modeText.textContent = s.execMode === "cli" ? "CLI" : "API";

@@ -184,17 +184,6 @@ export class XiaoyuanAIChatView extends ItemView {
 
   private buildHeaderContent(right: HTMLSpanElement) {
     const s = this.plugin.settings;
-    this.connectionStatusEl = right.createSpan({ cls: "xiaoyuan-settings-icon" });
-    setIcon(this.connectionStatusEl, "activity");
-    this.updateConnectionStatusUI(false);
-    this.connectionStatusEl.addEventListener("click", () => {
-      if (s.execMode === "cli") {
-        this.syncOpenCodeState();
-      } else {
-        this.checkConnectionStatus();
-      }
-    });
-
     const openCodeEl = right.createSpan({ cls: "xiaoyuan-settings-icon" });
     this.openCodeEl = openCodeEl;
     setIcon(openCodeEl, "server");
@@ -220,6 +209,17 @@ export class XiaoyuanAIChatView extends ItemView {
           popup.remove();
         });
       });
+    });
+
+    this.connectionStatusEl = right.createSpan({ cls: "xiaoyuan-settings-icon" });
+    setIcon(this.connectionStatusEl, "activity");
+    this.updateConnectionStatusUI(false);
+    this.connectionStatusEl.addEventListener("click", () => {
+      if (s.execMode === "cli") {
+        this.syncOpenCodeState();
+      } else {
+        this.checkConnectionStatus();
+      }
     });
 
     const modeText = right.createSpan({ cls: "xiaoyuan-mode-selector" });
