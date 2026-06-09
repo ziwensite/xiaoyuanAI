@@ -233,6 +233,8 @@ export class XiaoyuanAIChatView extends ItemView {
       const host = s.opencode.hostname || "127.0.0.1";
       const connAddr = `${host}:${port}`;
       showPopup(openCodeEl, (popup) => {
+        popup.style.left = "auto";
+        popup.style.right = "10px";
         const item = popup.createDiv({ cls: "xy-popup-item" });
         item.createSpan({ cls: "xy-mcp-dot is-on" });
         item.createSpan({ text: connAddr });

@@ -1956,24 +1956,6 @@ var TextOperationModal = class extends import_obsidian7.Modal {
       new import_obsidian7.Notice("\u5DF2\u6355\u83B7");
     });
     leftGroup.appendChild(captureBtn);
-    const tplBtn = createActionBtn("template");
-    tplBtn.addEventListener("click", (e) => {
-      const menu = new import_obsidian7.Menu();
-      const templates = this.plugin.settings.promptTemplates || [];
-      if (templates.length === 0) {
-        new import_obsidian7.Notice("\u672A\u914D\u7F6E Prompt \u6A21\u677F\uFF0C\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u521B\u5EFA");
-        return;
-      }
-      for (const tpl2 of templates) {
-        menu.addItem((item) => {
-          item.setTitle(`\u{1F4DD} ${tpl2.name}`);
-          item.setDisabled(false);
-          item.onClick(() => this.reprocessWithTpl(tpl2));
-        });
-      }
-      menu.showAtMouseEvent(e);
-    });
-    leftGroup.appendChild(tplBtn);
     this.toolsBtn = createActionBtn("aiTools");
     this.toolsBtn.addEventListener("click", (e) => this.showAIToolsMenu(e));
     leftGroup.appendChild(this.toolsBtn);
@@ -2303,6 +2285,8 @@ var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
       const host = s.opencode.hostname || "127.0.0.1";
       const connAddr = `${host}:${port}`;
       showPopup(openCodeEl, (popup) => {
+        popup.style.left = "auto";
+        popup.style.right = "10px";
         const item = popup.createDiv({ cls: "xy-popup-item" });
         item.createSpan({ cls: "xy-mcp-dot is-on" });
         item.createSpan({ text: connAddr });

@@ -106,25 +106,6 @@ export class TextOperationModal extends Modal {
     });
     leftGroup.appendChild(captureBtn);
 
-    const tplBtn = createActionBtn("template");
-    tplBtn.addEventListener("click", (e) => {
-      const menu = new Menu();
-      const templates = this.plugin.settings.promptTemplates || [];
-      if (templates.length === 0) {
-        new Notice("未配置 Prompt 模板，请先在设置中创建");
-        return;
-      }
-      for (const tpl of templates) {
-        menu.addItem((item) => {
-          item.setTitle(`📝 ${tpl.name}`);
-          item.setDisabled(false);
-          item.onClick(() => this.reprocessWithTpl(tpl));
-        });
-      }
-      menu.showAtMouseEvent(e);
-    });
-    leftGroup.appendChild(tplBtn);
-
     this.toolsBtn = createActionBtn("aiTools");
     this.toolsBtn.addEventListener("click", (e) => this.showAIToolsMenu(e));
     leftGroup.appendChild(this.toolsBtn);
