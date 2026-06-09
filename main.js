@@ -2288,8 +2288,8 @@ var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
         const row = popup.createDiv({ cls: "xy-popup-item" });
         row.createSpan({ cls: "xy-mcp-dot is-on" });
         row.createSpan({ text: connAddr });
-        const actions = row.createDiv({ cls: "xy-open-code-actions" });
-        const openIcon = actions.createSpan({ cls: "xy-open-code-btn" });
+        const actions = row.createDiv({ cls: "xy-popup-suffix" });
+        const openIcon = actions.createSpan({ cls: "xy-popup-suffix-btn" });
         (0, import_obsidian8.setIcon)(openIcon, "external-link");
         openIcon.addEventListener("click", (ev) => {
           ev.stopPropagation();
