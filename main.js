@@ -2257,42 +2257,6 @@ var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
   }
   buildHeaderContent(right) {
     const s = this.plugin.settings;
-    const openCodeEl = right.createSpan({ cls: "xiaoyuan-settings-icon" });
-    this.openCodeEl = openCodeEl;
-    (0, import_obsidian8.setIcon)(openCodeEl, "server");
-    openCodeEl.classList.add("is-disconnected");
-    openCodeEl.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const port = s.opencode.port || 16226;
-      const host = s.opencode.hostname || "127.0.0.1";
-      const connAddr = `${host}:${port}`;
-      showPopup(openCodeEl, (popup) => {
-        const item = popup.createDiv({ cls: "xy-popup-item" });
-        item.createSpan({ cls: "xy-mcp-dot is-on" });
-        item.createSpan({ text: connAddr });
-        const openItem = popup.createDiv({ cls: "xy-popup-item", text: "\u6253\u5F00\u7F51\u9875\u7AEF" });
-        openItem.addEventListener("click", () => {
-          window.open(`http://${connAddr}`, "_blank");
-          popup.remove();
-        });
-        const closeItem = popup.createDiv({ cls: "xy-popup-item", text: "\u5173\u95ED opencode \u8FDB\u7A0B" });
-        closeItem.addEventListener("click", async () => {
-          const { stopOpenCodeServer: stopOpenCodeServer2 } = await Promise.resolve().then(() => (init_opencode_server(), opencode_server_exports));
-          stopOpenCodeServer2();
-          popup.remove();
-        });
-      });
-    });
-    this.connectionStatusEl = right.createSpan({ cls: "xiaoyuan-settings-icon" });
-    (0, import_obsidian8.setIcon)(this.connectionStatusEl, "activity");
-    this.updateConnectionStatusUI(false);
-    this.connectionStatusEl.addEventListener("click", () => {
-      if (s.execMode === "cli") {
-        this.syncOpenCodeState();
-      } else {
-        this.checkConnectionStatus();
-      }
-    });
     const modeText = right.createSpan({ cls: "xiaoyuan-mode-selector" });
     modeText.textContent = s.execMode === "cli" ? "CLI" : "API";
     (0, import_obsidian8.setTooltip)(modeText, "\u70B9\u51FB\u5207\u6362\u6267\u884C\u6A21\u5F0F");
@@ -2316,6 +2280,42 @@ var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
             this.addSystemMessage("\u2705 \u5DF2\u5207\u6362\u5230 CLI \u6A21\u5F0F");
             new import_obsidian8.Notice("\u5DF2\u5207\u6362\u5230 CLI \u6A21\u5F0F");
           });
+        });
+      });
+    });
+    this.connectionStatusEl = right.createSpan({ cls: "xiaoyuan-settings-icon" });
+    (0, import_obsidian8.setIcon)(this.connectionStatusEl, "activity");
+    this.updateConnectionStatusUI(false);
+    this.connectionStatusEl.addEventListener("click", () => {
+      if (s.execMode === "cli") {
+        this.syncOpenCodeState();
+      } else {
+        this.checkConnectionStatus();
+      }
+    });
+    const openCodeEl = right.createSpan({ cls: "xiaoyuan-settings-icon" });
+    this.openCodeEl = openCodeEl;
+    (0, import_obsidian8.setIcon)(openCodeEl, "server");
+    openCodeEl.classList.add("is-disconnected");
+    openCodeEl.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const port = s.opencode.port || 16226;
+      const host = s.opencode.hostname || "127.0.0.1";
+      const connAddr = `${host}:${port}`;
+      showPopup(openCodeEl, (popup) => {
+        const item = popup.createDiv({ cls: "xy-popup-item" });
+        item.createSpan({ cls: "xy-mcp-dot is-on" });
+        item.createSpan({ text: connAddr });
+        const openItem = popup.createDiv({ cls: "xy-popup-item", text: "\u6253\u5F00\u7F51\u9875\u7AEF" });
+        openItem.addEventListener("click", () => {
+          window.open(`http://${connAddr}`, "_blank");
+          popup.remove();
+        });
+        const closeItem = popup.createDiv({ cls: "xy-popup-item", text: "\u5173\u95ED opencode \u8FDB\u7A0B" });
+        closeItem.addEventListener("click", async () => {
+          const { stopOpenCodeServer: stopOpenCodeServer2 } = await Promise.resolve().then(() => (init_opencode_server(), opencode_server_exports));
+          stopOpenCodeServer2();
+          popup.remove();
         });
       });
     });

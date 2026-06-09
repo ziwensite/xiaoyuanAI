@@ -184,44 +184,6 @@ export class XiaoyuanAIChatView extends ItemView {
 
   private buildHeaderContent(right: HTMLSpanElement) {
     const s = this.plugin.settings;
-    const openCodeEl = right.createSpan({ cls: "xiaoyuan-settings-icon" });
-    this.openCodeEl = openCodeEl;
-    setIcon(openCodeEl, "server");
-    openCodeEl.classList.add("is-disconnected");
-    openCodeEl.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const port = s.opencode.port || 16226;
-      const host = s.opencode.hostname || "127.0.0.1";
-      const connAddr = `${host}:${port}`;
-      showPopup(openCodeEl, (popup) => {
-        const item = popup.createDiv({ cls: "xy-popup-item" });
-        item.createSpan({ cls: "xy-mcp-dot is-on" });
-        item.createSpan({ text: connAddr });
-        const openItem = popup.createDiv({ cls: "xy-popup-item", text: "打开网页端" });
-        openItem.addEventListener("click", () => {
-          window.open(`http://${connAddr}`, "_blank");
-          popup.remove();
-        });
-        const closeItem = popup.createDiv({ cls: "xy-popup-item", text: "关闭 opencode 进程" });
-        closeItem.addEventListener("click", async () => {
-          const { stopOpenCodeServer } = await import("./opencode-server");
-          stopOpenCodeServer();
-          popup.remove();
-        });
-      });
-    });
-
-    this.connectionStatusEl = right.createSpan({ cls: "xiaoyuan-settings-icon" });
-    setIcon(this.connectionStatusEl, "activity");
-    this.updateConnectionStatusUI(false);
-    this.connectionStatusEl.addEventListener("click", () => {
-      if (s.execMode === "cli") {
-        this.syncOpenCodeState();
-      } else {
-        this.checkConnectionStatus();
-      }
-    });
-
     const modeText = right.createSpan({ cls: "xiaoyuan-mode-selector" });
     modeText.textContent = s.execMode === "cli" ? "CLI" : "API";
     setTooltip(modeText, "点击切换执行模式");
@@ -245,6 +207,44 @@ export class XiaoyuanAIChatView extends ItemView {
             this.addSystemMessage("✅ 已切换到 CLI 模式");
             new Notice("已切换到 CLI 模式");
           });
+        });
+      });
+    });
+
+    this.connectionStatusEl = right.createSpan({ cls: "xiaoyuan-settings-icon" });
+    setIcon(this.connectionStatusEl, "activity");
+    this.updateConnectionStatusUI(false);
+    this.connectionStatusEl.addEventListener("click", () => {
+      if (s.execMode === "cli") {
+        this.syncOpenCodeState();
+      } else {
+        this.checkConnectionStatus();
+      }
+    });
+
+    const openCodeEl = right.createSpan({ cls: "xiaoyuan-settings-icon" });
+    this.openCodeEl = openCodeEl;
+    setIcon(openCodeEl, "server");
+    openCodeEl.classList.add("is-disconnected");
+    openCodeEl.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const port = s.opencode.port || 16226;
+      const host = s.opencode.hostname || "127.0.0.1";
+      const connAddr = `${host}:${port}`;
+      showPopup(openCodeEl, (popup) => {
+        const item = popup.createDiv({ cls: "xy-popup-item" });
+        item.createSpan({ cls: "xy-mcp-dot is-on" });
+        item.createSpan({ text: connAddr });
+        const openItem = popup.createDiv({ cls: "xy-popup-item", text: "打开网页端" });
+        openItem.addEventListener("click", () => {
+          window.open(`http://${connAddr}`, "_blank");
+          popup.remove();
+        });
+        const closeItem = popup.createDiv({ cls: "xy-popup-item", text: "关闭 opencode 进程" });
+        closeItem.addEventListener("click", async () => {
+          const { stopOpenCodeServer } = await import("./opencode-server");
+          stopOpenCodeServer();
+          popup.remove();
         });
       });
     });
