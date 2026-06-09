@@ -67,8 +67,6 @@ export default class XiaoyuanAIPlugin extends Plugin {
       hotkeys: [{ modifiers: ["Ctrl", "Shift"], key: "N" }],
     });
 
-    this.addSettingTab(new XiaoyuanAISettingTab(this.app, this));
-
     this.addCommand({
       id: "xiaoyuanAI-chat-with-note", name: "\u{1F4C4} 用当前笔记开启 AI 对话",
       callback: async () => {
@@ -107,9 +105,8 @@ export default class XiaoyuanAIPlugin extends Plugin {
       this.app.workspace.onLayoutReady(() => this.activateChatView());
     }
 
-    this.app.workspace.onLayoutReady(() => this.cleanTempFiles());
-
     this.app.workspace.onLayoutReady(() => {
+      this.cleanTempFiles();
       if (this.settings.execMode === "cli" && this.settings.mcpServers.some(s => s.enabled)) {
         syncMCPServers(this.settings, getVaultBasePath()).catch(() => {});
       }

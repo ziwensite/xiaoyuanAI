@@ -249,7 +249,7 @@ private async refreshStatusCard() {
         btn.setButtonText("↻");
         btn.setTooltip("从 opencode 同步模型列表");
         btn.onClick(async () => {
-          const { fetchOpenCodeModelsFromCLI } = await import("./ai");
+          const { fetchOpenCodeModelsFromCLI, fetchOpenCodeAgents } = await import("./ai");
           const { getVaultBasePath } = await import("./server");
           try {
             const result = await fetchOpenCodeModelsFromCLI(s.opencode.cliPath, getVaultBasePath(), s.opencode.port);
@@ -261,7 +261,6 @@ private async refreshStatusCard() {
             await this.plugin.saveSettings();
             new Notice(result.models.length === 0 ? "未找到模型" : `已同步 ${result.models.length} 个模型`);
             this.display();
-            const { fetchOpenCodeAgents } = await import("./ai");
             s.opencodeAgents = await fetchOpenCodeAgents(s.opencode.cliPath, getVaultBasePath(), s.opencode.port).catch(() => s.opencodeAgents);
             await this.plugin.saveSettings();
           } catch (err: unknown) { new Notice(`同步失败：${err instanceof Error ? err.message : String(err)}`); }
@@ -665,9 +664,8 @@ private async refreshStatusCard() {
       syncBtn.disabled = true;
       syncBtn.textContent = "同步中...";
       try {
-        const { syncMCPServers } = await import("./ai");
+        const { syncMCPServers, resetMCPSyncDone } = await import("./ai");
         const { getVaultBasePath } = await import("./server");
-        const { resetMCPSyncDone } = await import("./ai");
         resetMCPSyncDone();
         await syncMCPServers(s, getVaultBasePath());
       } finally {

@@ -3697,7 +3697,7 @@ var XiaoyuanAISettingTab = class extends import_obsidian9.PluginSettingTab {
       btn.setButtonText("\u21BB");
       btn.setTooltip("\u4ECE opencode \u540C\u6B65\u6A21\u578B\u5217\u8868");
       btn.onClick(async () => {
-        const { fetchOpenCodeModelsFromCLI: fetchOpenCodeModelsFromCLI2 } = await Promise.resolve().then(() => (init_ai(), ai_exports));
+        const { fetchOpenCodeModelsFromCLI: fetchOpenCodeModelsFromCLI2, fetchOpenCodeAgents: fetchOpenCodeAgents2 } = await Promise.resolve().then(() => (init_ai(), ai_exports));
         const { getVaultBasePath: getVaultBasePath2 } = await Promise.resolve().then(() => (init_server(), server_exports));
         try {
           const result = await fetchOpenCodeModelsFromCLI2(s.opencode.cliPath, getVaultBasePath2(), s.opencode.port);
@@ -3709,7 +3709,6 @@ var XiaoyuanAISettingTab = class extends import_obsidian9.PluginSettingTab {
           await this.plugin.saveSettings();
           new import_obsidian9.Notice(result.models.length === 0 ? "\u672A\u627E\u5230\u6A21\u578B" : `\u5DF2\u540C\u6B65 ${result.models.length} \u4E2A\u6A21\u578B`);
           this.display();
-          const { fetchOpenCodeAgents: fetchOpenCodeAgents2 } = await Promise.resolve().then(() => (init_ai(), ai_exports));
           s.opencodeAgents = await fetchOpenCodeAgents2(s.opencode.cliPath, getVaultBasePath2(), s.opencode.port).catch(() => s.opencodeAgents);
           await this.plugin.saveSettings();
         } catch (err) {
@@ -4076,9 +4075,8 @@ var XiaoyuanAISettingTab = class extends import_obsidian9.PluginSettingTab {
       syncBtn.disabled = true;
       syncBtn.textContent = "\u540C\u6B65\u4E2D...";
       try {
-        const { syncMCPServers: syncMCPServers2 } = await Promise.resolve().then(() => (init_ai(), ai_exports));
+        const { syncMCPServers: syncMCPServers2, resetMCPSyncDone: resetMCPSyncDone2 } = await Promise.resolve().then(() => (init_ai(), ai_exports));
         const { getVaultBasePath: getVaultBasePath2 } = await Promise.resolve().then(() => (init_server(), server_exports));
-        const { resetMCPSyncDone: resetMCPSyncDone2 } = await Promise.resolve().then(() => (init_ai(), ai_exports));
         resetMCPSyncDone2();
         await syncMCPServers2(s, getVaultBasePath2());
       } finally {
@@ -4540,7 +4538,6 @@ var XiaoyuanAIPlugin = class extends import_obsidian10.Plugin {
       },
       hotkeys: [{ modifiers: ["Ctrl", "Shift"], key: "N" }]
     });
-    this.addSettingTab(new XiaoyuanAISettingTab(this.app, this));
     this.addCommand({
       id: "xiaoyuanAI-chat-with-note",
       name: "\u{1F4C4} \u7528\u5F53\u524D\u7B14\u8BB0\u5F00\u542F AI \u5BF9\u8BDD",
@@ -4579,8 +4576,8 @@ ${content.slice(0, 3e3)}`);
     if (this.settings.autoOpen) {
       this.app.workspace.onLayoutReady(() => this.activateChatView());
     }
-    this.app.workspace.onLayoutReady(() => this.cleanTempFiles());
     this.app.workspace.onLayoutReady(() => {
+      this.cleanTempFiles();
       if (this.settings.execMode === "cli" && this.settings.mcpServers.some((s) => s.enabled)) {
         syncMCPServers(this.settings, getVaultBasePath()).catch(() => {
         });
