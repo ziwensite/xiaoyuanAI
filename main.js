@@ -2599,6 +2599,7 @@ var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
       await this.plugin.saveSettings();
       this.updateConnectionStatusUI(true);
       if (result.models.length > 0) new import_obsidian8.Notice(`\u5DF2\u540C\u6B65 ${result.models.length} \u4E2A\u6A21\u578B`);
+      resetMCPSyncDone();
       const mcpOk = await syncMCPServers(s, getVaultBasePath());
       this.mcpSyncOk = mcpOk;
       this.updateMCPStatusUI();
@@ -3567,7 +3568,7 @@ var XiaoyuanAISettingTab = class extends import_obsidian9.PluginSettingTab {
     refreshBtn.addEventListener("click", async () => {
       await this.refreshStatusCard();
       if (s.execMode === "cli") {
-        const { fetchOpenCodeModelsFromCLI: fetchOpenCodeModelsFromCLI2, fetchOpenCodeAgents: fetchOpenCodeAgents2 } = await Promise.resolve().then(() => (init_ai(), ai_exports));
+        const { fetchOpenCodeModelsFromCLI: fetchOpenCodeModelsFromCLI2, fetchOpenCodeAgents: fetchOpenCodeAgents2, resetMCPSyncDone: resetMCPSyncDone2, syncMCPServers: syncMCPServers2 } = await Promise.resolve().then(() => (init_ai(), ai_exports));
         const { getVaultBasePath: getVaultBasePath2 } = await Promise.resolve().then(() => (init_server(), server_exports));
         const vaultDir = getVaultBasePath2();
         try {
@@ -3581,6 +3582,9 @@ var XiaoyuanAISettingTab = class extends import_obsidian9.PluginSettingTab {
           await this.plugin.saveSettings();
         } catch (e) {
         }
+        resetMCPSyncDone2();
+        syncMCPServers2(s, vaultDir).catch(() => {
+        });
       }
       this.display();
     });
@@ -4578,10 +4582,6 @@ ${content.slice(0, 3e3)}`);
     }
     this.app.workspace.onLayoutReady(() => {
       this.cleanTempFiles();
-      if (this.settings.execMode === "cli" && this.settings.mcpServers.some((s) => s.enabled)) {
-        syncMCPServers(this.settings, getVaultBasePath()).catch(() => {
-        });
-      }
     });
     this.registerDomEvent(document, "mouseup", (e) => {
       setTimeout(() => {

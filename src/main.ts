@@ -7,7 +7,7 @@ import { XiaoyuanAIChatView } from "./chat-view";
 import { XiaoyuanAISettingTab } from "./settings";
 import { TextOperationModal } from "./modals";
 import { DEFAULT_SETTINGS, VIEW_TYPE_XIAOYUAN_AI_CHAT, DEFAULT_PROMPT_TEMPLATES } from "./constants";
-import { ensureOpenCodeServer, stopOpenCodeServer, syncMCPServers } from "./ai";
+import { ensureOpenCodeServer, stopOpenCodeServer } from "./ai";
 import { resolveOpenCodePath } from "./opencode-server";
 import { getVaultBasePath, setVaultBasePath } from "./server";
 import { createActionBtn } from "./action-buttons";
@@ -107,9 +107,6 @@ export default class XiaoyuanAIPlugin extends Plugin {
 
     this.app.workspace.onLayoutReady(() => {
       this.cleanTempFiles();
-      if (this.settings.execMode === "cli" && this.settings.mcpServers.some(s => s.enabled)) {
-        syncMCPServers(this.settings, getVaultBasePath()).catch(() => {});
-      }
     });
 
     this.registerDomEvent(document, "mouseup", (e: MouseEvent) => {

@@ -114,7 +114,7 @@ private async refreshStatusCard() {
     refreshBtn.addEventListener("click", async () => {
       await this.refreshStatusCard();
       if (s.execMode === "cli") {
-        const { fetchOpenCodeModelsFromCLI, fetchOpenCodeAgents } = await import("./ai");
+        const { fetchOpenCodeModelsFromCLI, fetchOpenCodeAgents, resetMCPSyncDone, syncMCPServers } = await import("./ai");
         const { getVaultBasePath } = await import("./server");
         const vaultDir = getVaultBasePath();
         try {
@@ -127,6 +127,8 @@ private async refreshStatusCard() {
           s.opencodeAgents = await fetchOpenCodeAgents(s.opencode.cliPath, vaultDir, s.opencode.port);
           await this.plugin.saveSettings();
         } catch {}
+        resetMCPSyncDone();
+        syncMCPServers(s, vaultDir).catch(() => {});
       }
       this.display();
     });

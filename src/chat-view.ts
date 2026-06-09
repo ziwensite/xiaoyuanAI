@@ -7,7 +7,7 @@ import {
   Attachment,
 } from "./types";
 import { VIEW_TYPE_XIAOYUAN_AI_CHAT, getActiveProvider } from "./constants";
-import { callAIWithHTTPStreaming, callAISession, getVaultBasePath, ensureOpenCodeServer, syncMCPServers } from "./ai";
+import { callAIWithHTTPStreaming, callAISession, getVaultBasePath, ensureOpenCodeServer, syncMCPServers, resetMCPSyncDone } from "./ai";
 import { estimateTokens } from "./utils";
 import { fetchOpenCodeModelsFromCLI } from "./opencode-config";
 import { checkConnection } from "./connection-checker";
@@ -471,6 +471,7 @@ private mcpSyncOk = false;
       this.updateConnectionStatusUI(true);
       if (result.models.length > 0) new Notice(`已同步 ${result.models.length} 个模型`);
 
+      resetMCPSyncDone();
       const mcpOk = await syncMCPServers(s, getVaultBasePath());
       this.mcpSyncOk = mcpOk;
       this.updateMCPStatusUI();
