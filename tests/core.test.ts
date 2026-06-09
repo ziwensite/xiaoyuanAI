@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { estimateTokens, parseDiffText, simpleHash, ensureApiUrl, parseMcpHeaders } from "../src/utils";
+import { estimateTokens, parseDiffText, simpleHash, ensureApiUrl } from "../src/utils";
 import { getActiveProvider } from "../src/constants";
 
 describe("estimateTokens", () => {
@@ -142,28 +142,5 @@ describe("getActiveProvider", () => {
   it("returns the first provider when activeApiProviderId is undefined-like", () => {
     const result = getActiveProvider({ apiProviders: providers, activeApiProviderId: "" });
     expect(result?.name).toBe("Provider 1");
-  });
-});
-
-describe("parseMcpHeaders", () => {
-  it("returns empty object for empty string", () => {
-    expect(parseMcpHeaders("")).toEqual({});
-  });
-
-  it("parses valid JSON headers", () => {
-    const result = parseMcpHeaders('{"Authorization":"Bearer xxx"}');
-    expect(result).toEqual({ Authorization: "Bearer xxx" });
-  });
-
-  it("returns empty object for invalid JSON", () => {
-    expect(parseMcpHeaders("{invalid}")).toEqual({});
-  });
-
-  it("returns empty object for JSON array", () => {
-    expect(parseMcpHeaders('["a","b"]')).toEqual({});
-  });
-
-  it("returns empty object for JSON primitive", () => {
-    expect(parseMcpHeaders('"string"')).toEqual({});
   });
 });

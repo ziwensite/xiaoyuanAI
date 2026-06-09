@@ -62,16 +62,6 @@ export interface ApiProviderConfig {
   apiKey: string;
 }
 
-export interface McpServerConfig {
-  name: string;
-  type: "local" | "remote";
-  command?: string;
-  args?: string;
-  url?: string;
-  headers?: string;
-  enabled: boolean;
-}
-
 export type ReasoningEffort = "none" | "minimal" | "low" | "medium" | "high" | "xhigh";
 export type ReasoningEffortAPI = "none" | "low" | "medium" | "high";
 export type PermissionMode = "read-only" | "workspace-write" | "danger-full-access";
@@ -113,7 +103,6 @@ export interface XiaoyuanAISettings {
 
   proxyEnabled: boolean;
   proxyUrl: string;
-  mcpServers: McpServerConfig[];
   defaultReasoning: ReasoningEffort;
   apiReasoningEffort: ReasoningEffortAPI;
   defaultPermission: PermissionMode;

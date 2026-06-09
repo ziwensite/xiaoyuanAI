@@ -66,13 +66,3 @@ export function tryParseJson<T>(raw: string): T | null {
     return null;
   }
 }
-
-export function parseMcpHeaders(headers: string): Record<string, string> {
-  try {
-    const parsed = JSON.parse(headers);
-    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-      return parsed as Record<string, string>;
-    }
-  } catch {}
-  return {};
-}

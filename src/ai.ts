@@ -1,6 +1,6 @@
 import { getActiveProvider } from "./constants";
 import type { XiaoyuanAISettings, FileDiff, SSEEventPart } from "./types";
-import { ensureApiUrl, parseMcpHeaders, parseDiffText } from "./utils";
+import { ensureApiUrl, parseDiffText } from "./utils";
 import { requestOpenCode, readServerConn, connectSSE, combineSignals } from "./opencode-client";
 import { ensureOpenCodeServer } from "./opencode-server";
 import { callAIWithAPI, processAPISSEStream } from "./api-client";
@@ -199,77 +199,4 @@ export async function callAISession(options: CallAISessionOptions): Promise<stri
     settings.maxTokens, settings.temperature, true, signal, settings.apiReasoningEffort,
   );
   return processAPISSEStream(resp, onThinking, onTextUpdate);
-}
-
-// ─── MCP server sync ────────────────────────────────────────────────
-
-let mcpSyncDone = false;
-
-interface McpServerConfigPayload {
-  type: string;
-  command?: string;
-  args?: string[];
-  url?: string;
-  headers?: Record<string, string>;
-  [key: string]: unknown;
-}
-
-export function resetMCPSyncDone(): void {
-  mcpSyncDone = false;
-}
-
-export async function syncMCPServers(
-  settings: XiaoyuanAISettings,
-  vaultDir: string,
-): Promise<boolean> {
-  if (mcpSyncDone) return true;
-
-  const servers = settings.mcpServers?.filter(s => s.enabled) || [];
-  if (servers.length === 0) return true;
-
-  let conn = readServerConn(vaultDir, settings.opencode.port || 16226);
-  if (conn) {
-    try { await requestOpenCode(conn.url, "/global/health", "GET", undefined, conn.authHeader); }
-    catch { conn = null; }
-  }
-  if (!conn) {
-    try {
-      const base = await ensureOpenCodeServer(
-        settings.opencode.cliPath, settings.opencode.hostname,
-        settings.opencode.port, vaultDir, true,
-      );
-      conn = { url: base, authHeader: readServerConn(vaultDir, settings.opencode.port || 16226)?.authHeader || "" };
-    } catch {
-      return false;
-    }
-  }
-
-  const activeConn = conn;
-
-  let success = 0;
-  let fail = 0;
-
-  for (const server of servers) {
-    try {
-      const config: McpServerConfigPayload = { type: server.type };
-      if (server.type === "local") {
-        if (server.command) config.command = server.command;
-        if (server.args) config.args = server.args.split(/\s+/).filter(Boolean);
-      } else {
-        if (server.url) config.url = server.url;
-        if (server.headers) {
-          config.headers = parseMcpHeaders(server.headers);
-        }
-      }
-      await requestOpenCode(activeConn.url, "/mcp", "POST", { name: server.name, config }, activeConn.authHeader);
-      success++;
-    } catch (err: unknown) {
-      fail++;
-      console.warn(`MCP server "${server.name}" sync failed:`, err);
-    }
-  }
-  mcpSyncDone = true;
-
-  if (success > 0 && fail === 0) return true;
-  return false;
 }

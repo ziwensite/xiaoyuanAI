@@ -1,4 +1,4 @@
-import type { OpenCodeSettings, XiaoyuanAISettings, ApiProviderConfig, PromptTemplate, McpServerConfig } from "./types";
+import type { OpenCodeSettings, XiaoyuanAISettings, ApiProviderConfig, PromptTemplate } from "./types";
 
 export const DEFAULT_OPENCODE_SETTINGS: OpenCodeSettings = {
   cliPath: "opencode",
@@ -8,16 +8,6 @@ export const DEFAULT_OPENCODE_SETTINGS: OpenCodeSettings = {
   model: "",
   agent: "build",
 };
-
-export const MCP_PRESETS: McpServerConfig[] = [
-  { name: "文件系统", type: "local", command: "npx", args: "-y @modelcontextprotocol/server-filesystem 路径", url: "", headers: "", enabled: true },
-  { name: "Git", type: "local", command: "npx", args: "-y @modelcontextprotocol/server-git", url: "", headers: "", enabled: true },
-  { name: "GitHub", type: "local", command: "npx", args: "-y @modelcontextprotocol/server-github", url: "", headers: "", enabled: true },
-  { name: "Web搜索", type: "local", command: "npx", args: "-y @anthropic/mcp-server-web-search", url: "", headers: "", enabled: true },
-  { name: "Puppeteer", type: "local", command: "npx", args: "-y @anthropic/mcp-server-puppeteer", url: "", headers: "", enabled: true },
-  { name: "SQLite", type: "local", command: "npx", args: "-y @anthropic/mcp-server-sqlite --db 数据库路径", url: "", headers: "", enabled: true },
-  { name: "记忆存储", type: "local", command: "npx", args: "-y @anthropic/mcp-server-memory", url: "", headers: "", enabled: true },
-];
 
 export const DEFAULT_PROMPT_TEMPLATES: PromptTemplate[] = [
   { id: "polish", name: "润色", description: "改进表达、语法和流畅度", prompt: "你是一个文字润色助手。请润色以下文本，改进表达、语法和流畅度，保持原意不变。只输出润色后的结果，不要添加任何解释：\n\n", icon: "pencil" },
@@ -40,7 +30,6 @@ export const DEFAULT_SETTINGS: XiaoyuanAISettings = {
 
   proxyEnabled: false,
   proxyUrl: "",
-  mcpServers: [],
   defaultReasoning: "low",
   apiReasoningEffort: "none",
   defaultPermission: "read-only",

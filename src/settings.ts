@@ -1,12 +1,12 @@
 import { App, PluginSettingTab, Setting, Notice, setIcon, TFile } from "obsidian";
 import type XiaoyuanAIPlugin from "./main";
 import { XiaoyuanAIChatView } from "./chat-view";
-import { VIEW_TYPE_XIAOYUAN_AI_CHAT, getActiveProvider, DEFAULT_PROMPT_TEMPLATES, MCP_PRESETS } from "./constants";
+import { VIEW_TYPE_XIAOYUAN_AI_CHAT, getActiveProvider, DEFAULT_PROMPT_TEMPLATES } from "./constants";
 import type { XiaoyuanAISettings, ApiProviderConfig, ReasoningEffort, ReasoningEffortAPI, PermissionMode } from "./types";
 import { showPopup, addPopupItem } from "./popup";
 import { checkConnection } from "./connection-checker";
 
-type TabId = "cli" | "api" | "general" | "mcp" | "skills" | "prompts";
+type TabId = "cli" | "api" | "general" | "skills" | "prompts";
 
 export class XiaoyuanAISettingTab extends PluginSettingTab {
   plugin: XiaoyuanAIPlugin;
@@ -114,7 +114,7 @@ private async refreshStatusCard() {
     refreshBtn.addEventListener("click", async () => {
       await this.refreshStatusCard();
       if (s.execMode === "cli") {
-        const { fetchOpenCodeModelsFromCLI, fetchOpenCodeAgents, resetMCPSyncDone, syncMCPServers } = await import("./ai");
+        const { fetchOpenCodeModelsFromCLI, fetchOpenCodeAgents } = await import("./ai");
         const { getVaultBasePath } = await import("./server");
         const vaultDir = getVaultBasePath();
         try {
@@ -127,8 +127,6 @@ private async refreshStatusCard() {
           s.opencodeAgents = await fetchOpenCodeAgents(s.opencode.cliPath, vaultDir, s.opencode.port);
           await this.plugin.saveSettings();
         } catch {}
-        resetMCPSyncDone();
-        syncMCPServers(s, vaultDir).catch(() => {});
       }
       this.display();
     });
@@ -143,7 +141,6 @@ private async refreshStatusCard() {
       { id: "general", icon: "settings", label: "通用" },
       { id: "cli", icon: "terminal-square", label: "CLI 设置" },
       { id: "api", icon: "key-round", label: "API 设置" },
-      { id: "mcp", icon: "server", label: "MCP 工具" },
       { id: "skills", icon: "wand-sparkles", label: "Skills" },
       { id: "prompts", icon: "file-pen", label: "Prompt 模板" },
     ];
@@ -170,7 +167,6 @@ private async refreshStatusCard() {
       case "cli": this.buildCLITab(container); break;
       case "api": this.buildAPITab(container); break;
       case "general": this.buildGeneralTab(container); break;
-      case "mcp": this.buildMCPTab(container); break;
       case "skills": this.buildSkillsTab(container); break;
       case "prompts": this.buildPromptsTab(container); break;
     }
@@ -486,205 +482,6 @@ private async refreshStatusCard() {
     const input = field.createEl("input", { cls: "xy-api-provider-input", attr: { placeholder } });
     input.value = value;
     if (password) input.type = "password";
-    input.addEventListener("change", () => { void onChange(input.value); });
-  }
-
-  // ─── MCP 设置 ─────────────────────────────────────────────────────
-
-  private buildMCPTab(container: HTMLElement) {
-    const s = this.s();
-    const servers = s.mcpServers || [];
-
-    container.createEl("p", { cls: "xy-settings-desc", text: "配置 MCP 服务器，为 AI 提供额外的工具和上下文能力。" });
-    const link = container.createEl("a", {
-      cls: "xy-settings-desc",
-      text: "📖 查看常用 MCP 服务器列表及参数说明",
-      attr: { href: "https://github.com/modelcontextprotocol/servers", target: "_blank" },
-    });
-    link.style.cssText = "display:block;margin-top:4px;cursor:pointer;color:var(--text-accent);";
-
-    for (let i = 0; i < servers.length; i++) {
-      const server = servers[i];
-      const card = container.createDiv({ cls: "xy-api-provider-row" });
-
-      const head = card.createDiv({ cls: "xy-api-provider-head" });
-      const title = head.createDiv({ cls: "xy-api-provider-title" });
-      const nameSpan = title.createSpan({ text: server.name || "未命名" });
-      const typeSmall = title.createEl("small", { text: ` · ${server.type === "local" ? "本地进程" : "远程服务"}` });
-      const enabledBadge = title.createEl("small", { text: server.enabled ? " · 已启用" : " · 已禁用", cls: server.enabled ? "" : "xy-mcp-disabled" });
-
-      const updateHeader = () => {
-        nameSpan.textContent = server.name || "未命名";
-        typeSmall.textContent = ` · ${server.type === "local" ? "本地进程" : "远程服务"}`;
-        enabledBadge.textContent = server.enabled ? " · 已启用" : " · 已禁用";
-      };
-
-      const headActions = head.createDiv({ cls: "xy-api-provider-actions" });
-      const testBtn = headActions.createEl("button", { cls: "xy-status-btn", text: "测试" });
-      testBtn.addEventListener("click", async () => {
-        testBtn.textContent = "测试中...";
-        testBtn.disabled = true;
-        try {
-          const { spawnWithTimeout } = await import("./opencode-server");
-          if (server.type === "local") {
-            const cmd = (server.command || "").split(/\s+/)[0];
-            if (!cmd) { new Notice("请先填写命令"); return; }
-            await spawnWithTimeout(cmd, ["--version"], (await import("./server")).getVaultBasePath(), 5000);
-            new Notice(`✅ ${server.name}：命令可用`);
-          } else {
-            if (!server.url) { new Notice("请先填写 URL"); return; }
-            const resp = await fetch(server.url, { method: "HEAD", signal: AbortSignal.timeout(5000) });
-            new Notice(resp.ok ? `✅ ${server.name}：连接成功` : `❌ ${server.name}：状态码 ${resp.status}`);
-          }
-        } catch (err: unknown) {
-          new Notice(`❌ ${server.name}：${err instanceof Error ? err.message : String(err)}`);
-        } finally {
-          testBtn.textContent = "测试";
-          testBtn.disabled = false;
-        }
-      });
-
-      const deleteBtn = headActions.createEl("button", { cls: "xy-status-btn", text: "删除" });
-      deleteBtn.addEventListener("click", async () => {
-        s.mcpServers.splice(i, 1);
-        await this.plugin.saveSettings();
-        this.display();
-      });
-
-      let collapsed = true;
-      const content = card.createDiv({ cls: "xy-api-provider-content" });
-      content.style.display = "none";
-      head.style.cursor = "pointer";
-      head.addEventListener("click", (e) => {
-        const target = e.target instanceof HTMLElement ? e.target : null;
-        if (target?.closest("button")) return;
-        collapsed = !collapsed;
-        content.style.display = collapsed ? "none" : "";
-      });
-
-      this.addMCPFieldText(content, "名称", server.name, "my-server", async (val) => {
-        server.name = val;
-        await this.plugin.saveSettings();
-        updateHeader();
-      });
-
-      const typeField = content.createDiv({ cls: "xy-api-provider-field" });
-      typeField.createSpan({ cls: "xy-api-provider-label", text: "类型" });
-      const typeSelect = typeField.createEl("select", { cls: "dropdown" });
-      typeSelect.createEl("option", { value: "local", text: "本地进程" });
-      typeSelect.createEl("option", { value: "remote", text: "远程服务" });
-      typeSelect.value = server.type;
-      typeSelect.addEventListener("change", async () => {
-        server.type = typeSelect.value as "local" | "remote";
-        await this.plugin.saveSettings();
-        this.display();
-      });
-
-      const commandField = content.createDiv({ cls: "xy-api-provider-field xy-mcp-local" });
-      commandField.style.display = server.type === "local" ? "" : "none";
-      commandField.createSpan({ cls: "xy-api-provider-label", text: "命令" });
-      const commandInput = commandField.createEl("input", { cls: "xy-api-provider-input", attr: { placeholder: "npx" } });
-      commandInput.value = server.command || "";
-      commandInput.addEventListener("change", async () => {
-        server.command = commandInput.value.trim();
-        await this.plugin.saveSettings();
-      });
-
-      const argsField = content.createDiv({ cls: "xy-api-provider-field xy-mcp-local" });
-      argsField.style.display = server.type === "local" ? "" : "none";
-      argsField.createSpan({ cls: "xy-api-provider-label", text: "参数" });
-      const argsInput = argsField.createEl("input", { cls: "xy-api-provider-input", attr: { placeholder: "-y @modelcontextprotocol/server-filesystem ./" } });
-      argsInput.value = server.args || "";
-      argsInput.addEventListener("change", async () => {
-        server.args = argsInput.value.trim();
-        await this.plugin.saveSettings();
-      });
-
-      const urlField = content.createDiv({ cls: "xy-api-provider-field xy-mcp-remote" });
-      urlField.style.display = server.type === "remote" ? "" : "none";
-      urlField.createSpan({ cls: "xy-api-provider-label", text: "URL" });
-      const urlInput = urlField.createEl("input", { cls: "xy-api-provider-input", attr: { placeholder: "http://localhost:3000/mcp" } });
-      urlInput.value = server.url || "";
-      urlInput.addEventListener("change", async () => {
-        server.url = urlInput.value.trim();
-        await this.plugin.saveSettings();
-      });
-
-      const headersField = content.createDiv({ cls: "xy-api-provider-field xy-mcp-remote" });
-      headersField.style.display = server.type === "remote" ? "" : "none";
-      headersField.createSpan({ cls: "xy-api-provider-label", text: "Headers" });
-      const headersInput = headersField.createEl("input", { cls: "xy-api-provider-input", attr: { placeholder: '{"Authorization":"Bearer xxx"}' } });
-      headersInput.value = server.headers || "";
-      headersInput.addEventListener("change", async () => {
-        server.headers = headersInput.value.trim();
-        await this.plugin.saveSettings();
-      });
-
-      const enabledField = content.createDiv({ cls: "xy-api-provider-field" });
-      enabledField.createSpan({ cls: "xy-api-provider-label", text: "启用" });
-      const enabledToggle = enabledField.createEl("input", { type: "checkbox" });
-      enabledToggle.checked = server.enabled;
-      enabledToggle.addEventListener("change", async () => {
-        server.enabled = enabledToggle.checked;
-        await this.plugin.saveSettings();
-        const { resetMCPSyncDone } = await import("./ai");
-        resetMCPSyncDone();
-        this.display();
-      });
-    }
-
-    const addBtn = container.createDiv({ cls: "xy-settings-status-actions" });
-    const newBtn = addBtn.createEl("button", { cls: "xy-status-btn", text: "+ 新增 MCP 服务器" });
-    newBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      showPopup(newBtn, (popup) => {
-        for (const preset of MCP_PRESETS) {
-          addPopupItem(popup, preset.name, false, () => {
-            s.mcpServers.push({ name: preset.name, type: preset.type, command: preset.command, args: preset.args, url: preset.url, headers: preset.headers, enabled: true });
-            this.plugin.saveSettings();
-            this.display();
-          });
-        }
-        popup.createDiv({ cls: "xy-popup-separator" });
-        addPopupItem(popup, "✏️ 自定义（空白）", false, () => {
-          s.mcpServers.push({ name: "新服务器", type: "local", command: "", args: "", url: "", headers: "", enabled: true });
-          this.plugin.saveSettings();
-          this.display();
-        });
-      });
-    });
-
-    const syncBtn = addBtn.createEl("button", { cls: "xy-status-btn", text: "⟳ 同步到 OpenCode" });
-    syncBtn.addEventListener("click", async () => {
-      const missing = s.mcpServers.filter(se => se.enabled && (
-        (se.type === "local" && !se.command) || (se.type === "remote" && !se.url)
-      ));
-      if (missing.length > 0) {
-        new Notice(`请先补全：${missing.map(se => se.name).join("、")}`);
-        return;
-      }
-      syncBtn.disabled = true;
-      syncBtn.textContent = "同步中...";
-      try {
-        const { syncMCPServers, resetMCPSyncDone } = await import("./ai");
-        const { getVaultBasePath } = await import("./server");
-        resetMCPSyncDone();
-        await syncMCPServers(s, getVaultBasePath());
-      } finally {
-        syncBtn.disabled = false;
-        syncBtn.textContent = "⟳ 同步到 OpenCode";
-      }
-    });
-  }
-
-  private addMCPFieldText(
-    container: HTMLElement, label: string, value: string,
-    placeholder: string, onChange: (val: string) => Promise<void>,
-  ) {
-    const field = container.createDiv({ cls: "xy-api-provider-field" });
-    field.createSpan({ cls: "xy-api-provider-label", text: label });
-    const input = field.createEl("input", { cls: "xy-api-provider-input", attr: { placeholder } });
-    input.value = value;
     input.addEventListener("change", () => { void onChange(input.value); });
   }
 

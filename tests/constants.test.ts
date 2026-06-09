@@ -43,7 +43,6 @@ describe("constants integrity", () => {
     expect(DEFAULT_SETTINGS.opencode).toBeDefined();
     expect(DEFAULT_SETTINGS.apiProviders).toBeInstanceOf(Array);
     expect(DEFAULT_SETTINGS.apiProviders.length).toBeGreaterThanOrEqual(1);
-    expect(DEFAULT_SETTINGS.mcpServers).toBeInstanceOf(Array);
     expect(DEFAULT_SETTINGS.skills).toBeInstanceOf(Array);
     expect(DEFAULT_SETTINGS.promptTemplates).toBeInstanceOf(Array);
     expect(DEFAULT_SETTINGS.promptTemplates.length).toBeGreaterThanOrEqual(6);

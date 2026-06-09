@@ -7,7 +7,7 @@ import {
   Attachment,
 } from "./types";
 import { VIEW_TYPE_XIAOYUAN_AI_CHAT, getActiveProvider } from "./constants";
-import { callAIWithHTTPStreaming, callAISession, getVaultBasePath, ensureOpenCodeServer, syncMCPServers, resetMCPSyncDone } from "./ai";
+import { callAIWithHTTPStreaming, callAISession, getVaultBasePath, ensureOpenCodeServer } from "./ai";
 import { estimateTokens } from "./utils";
 import { fetchOpenCodeModelsFromCLI } from "./opencode-config";
 import { checkConnection } from "./connection-checker";
@@ -50,14 +50,13 @@ export class XiaoyuanAIChatView extends ItemView {
   abortController: AbortController | null = null;
   private pendingDiffs: FileDiff[] | null = null;
   private connectionStatusEl: HTMLSpanElement | null = null;
-  private mcpStatusEl!: HTMLSpanElement;
+  private openCodeEl!: HTMLSpanElement;
   private attachments: Attachment[] = [];
   private attachPreviewEl!: HTMLDivElement;
   private quoteText = "";
   speakController = new SpeakController();
   private speakIndicator!: HTMLSpanElement;
   private skillIndex = -1;
-private mcpSyncOk = false;
 
   constructor(leaf: WorkspaceLeaf, plugin: XiaoyuanAIPlugin) {
     super(leaf);
@@ -103,10 +102,6 @@ private mcpSyncOk = false;
       this.checkConnectionStatus();
     }
     await this.loadSessions();
-  }
-
-  onPaneShow() {
-    this.updateMCPStatusUI();
   }
 
   async onClose() {
@@ -185,7 +180,6 @@ private mcpSyncOk = false;
     // remove old mode selector & settings icon (recreated by buildHeader)
     (right as HTMLSpanElement).empty();
     this.buildHeaderContent(right as HTMLSpanElement);
-    this.updateMCPStatusUI();
   }
 
   private buildHeaderContent(right: HTMLSpanElement) {
@@ -201,32 +195,30 @@ private mcpSyncOk = false;
       }
     });
 
-    this.mcpStatusEl = right.createSpan({ cls: "xiaoyuan-settings-icon" });
-    setIcon(this.mcpStatusEl, "server");
-    this.updateMCPStatusUI();
-    this.mcpStatusEl.addEventListener("click", (e) => {
+    const openCodeEl = right.createSpan({ cls: "xiaoyuan-settings-icon" });
+    this.openCodeEl = openCodeEl;
+    setIcon(openCodeEl, "server");
+    openCodeEl.classList.add("is-disconnected");
+    openCodeEl.addEventListener("click", (e) => {
       e.stopPropagation();
-      this.updateMCPStatusUI();
-      showPopup(this.mcpStatusEl, (popup) => {
-        const servers = s.mcpServers || [];
-        if (servers.length === 0) {
-          popup.createDiv({ cls: "xy-popup-item", text: "未配置 MCP 服务器" });
-        } else {
-          for (const svr of servers) {
-            const item = popup.createDiv({ cls: "xy-popup-item" });
-            item.createSpan({ cls: `xy-mcp-dot ${svr.enabled ? "is-on" : "is-off"}` });
-            item.createSpan({ text: svr.name });
-            item.addEventListener("click", async () => {
-              svr.enabled = !svr.enabled;
-              await this.plugin.saveSettings();
-              const { resetMCPSyncDone, syncMCPServers } = await import("./ai");
-              resetMCPSyncDone();
-              syncMCPServers(this.plugin.settings, getVaultBasePath()).catch(() => {});
-              this.updateMCPStatusUI();
-              popup.remove();
-            });
-          }
-        }
+      const port = s.opencode.port || 16226;
+      const host = s.opencode.hostname || "127.0.0.1";
+      const connAddr = `${host}:${port}`;
+      showPopup(openCodeEl, (popup) => {
+        const item = popup.createDiv({ cls: "xy-popup-item" });
+        item.createSpan({ cls: "xy-mcp-dot is-on" });
+        item.createSpan({ text: connAddr });
+        const openItem = popup.createDiv({ cls: "xy-popup-item", text: "打开网页端" });
+        openItem.addEventListener("click", () => {
+          window.open(`http://${connAddr}`, "_blank");
+          popup.remove();
+        });
+        const closeItem = popup.createDiv({ cls: "xy-popup-item", text: "关闭 opencode 进程" });
+        closeItem.addEventListener("click", async () => {
+          const { stopOpenCodeServer } = await import("./opencode-server");
+          stopOpenCodeServer();
+          popup.remove();
+        });
       });
     });
 
@@ -470,15 +462,8 @@ private mcpSyncOk = false;
       await this.plugin.saveSettings();
       this.updateConnectionStatusUI(true);
       if (result.models.length > 0) new Notice(`已同步 ${result.models.length} 个模型`);
-
-      resetMCPSyncDone();
-      const mcpOk = await syncMCPServers(s, getVaultBasePath());
-      this.mcpSyncOk = mcpOk;
-      this.updateMCPStatusUI();
     } catch (err: unknown) {
       this.updateConnectionStatusUI(false);
-      this.mcpSyncOk = false;
-      this.updateMCPStatusUI();
       new Notice(`同步失败：${err instanceof Error ? err.message : String(err)}`);
     }
   }
@@ -497,15 +482,9 @@ private mcpSyncOk = false;
       ? (ok ? "opencode 可用" : "opencode 不可用")
       : (ok ? "API 连接正常" : "API 未连接");
     setTooltip(this.connectionStatusEl, tip);
-  }
-
-  private updateMCPStatusUI() {
-    if (!this.mcpStatusEl || !this.mcpStatusEl.isConnected) return;
-    const hasServers = this.plugin.settings.mcpServers.some(s => s.enabled);
-    const ok = hasServers && this.mcpSyncOk;
-    this.mcpStatusEl.removeClass("is-connected", "is-disconnected");
-    this.mcpStatusEl.addClass(ok ? "is-connected" : "is-disconnected");
-    setTooltip(this.mcpStatusEl, ok ? "MCP 已同步" : hasServers ? "MCP 同步失败" : "未配置 MCP");
+    this.openCodeEl.removeClass("is-connected", "is-disconnected");
+    this.openCodeEl.addClass(ok ? "is-connected" : "is-disconnected");
+    setTooltip(this.openCodeEl, `opencode 服务器 (${tip})`);
   }
 
   // ─── Message rendering ───────────────────────────────────────────

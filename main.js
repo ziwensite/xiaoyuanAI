@@ -39,7 +39,7 @@ function getActiveProvider(s) {
   if (s.activeApiProviderId) return s.apiProviders.find((p) => p.id === s.activeApiProviderId);
   return s.apiProviders[0];
 }
-var DEFAULT_OPENCODE_SETTINGS, MCP_PRESETS, DEFAULT_PROMPT_TEMPLATES, DEFAULT_SETTINGS, CHAT_SESSIONS_KEY, CURRENT_SESSION_KEY, VIEW_TYPE_XIAOYUAN_AI_CHAT;
+var DEFAULT_OPENCODE_SETTINGS, DEFAULT_PROMPT_TEMPLATES, DEFAULT_SETTINGS, CHAT_SESSIONS_KEY, CURRENT_SESSION_KEY, VIEW_TYPE_XIAOYUAN_AI_CHAT;
 var init_constants = __esm({
   "src/constants.ts"() {
     "use strict";
@@ -51,15 +51,6 @@ var init_constants = __esm({
       model: "",
       agent: "build"
     };
-    MCP_PRESETS = [
-      { name: "\u6587\u4EF6\u7CFB\u7EDF", type: "local", command: "npx", args: "-y @modelcontextprotocol/server-filesystem \u8DEF\u5F84", url: "", headers: "", enabled: true },
-      { name: "Git", type: "local", command: "npx", args: "-y @modelcontextprotocol/server-git", url: "", headers: "", enabled: true },
-      { name: "GitHub", type: "local", command: "npx", args: "-y @modelcontextprotocol/server-github", url: "", headers: "", enabled: true },
-      { name: "Web\u641C\u7D22", type: "local", command: "npx", args: "-y @anthropic/mcp-server-web-search", url: "", headers: "", enabled: true },
-      { name: "Puppeteer", type: "local", command: "npx", args: "-y @anthropic/mcp-server-puppeteer", url: "", headers: "", enabled: true },
-      { name: "SQLite", type: "local", command: "npx", args: "-y @anthropic/mcp-server-sqlite --db \u6570\u636E\u5E93\u8DEF\u5F84", url: "", headers: "", enabled: true },
-      { name: "\u8BB0\u5FC6\u5B58\u50A8", type: "local", command: "npx", args: "-y @anthropic/mcp-server-memory", url: "", headers: "", enabled: true }
-    ];
     DEFAULT_PROMPT_TEMPLATES = [
       { id: "polish", name: "\u6DA6\u8272", description: "\u6539\u8FDB\u8868\u8FBE\u3001\u8BED\u6CD5\u548C\u6D41\u7545\u5EA6", prompt: "\u4F60\u662F\u4E00\u4E2A\u6587\u5B57\u6DA6\u8272\u52A9\u624B\u3002\u8BF7\u6DA6\u8272\u4EE5\u4E0B\u6587\u672C\uFF0C\u6539\u8FDB\u8868\u8FBE\u3001\u8BED\u6CD5\u548C\u6D41\u7545\u5EA6\uFF0C\u4FDD\u6301\u539F\u610F\u4E0D\u53D8\u3002\u53EA\u8F93\u51FA\u6DA6\u8272\u540E\u7684\u7ED3\u679C\uFF0C\u4E0D\u8981\u6DFB\u52A0\u4EFB\u4F55\u89E3\u91CA\uFF1A\n\n", icon: "pencil" },
       { id: "summarize", name: "\u603B\u7ED3", description: "\u63D0\u53D6\u5173\u952E\u8981\u70B9", prompt: "\u4F60\u662F\u4E00\u4E2A\u603B\u7ED3\u52A9\u624B\u3002\u8BF7\u5BF9\u4EE5\u4E0B\u6587\u672C\u8FDB\u884C\u7B80\u6D01\u7684\u603B\u7ED3\uFF0C\u63D0\u53D6\u5173\u952E\u8981\u70B9\u3002\u7528\u4E2D\u6587\u603B\u7ED3\uFF0C\u53EA\u8F93\u51FA\u603B\u7ED3\u5185\u5BB9\uFF1A\n\n", icon: "file-text" },
@@ -77,7 +68,6 @@ var init_constants = __esm({
       ],
       proxyEnabled: false,
       proxyUrl: "",
-      mcpServers: [],
       defaultReasoning: "low",
       apiReasoningEffort: "none",
       defaultPermission: "read-only",
@@ -165,16 +155,6 @@ function tryParseJson(raw) {
   } catch (e) {
     return null;
   }
-}
-function parseMcpHeaders(headers) {
-  try {
-    const parsed = JSON.parse(headers);
-    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-      return parsed;
-    }
-  } catch (e) {
-  }
-  return {};
 }
 var init_utils = __esm({
   "src/utils.ts"() {
@@ -836,9 +816,7 @@ __export(ai_exports, {
   fetchOpenCodeAgents: () => fetchOpenCodeAgents,
   fetchOpenCodeModelsFromCLI: () => fetchOpenCodeModelsFromCLI,
   getVaultBasePath: () => getVaultBasePath,
-  resetMCPSyncDone: () => resetMCPSyncDone,
-  stopOpenCodeServer: () => stopOpenCodeServer,
-  syncMCPServers: () => syncMCPServers
+  stopOpenCodeServer: () => stopOpenCodeServer
 });
 async function callAIWithHTTPStreaming(prompt, settings, vaultDir, signal, onConnected, onThinking, onTextUpdate, onDiffs, onToolProgress) {
   var _a, _b, _c, _d;
@@ -1012,63 +990,6 @@ async function callAISession(options) {
   );
   return processAPISSEStream(resp, onThinking, onTextUpdate);
 }
-function resetMCPSyncDone() {
-  mcpSyncDone = false;
-}
-async function syncMCPServers(settings, vaultDir) {
-  var _a, _b;
-  if (mcpSyncDone) return true;
-  const servers = ((_a = settings.mcpServers) == null ? void 0 : _a.filter((s) => s.enabled)) || [];
-  if (servers.length === 0) return true;
-  let conn = readServerConn(vaultDir, settings.opencode.port || 16226);
-  if (conn) {
-    try {
-      await requestOpenCode(conn.url, "/global/health", "GET", void 0, conn.authHeader);
-    } catch (e) {
-      conn = null;
-    }
-  }
-  if (!conn) {
-    try {
-      const base = await ensureOpenCodeServer(
-        settings.opencode.cliPath,
-        settings.opencode.hostname,
-        settings.opencode.port,
-        vaultDir,
-        true
-      );
-      conn = { url: base, authHeader: ((_b = readServerConn(vaultDir, settings.opencode.port || 16226)) == null ? void 0 : _b.authHeader) || "" };
-    } catch (e) {
-      return false;
-    }
-  }
-  const activeConn = conn;
-  let success = 0;
-  let fail = 0;
-  for (const server of servers) {
-    try {
-      const config = { type: server.type };
-      if (server.type === "local") {
-        if (server.command) config.command = server.command;
-        if (server.args) config.args = server.args.split(/\s+/).filter(Boolean);
-      } else {
-        if (server.url) config.url = server.url;
-        if (server.headers) {
-          config.headers = parseMcpHeaders(server.headers);
-        }
-      }
-      await requestOpenCode(activeConn.url, "/mcp", "POST", { name: server.name, config }, activeConn.authHeader);
-      success++;
-    } catch (err) {
-      fail++;
-      console.warn(`MCP server "${server.name}" sync failed:`, err);
-    }
-  }
-  mcpSyncDone = true;
-  if (success > 0 && fail === 0) return true;
-  return false;
-}
-var mcpSyncDone;
 var init_ai = __esm({
   "src/ai.ts"() {
     "use strict";
@@ -1080,7 +1001,6 @@ var init_ai = __esm({
     init_opencode_server();
     init_opencode_config();
     init_server();
-    mcpSyncDone = false;
   }
 });
 
@@ -2220,7 +2140,6 @@ var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
     this.quoteText = "";
     this.speakController = new SpeakController();
     this.skillIndex = -1;
-    this.mcpSyncOk = false;
     this.plugin = plugin;
   }
   getViewType() {
@@ -2270,9 +2189,6 @@ var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
       this.checkConnectionStatus();
     }
     await this.loadSessions();
-  }
-  onPaneShow() {
-    this.updateMCPStatusUI();
   }
   async onClose() {
     this.speakController.stop();
@@ -2338,7 +2254,6 @@ var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
     if (oldDot) oldDot.remove();
     right.empty();
     this.buildHeaderContent(right);
-    this.updateMCPStatusUI();
   }
   buildHeaderContent(right) {
     const s = this.plugin.settings;
@@ -2352,33 +2267,30 @@ var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
         this.checkConnectionStatus();
       }
     });
-    this.mcpStatusEl = right.createSpan({ cls: "xiaoyuan-settings-icon" });
-    (0, import_obsidian8.setIcon)(this.mcpStatusEl, "server");
-    this.updateMCPStatusUI();
-    this.mcpStatusEl.addEventListener("click", (e) => {
+    const openCodeEl = right.createSpan({ cls: "xiaoyuan-settings-icon" });
+    this.openCodeEl = openCodeEl;
+    (0, import_obsidian8.setIcon)(openCodeEl, "server");
+    openCodeEl.classList.add("is-disconnected");
+    openCodeEl.addEventListener("click", (e) => {
       e.stopPropagation();
-      this.updateMCPStatusUI();
-      showPopup(this.mcpStatusEl, (popup) => {
-        const servers = s.mcpServers || [];
-        if (servers.length === 0) {
-          popup.createDiv({ cls: "xy-popup-item", text: "\u672A\u914D\u7F6E MCP \u670D\u52A1\u5668" });
-        } else {
-          for (const svr of servers) {
-            const item = popup.createDiv({ cls: "xy-popup-item" });
-            item.createSpan({ cls: `xy-mcp-dot ${svr.enabled ? "is-on" : "is-off"}` });
-            item.createSpan({ text: svr.name });
-            item.addEventListener("click", async () => {
-              svr.enabled = !svr.enabled;
-              await this.plugin.saveSettings();
-              const { resetMCPSyncDone: resetMCPSyncDone2, syncMCPServers: syncMCPServers2 } = await Promise.resolve().then(() => (init_ai(), ai_exports));
-              resetMCPSyncDone2();
-              syncMCPServers2(this.plugin.settings, getVaultBasePath()).catch(() => {
-              });
-              this.updateMCPStatusUI();
-              popup.remove();
-            });
-          }
-        }
+      const port = s.opencode.port || 16226;
+      const host = s.opencode.hostname || "127.0.0.1";
+      const connAddr = `${host}:${port}`;
+      showPopup(openCodeEl, (popup) => {
+        const item = popup.createDiv({ cls: "xy-popup-item" });
+        item.createSpan({ cls: "xy-mcp-dot is-on" });
+        item.createSpan({ text: connAddr });
+        const openItem = popup.createDiv({ cls: "xy-popup-item", text: "\u6253\u5F00\u7F51\u9875\u7AEF" });
+        openItem.addEventListener("click", () => {
+          window.open(`http://${connAddr}`, "_blank");
+          popup.remove();
+        });
+        const closeItem = popup.createDiv({ cls: "xy-popup-item", text: "\u5173\u95ED opencode \u8FDB\u7A0B" });
+        closeItem.addEventListener("click", async () => {
+          const { stopOpenCodeServer: stopOpenCodeServer2 } = await Promise.resolve().then(() => (init_opencode_server(), opencode_server_exports));
+          stopOpenCodeServer2();
+          popup.remove();
+        });
       });
     });
     const modeText = right.createSpan({ cls: "xiaoyuan-mode-selector" });
@@ -2599,14 +2511,8 @@ var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
       await this.plugin.saveSettings();
       this.updateConnectionStatusUI(true);
       if (result.models.length > 0) new import_obsidian8.Notice(`\u5DF2\u540C\u6B65 ${result.models.length} \u4E2A\u6A21\u578B`);
-      resetMCPSyncDone();
-      const mcpOk = await syncMCPServers(s, getVaultBasePath());
-      this.mcpSyncOk = mcpOk;
-      this.updateMCPStatusUI();
     } catch (err) {
       this.updateConnectionStatusUI(false);
-      this.mcpSyncOk = false;
-      this.updateMCPStatusUI();
       new import_obsidian8.Notice(`\u540C\u6B65\u5931\u8D25\uFF1A${err instanceof Error ? err.message : String(err)}`);
     }
   }
@@ -2621,14 +2527,9 @@ var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
     this.connectionStatusEl.addClass(ok ? "is-connected" : "is-disconnected");
     const tip = mode === "cli" ? ok ? "opencode \u53EF\u7528" : "opencode \u4E0D\u53EF\u7528" : ok ? "API \u8FDE\u63A5\u6B63\u5E38" : "API \u672A\u8FDE\u63A5";
     (0, import_obsidian8.setTooltip)(this.connectionStatusEl, tip);
-  }
-  updateMCPStatusUI() {
-    if (!this.mcpStatusEl || !this.mcpStatusEl.isConnected) return;
-    const hasServers = this.plugin.settings.mcpServers.some((s) => s.enabled);
-    const ok = hasServers && this.mcpSyncOk;
-    this.mcpStatusEl.removeClass("is-connected", "is-disconnected");
-    this.mcpStatusEl.addClass(ok ? "is-connected" : "is-disconnected");
-    (0, import_obsidian8.setTooltip)(this.mcpStatusEl, ok ? "MCP \u5DF2\u540C\u6B65" : hasServers ? "MCP \u540C\u6B65\u5931\u8D25" : "\u672A\u914D\u7F6E MCP");
+    this.openCodeEl.removeClass("is-connected", "is-disconnected");
+    this.openCodeEl.addClass(ok ? "is-connected" : "is-disconnected");
+    (0, import_obsidian8.setTooltip)(this.openCodeEl, `opencode \u670D\u52A1\u5668 (${tip})`);
   }
   // ─── Message rendering ───────────────────────────────────────────
   async renderMessageEl(id, role, content, streaming = false, thinking, timestamp) {
@@ -3568,7 +3469,7 @@ var XiaoyuanAISettingTab = class extends import_obsidian9.PluginSettingTab {
     refreshBtn.addEventListener("click", async () => {
       await this.refreshStatusCard();
       if (s.execMode === "cli") {
-        const { fetchOpenCodeModelsFromCLI: fetchOpenCodeModelsFromCLI2, fetchOpenCodeAgents: fetchOpenCodeAgents2, resetMCPSyncDone: resetMCPSyncDone2, syncMCPServers: syncMCPServers2 } = await Promise.resolve().then(() => (init_ai(), ai_exports));
+        const { fetchOpenCodeModelsFromCLI: fetchOpenCodeModelsFromCLI2, fetchOpenCodeAgents: fetchOpenCodeAgents2 } = await Promise.resolve().then(() => (init_ai(), ai_exports));
         const { getVaultBasePath: getVaultBasePath2 } = await Promise.resolve().then(() => (init_server(), server_exports));
         const vaultDir = getVaultBasePath2();
         try {
@@ -3582,9 +3483,6 @@ var XiaoyuanAISettingTab = class extends import_obsidian9.PluginSettingTab {
           await this.plugin.saveSettings();
         } catch (e) {
         }
-        resetMCPSyncDone2();
-        syncMCPServers2(s, vaultDir).catch(() => {
-        });
       }
       this.display();
     });
@@ -3596,7 +3494,6 @@ var XiaoyuanAISettingTab = class extends import_obsidian9.PluginSettingTab {
       { id: "general", icon: "settings", label: "\u901A\u7528" },
       { id: "cli", icon: "terminal-square", label: "CLI \u8BBE\u7F6E" },
       { id: "api", icon: "key-round", label: "API \u8BBE\u7F6E" },
-      { id: "mcp", icon: "server", label: "MCP \u5DE5\u5177" },
       { id: "skills", icon: "wand-sparkles", label: "Skills" },
       { id: "prompts", icon: "file-pen", label: "Prompt \u6A21\u677F" }
     ];
@@ -3626,9 +3523,6 @@ var XiaoyuanAISettingTab = class extends import_obsidian9.PluginSettingTab {
         break;
       case "general":
         this.buildGeneralTab(container);
-        break;
-      case "mcp":
-        this.buildMCPTab(container);
         break;
       case "skills":
         this.buildSkillsTab(container);
@@ -3911,189 +3805,6 @@ var XiaoyuanAISettingTab = class extends import_obsidian9.PluginSettingTab {
     const input = field.createEl("input", { cls: "xy-api-provider-input", attr: { placeholder } });
     input.value = value;
     if (password) input.type = "password";
-    input.addEventListener("change", () => {
-      void onChange(input.value);
-    });
-  }
-  // ─── MCP 设置 ─────────────────────────────────────────────────────
-  buildMCPTab(container) {
-    const s = this.s();
-    const servers = s.mcpServers || [];
-    container.createEl("p", { cls: "xy-settings-desc", text: "\u914D\u7F6E MCP \u670D\u52A1\u5668\uFF0C\u4E3A AI \u63D0\u4F9B\u989D\u5916\u7684\u5DE5\u5177\u548C\u4E0A\u4E0B\u6587\u80FD\u529B\u3002" });
-    const link = container.createEl("a", {
-      cls: "xy-settings-desc",
-      text: "\u{1F4D6} \u67E5\u770B\u5E38\u7528 MCP \u670D\u52A1\u5668\u5217\u8868\u53CA\u53C2\u6570\u8BF4\u660E",
-      attr: { href: "https://github.com/modelcontextprotocol/servers", target: "_blank" }
-    });
-    link.style.cssText = "display:block;margin-top:4px;cursor:pointer;color:var(--text-accent);";
-    for (let i = 0; i < servers.length; i++) {
-      const server = servers[i];
-      const card = container.createDiv({ cls: "xy-api-provider-row" });
-      const head = card.createDiv({ cls: "xy-api-provider-head" });
-      const title = head.createDiv({ cls: "xy-api-provider-title" });
-      const nameSpan = title.createSpan({ text: server.name || "\u672A\u547D\u540D" });
-      const typeSmall = title.createEl("small", { text: ` \xB7 ${server.type === "local" ? "\u672C\u5730\u8FDB\u7A0B" : "\u8FDC\u7A0B\u670D\u52A1"}` });
-      const enabledBadge = title.createEl("small", { text: server.enabled ? " \xB7 \u5DF2\u542F\u7528" : " \xB7 \u5DF2\u7981\u7528", cls: server.enabled ? "" : "xy-mcp-disabled" });
-      const updateHeader = () => {
-        nameSpan.textContent = server.name || "\u672A\u547D\u540D";
-        typeSmall.textContent = ` \xB7 ${server.type === "local" ? "\u672C\u5730\u8FDB\u7A0B" : "\u8FDC\u7A0B\u670D\u52A1"}`;
-        enabledBadge.textContent = server.enabled ? " \xB7 \u5DF2\u542F\u7528" : " \xB7 \u5DF2\u7981\u7528";
-      };
-      const headActions = head.createDiv({ cls: "xy-api-provider-actions" });
-      const testBtn = headActions.createEl("button", { cls: "xy-status-btn", text: "\u6D4B\u8BD5" });
-      testBtn.addEventListener("click", async () => {
-        testBtn.textContent = "\u6D4B\u8BD5\u4E2D...";
-        testBtn.disabled = true;
-        try {
-          const { spawnWithTimeout: spawnWithTimeout2 } = await Promise.resolve().then(() => (init_opencode_server(), opencode_server_exports));
-          if (server.type === "local") {
-            const cmd = (server.command || "").split(/\s+/)[0];
-            if (!cmd) {
-              new import_obsidian9.Notice("\u8BF7\u5148\u586B\u5199\u547D\u4EE4");
-              return;
-            }
-            await spawnWithTimeout2(cmd, ["--version"], (await Promise.resolve().then(() => (init_server(), server_exports))).getVaultBasePath(), 5e3);
-            new import_obsidian9.Notice(`\u2705 ${server.name}\uFF1A\u547D\u4EE4\u53EF\u7528`);
-          } else {
-            if (!server.url) {
-              new import_obsidian9.Notice("\u8BF7\u5148\u586B\u5199 URL");
-              return;
-            }
-            const resp = await fetch(server.url, { method: "HEAD", signal: AbortSignal.timeout(5e3) });
-            new import_obsidian9.Notice(resp.ok ? `\u2705 ${server.name}\uFF1A\u8FDE\u63A5\u6210\u529F` : `\u274C ${server.name}\uFF1A\u72B6\u6001\u7801 ${resp.status}`);
-          }
-        } catch (err) {
-          new import_obsidian9.Notice(`\u274C ${server.name}\uFF1A${err instanceof Error ? err.message : String(err)}`);
-        } finally {
-          testBtn.textContent = "\u6D4B\u8BD5";
-          testBtn.disabled = false;
-        }
-      });
-      const deleteBtn = headActions.createEl("button", { cls: "xy-status-btn", text: "\u5220\u9664" });
-      deleteBtn.addEventListener("click", async () => {
-        s.mcpServers.splice(i, 1);
-        await this.plugin.saveSettings();
-        this.display();
-      });
-      let collapsed = true;
-      const content = card.createDiv({ cls: "xy-api-provider-content" });
-      content.style.display = "none";
-      head.style.cursor = "pointer";
-      head.addEventListener("click", (e) => {
-        const target = e.target instanceof HTMLElement ? e.target : null;
-        if (target == null ? void 0 : target.closest("button")) return;
-        collapsed = !collapsed;
-        content.style.display = collapsed ? "none" : "";
-      });
-      this.addMCPFieldText(content, "\u540D\u79F0", server.name, "my-server", async (val) => {
-        server.name = val;
-        await this.plugin.saveSettings();
-        updateHeader();
-      });
-      const typeField = content.createDiv({ cls: "xy-api-provider-field" });
-      typeField.createSpan({ cls: "xy-api-provider-label", text: "\u7C7B\u578B" });
-      const typeSelect = typeField.createEl("select", { cls: "dropdown" });
-      typeSelect.createEl("option", { value: "local", text: "\u672C\u5730\u8FDB\u7A0B" });
-      typeSelect.createEl("option", { value: "remote", text: "\u8FDC\u7A0B\u670D\u52A1" });
-      typeSelect.value = server.type;
-      typeSelect.addEventListener("change", async () => {
-        server.type = typeSelect.value;
-        await this.plugin.saveSettings();
-        this.display();
-      });
-      const commandField = content.createDiv({ cls: "xy-api-provider-field xy-mcp-local" });
-      commandField.style.display = server.type === "local" ? "" : "none";
-      commandField.createSpan({ cls: "xy-api-provider-label", text: "\u547D\u4EE4" });
-      const commandInput = commandField.createEl("input", { cls: "xy-api-provider-input", attr: { placeholder: "npx" } });
-      commandInput.value = server.command || "";
-      commandInput.addEventListener("change", async () => {
-        server.command = commandInput.value.trim();
-        await this.plugin.saveSettings();
-      });
-      const argsField = content.createDiv({ cls: "xy-api-provider-field xy-mcp-local" });
-      argsField.style.display = server.type === "local" ? "" : "none";
-      argsField.createSpan({ cls: "xy-api-provider-label", text: "\u53C2\u6570" });
-      const argsInput = argsField.createEl("input", { cls: "xy-api-provider-input", attr: { placeholder: "-y @modelcontextprotocol/server-filesystem ./" } });
-      argsInput.value = server.args || "";
-      argsInput.addEventListener("change", async () => {
-        server.args = argsInput.value.trim();
-        await this.plugin.saveSettings();
-      });
-      const urlField = content.createDiv({ cls: "xy-api-provider-field xy-mcp-remote" });
-      urlField.style.display = server.type === "remote" ? "" : "none";
-      urlField.createSpan({ cls: "xy-api-provider-label", text: "URL" });
-      const urlInput = urlField.createEl("input", { cls: "xy-api-provider-input", attr: { placeholder: "http://localhost:3000/mcp" } });
-      urlInput.value = server.url || "";
-      urlInput.addEventListener("change", async () => {
-        server.url = urlInput.value.trim();
-        await this.plugin.saveSettings();
-      });
-      const headersField = content.createDiv({ cls: "xy-api-provider-field xy-mcp-remote" });
-      headersField.style.display = server.type === "remote" ? "" : "none";
-      headersField.createSpan({ cls: "xy-api-provider-label", text: "Headers" });
-      const headersInput = headersField.createEl("input", { cls: "xy-api-provider-input", attr: { placeholder: '{"Authorization":"Bearer xxx"}' } });
-      headersInput.value = server.headers || "";
-      headersInput.addEventListener("change", async () => {
-        server.headers = headersInput.value.trim();
-        await this.plugin.saveSettings();
-      });
-      const enabledField = content.createDiv({ cls: "xy-api-provider-field" });
-      enabledField.createSpan({ cls: "xy-api-provider-label", text: "\u542F\u7528" });
-      const enabledToggle = enabledField.createEl("input", { type: "checkbox" });
-      enabledToggle.checked = server.enabled;
-      enabledToggle.addEventListener("change", async () => {
-        server.enabled = enabledToggle.checked;
-        await this.plugin.saveSettings();
-        const { resetMCPSyncDone: resetMCPSyncDone2 } = await Promise.resolve().then(() => (init_ai(), ai_exports));
-        resetMCPSyncDone2();
-        this.display();
-      });
-    }
-    const addBtn = container.createDiv({ cls: "xy-settings-status-actions" });
-    const newBtn = addBtn.createEl("button", { cls: "xy-status-btn", text: "+ \u65B0\u589E MCP \u670D\u52A1\u5668" });
-    newBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      showPopup(newBtn, (popup) => {
-        for (const preset of MCP_PRESETS) {
-          addPopupItem(popup, preset.name, false, () => {
-            s.mcpServers.push({ name: preset.name, type: preset.type, command: preset.command, args: preset.args, url: preset.url, headers: preset.headers, enabled: true });
-            this.plugin.saveSettings();
-            this.display();
-          });
-        }
-        popup.createDiv({ cls: "xy-popup-separator" });
-        addPopupItem(popup, "\u270F\uFE0F \u81EA\u5B9A\u4E49\uFF08\u7A7A\u767D\uFF09", false, () => {
-          s.mcpServers.push({ name: "\u65B0\u670D\u52A1\u5668", type: "local", command: "", args: "", url: "", headers: "", enabled: true });
-          this.plugin.saveSettings();
-          this.display();
-        });
-      });
-    });
-    const syncBtn = addBtn.createEl("button", { cls: "xy-status-btn", text: "\u27F3 \u540C\u6B65\u5230 OpenCode" });
-    syncBtn.addEventListener("click", async () => {
-      const missing = s.mcpServers.filter((se) => se.enabled && (se.type === "local" && !se.command || se.type === "remote" && !se.url));
-      if (missing.length > 0) {
-        new import_obsidian9.Notice(`\u8BF7\u5148\u8865\u5168\uFF1A${missing.map((se) => se.name).join("\u3001")}`);
-        return;
-      }
-      syncBtn.disabled = true;
-      syncBtn.textContent = "\u540C\u6B65\u4E2D...";
-      try {
-        const { syncMCPServers: syncMCPServers2, resetMCPSyncDone: resetMCPSyncDone2 } = await Promise.resolve().then(() => (init_ai(), ai_exports));
-        const { getVaultBasePath: getVaultBasePath2 } = await Promise.resolve().then(() => (init_server(), server_exports));
-        resetMCPSyncDone2();
-        await syncMCPServers2(s, getVaultBasePath2());
-      } finally {
-        syncBtn.disabled = false;
-        syncBtn.textContent = "\u27F3 \u540C\u6B65\u5230 OpenCode";
-      }
-    });
-  }
-  addMCPFieldText(container, label, value, placeholder, onChange) {
-    const field = container.createDiv({ cls: "xy-api-provider-field" });
-    field.createSpan({ cls: "xy-api-provider-label", text: label });
-    const input = field.createEl("input", { cls: "xy-api-provider-input", attr: { placeholder } });
-    input.value = value;
     input.addEventListener("change", () => {
       void onChange(input.value);
     });
