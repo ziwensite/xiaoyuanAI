@@ -206,9 +206,9 @@ export class XiaoyuanAIChatView extends ItemView {
             this.rebuildToolbar();
             this.addSystemMessage("✅ 已切换到 CLI 模式");
             new Notice("已切换到 CLI 模式");
-          });
         });
       });
+    });
     });
 
     this.connectionStatusEl = right.createSpan({ cls: "xiaoyuan-settings-icon" });
@@ -233,8 +233,6 @@ export class XiaoyuanAIChatView extends ItemView {
       const host = s.opencode.hostname || "127.0.0.1";
       const connAddr = `${host}:${port}`;
       showPopup(openCodeEl, (popup) => {
-        popup.style.left = "auto";
-        popup.style.right = "10px";
         const row = popup.createDiv({ cls: "xy-popup-item" });
         row.createSpan({ cls: "xy-mcp-dot is-on" });
         row.createSpan({ text: connAddr });
@@ -254,7 +252,7 @@ export class XiaoyuanAIChatView extends ItemView {
           stopOpenCodeServer();
           popup.remove();
         });
-      });
+      }, { fullWidth: true });
     });
 
     const settingsIcon = right.createSpan({ cls: "xiaoyuan-settings-icon" });

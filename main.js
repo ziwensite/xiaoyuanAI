@@ -2285,8 +2285,6 @@ var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
       const host = s.opencode.hostname || "127.0.0.1";
       const connAddr = `${host}:${port}`;
       showPopup(openCodeEl, (popup) => {
-        popup.style.left = "auto";
-        popup.style.right = "10px";
         const row = popup.createDiv({ cls: "xy-popup-item" });
         row.createSpan({ cls: "xy-mcp-dot is-on" });
         row.createSpan({ text: connAddr });
@@ -2306,7 +2304,7 @@ var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
           stopOpenCodeServer2();
           popup.remove();
         });
-      });
+      }, { fullWidth: true });
     });
     const settingsIcon = right.createSpan({ cls: "xiaoyuan-settings-icon" });
     (0, import_obsidian8.setIcon)(settingsIcon, "settings");
