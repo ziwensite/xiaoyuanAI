@@ -169,7 +169,7 @@ export class XiaoyuanAIChatView extends ItemView {
     this.buildHeaderContent(right);
   }
 
-  private rebuildHeader() {
+  rebuildHeader() {
     const headerEl = this.viewContainer.querySelector(".xiaoyuan-chat-header");
     if (!headerEl) return;
     const right = headerEl.querySelector(".xiaoyuan-chat-header-right");

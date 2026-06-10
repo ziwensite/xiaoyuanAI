@@ -68,6 +68,7 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
           const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_XIAOYUAN_AI_CHAT).first();
           if (leaf?.view instanceof XiaoyuanAIChatView) {
             leaf.view.rebuildToolbar();
+            leaf.view.rebuildHeader();
           }
           this.display();
         });

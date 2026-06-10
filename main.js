@@ -3409,6 +3409,7 @@ var XiaoyuanAISettingTab = class extends import_obsidian9.PluginSettingTab {
         const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_XIAOYUAN_AI_CHAT).first();
         if ((leaf == null ? void 0 : leaf.view) instanceof XiaoyuanAIChatView) {
           leaf.view.rebuildToolbar();
+          leaf.view.rebuildHeader();
         }
         this.display();
       });
