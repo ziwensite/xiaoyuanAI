@@ -9,8 +9,8 @@ import {
 } from "../src/constants";
 
 describe("constants integrity", () => {
-  it("DEFAULT_PROMPT_TEMPLATES has all 6 built-in templates", () => {
-    expect(DEFAULT_PROMPT_TEMPLATES).toHaveLength(6);
+  it("DEFAULT_PROMPT_TEMPLATES has all 7 built-in templates", () => {
+    expect(DEFAULT_PROMPT_TEMPLATES).toHaveLength(7);
     const ids = DEFAULT_PROMPT_TEMPLATES.map(t => t.id);
     expect(ids).toContain("polish");
     expect(ids).toContain("summarize");

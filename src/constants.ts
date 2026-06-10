@@ -16,6 +16,7 @@ export const DEFAULT_PROMPT_TEMPLATES: PromptTemplate[] = [
   { id: "expand", name: "扩写", description: "增加细节和深度", prompt: "你是一个写作助手。请扩写以下内容，增加细节、例子和深度，保留原文的核心观点：\n\n", icon: "maximize" },
   { id: "continue", name: "续写", description: "自然地续写内容", prompt: "你是一个写作助手。请根据以下内容自然地续写，保持风格一致：\n\n", icon: "arrow-right" },
   { id: "translate", name: "翻译为中文", description: "将文本翻译成中文", prompt: "你是一个翻译助手。请将以下文本翻译成中文，保持专业性和流畅度：\n\n", icon: "languages" },
+  { id: "translate-en", name: "翻译为英文", description: "将文本翻译成英文", prompt: "你是一个翻译助手。请将以下文本翻译成英文，保持专业性和流畅度：\n\n", icon: "languages" },
 ];
 
 export const DEFAULT_SETTINGS: XiaoyuanAISettings = {
