@@ -2273,14 +2273,14 @@ var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
         row.createSpan({ cls: "xy-mcp-dot is-on" });
         row.createSpan({ text: connAddr });
         const actions = row.createDiv({ cls: "xy-popup-suffix" });
-        const openIcon = actions.createSpan({ cls: "xy-popup-suffix-btn" });
+        const openIcon = actions.createSpan({ cls: "xy-popup-suffix-btn xiaoyuan-msg-action" });
         (0, import_obsidian8.setIcon)(openIcon, "external-link");
         openIcon.addEventListener("click", (ev) => {
           ev.stopPropagation();
           window.open(`http://${connAddr}`, "_blank");
           popup.remove();
         });
-        const closeIcon = actions.createSpan({ cls: "xy-popup-suffix-btn" });
+        const closeIcon = actions.createSpan({ cls: "xy-popup-suffix-btn xiaoyuan-msg-action" });
         (0, import_obsidian8.setIcon)(closeIcon, "x");
         closeIcon.addEventListener("click", async (ev) => {
           ev.stopPropagation();

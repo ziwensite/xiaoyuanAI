@@ -221,14 +221,14 @@ export class XiaoyuanAIChatView extends ItemView {
         row.createSpan({ cls: "xy-mcp-dot is-on" });
         row.createSpan({ text: connAddr });
         const actions = row.createDiv({ cls: "xy-popup-suffix" });
-        const openIcon = actions.createSpan({ cls: "xy-popup-suffix-btn" });
+        const openIcon = actions.createSpan({ cls: "xy-popup-suffix-btn xiaoyuan-msg-action" });
         setIcon(openIcon, "external-link");
         openIcon.addEventListener("click", (ev) => {
           ev.stopPropagation();
           window.open(`http://${connAddr}`, "_blank");
           popup.remove();
         });
-        const closeIcon = actions.createSpan({ cls: "xy-popup-suffix-btn" });
+        const closeIcon = actions.createSpan({ cls: "xy-popup-suffix-btn xiaoyuan-msg-action" });
         setIcon(closeIcon, "x");
         closeIcon.addEventListener("click", async (ev) => {
           ev.stopPropagation();
