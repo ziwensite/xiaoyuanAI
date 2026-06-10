@@ -670,7 +670,7 @@ private async truncateMessagesIfNeeded(): Promise<void> {
     const menu = new Menu();
     for (const tpl of this.plugin.settings.promptTemplates) {
       menu.addItem((item) => {
-        item.setTitle(tpl.name);
+        item.setTitle(`${tpl.name} — ${tpl.description}`);
         item.setIcon(tpl.icon);
         item.onClick(() => new TextOperationModal(this.app, this.plugin, tpl.id, content).open());
       });

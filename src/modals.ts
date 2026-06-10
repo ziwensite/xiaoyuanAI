@@ -152,7 +152,7 @@ export class TextOperationModal extends Modal {
         const templates = this.plugin.settings.promptTemplates || [];
         for (const tpl of templates) {
           menu.addItem((item) => {
-            item.setTitle(tpl.name);
+            item.setTitle(`${tpl.name} — ${tpl.description}`);
             item.setIcon(tpl.icon);
             item.onClick(() => {
               this.titleEl.textContent = `AI ${tpl.name}`;
@@ -178,7 +178,7 @@ export class TextOperationModal extends Modal {
     const templates = this.plugin.settings.promptTemplates || [];
     for (const tpl of templates) {
       menu.addItem((item) => {
-        item.setTitle(tpl.name);
+        item.setTitle(`${tpl.name} — ${tpl.description}`);
         item.setIcon(tpl.icon);
         item.onClick(() => this.reprocessWithTpl(tpl));
       });

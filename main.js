@@ -2004,7 +2004,7 @@ var TextOperationModal = class extends import_obsidian7.Modal {
         const templates = this.plugin.settings.promptTemplates || [];
         for (const tpl2 of templates) {
           menu.addItem((item) => {
-            item.setTitle(tpl2.name);
+            item.setTitle(`${tpl2.name} \u2014 ${tpl2.description}`);
             item.setIcon(tpl2.icon);
             item.onClick(() => {
               this.titleEl.textContent = `AI ${tpl2.name}`;
@@ -2029,7 +2029,7 @@ var TextOperationModal = class extends import_obsidian7.Modal {
     const templates = this.plugin.settings.promptTemplates || [];
     for (const tpl of templates) {
       menu.addItem((item) => {
-        item.setTitle(tpl.name);
+        item.setTitle(`${tpl.name} \u2014 ${tpl.description}`);
         item.setIcon(tpl.icon);
         item.onClick(() => this.reprocessWithTpl(tpl));
       });
@@ -2677,7 +2677,7 @@ var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
     const menu = new import_obsidian8.Menu();
     for (const tpl of this.plugin.settings.promptTemplates) {
       menu.addItem((item) => {
-        item.setTitle(tpl.name);
+        item.setTitle(`${tpl.name} \u2014 ${tpl.description}`);
         item.setIcon(tpl.icon);
         item.onClick(() => new TextOperationModal(this.app, this.plugin, tpl.id, content).open());
       });
@@ -4201,7 +4201,7 @@ var XiaoyuanAIPlugin = class extends import_obsidian10.Plugin {
           const submenu = item.setSubmenu();
           for (const tpl of this.settings.promptTemplates) {
             submenu.addItem((subItem) => {
-              subItem.setTitle(tpl.name);
+              subItem.setTitle(`${tpl.name} \u2014 ${tpl.description}`);
               subItem.setIcon(tpl.icon);
               subItem.onClick(() => new TextOperationModal(this.app, this, tpl.id, sel).open());
             });
@@ -4324,7 +4324,7 @@ ${content.slice(0, 3e3)}`);
           const menu = new import_obsidian10.Menu();
           for (const tpl of this.settings.promptTemplates) {
             menu.addItem((item) => {
-              item.setTitle(tpl.name);
+              item.setTitle(`${tpl.name} \u2014 ${tpl.description}`);
               item.setIcon(tpl.icon);
               item.onClick(() => new TextOperationModal(this.app, this, tpl.id, text).open());
             });

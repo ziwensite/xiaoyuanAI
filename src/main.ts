@@ -41,7 +41,7 @@ export default class XiaoyuanAIPlugin extends Plugin {
           const submenu = item.setSubmenu();
           for (const tpl of this.settings.promptTemplates) {
             submenu.addItem((subItem) => {
-              subItem.setTitle(tpl.name);
+              subItem.setTitle(`${tpl.name} — ${tpl.description}`);
               subItem.setIcon(tpl.icon);
               subItem.onClick(() => new TextOperationModal(this.app, this, tpl.id, sel).open());
             });
@@ -177,7 +177,7 @@ export default class XiaoyuanAIPlugin extends Plugin {
           const menu = new Menu();
           for (const tpl of this.settings.promptTemplates) {
             menu.addItem((item) => {
-              item.setTitle(tpl.name);
+              item.setTitle(`${tpl.name} — ${tpl.description}`);
               item.setIcon(tpl.icon);
               item.onClick(() => new TextOperationModal(this.app, this, tpl.id, text).open());
             });
