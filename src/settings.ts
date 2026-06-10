@@ -63,12 +63,9 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
         dd.addOption("api", "API 模式");
         dd.setValue(s.execMode);
         dd.onChange(async (val) => {
-          s.execMode = val as "api" | "cli";
-          await this.plugin.saveSettings();
           const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_XIAOYUAN_AI_CHAT).first();
           if (leaf?.view instanceof XiaoyuanAIChatView) {
-            leaf.view.rebuildToolbar();
-            leaf.view.rebuildHeader();
+            leaf.view.switchMode(val as "api" | "cli");
           }
           this.display();
         });

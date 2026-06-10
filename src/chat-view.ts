@@ -190,25 +190,9 @@ export class XiaoyuanAIChatView extends ItemView {
     modeText.addEventListener("click", (e) => {
       e.stopPropagation();
       showPopup(modeText, (popup) => {
-        addPopupItem(popup, "API", s.execMode === "api", () => {
-          s.execMode = "api";
-          this.plugin.saveSettings().then(() => {
-            this.rebuildHeader();
-            this.rebuildToolbar();
-            this.addSystemMessage("✅ 已切换到 API 模式");
-            new Notice("已切换到 API 模式");
-          });
-        });
-        addPopupItem(popup, "CLI", s.execMode === "cli", () => {
-          s.execMode = "cli";
-          this.plugin.saveSettings().then(() => {
-            this.rebuildHeader();
-            this.rebuildToolbar();
-            this.addSystemMessage("✅ 已切换到 CLI 模式");
-            new Notice("已切换到 CLI 模式");
-        });
+        addPopupItem(popup, "API", s.execMode === "api", () => this.switchMode("api"));
+        addPopupItem(popup, "CLI", s.execMode === "cli", () => this.switchMode("cli"));
       });
-    });
     });
 
     this.connectionStatusEl = right.createSpan({ cls: "xiaoyuan-settings-icon" });
@@ -244,7 +228,7 @@ export class XiaoyuanAIChatView extends ItemView {
           window.open(`http://${connAddr}`, "_blank");
           popup.remove();
         });
-        const closeIcon = actions.createSpan({ cls: "xy-open-code-btn" });
+        const closeIcon = actions.createSpan({ cls: "xy-popup-suffix-btn" });
         setIcon(closeIcon, "x");
         closeIcon.addEventListener("click", async (ev) => {
           ev.stopPropagation();
@@ -1356,6 +1340,16 @@ const msgEls = Array.from(this.messagesEl.querySelectorAll(".xiaoyuan-msg"));
   }
 
   // ─── UI helpers ──────────────────────────────────────────────────
+
+  switchMode(newMode: "api" | "cli") {
+    this.plugin.settings.execMode = newMode;
+    this.plugin.saveSettings();
+    this.rebuildHeader();
+    this.rebuildToolbar();
+    const label = newMode === "cli" ? "CLI" : "API";
+    this.addSystemMessage(`✅ 已切换到 ${label} 模式`);
+    new Notice(`已切换到 ${label} 模式`);
+  }
 
   private setProcessingState(processing: boolean) {
     this.thinkingBarEl.classList.toggle("is-active", processing);

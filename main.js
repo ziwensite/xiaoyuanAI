@@ -2245,24 +2245,8 @@ var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
     modeText.addEventListener("click", (e) => {
       e.stopPropagation();
       showPopup(modeText, (popup) => {
-        addPopupItem(popup, "API", s.execMode === "api", () => {
-          s.execMode = "api";
-          this.plugin.saveSettings().then(() => {
-            this.rebuildHeader();
-            this.rebuildToolbar();
-            this.addSystemMessage("\u2705 \u5DF2\u5207\u6362\u5230 API \u6A21\u5F0F");
-            new import_obsidian8.Notice("\u5DF2\u5207\u6362\u5230 API \u6A21\u5F0F");
-          });
-        });
-        addPopupItem(popup, "CLI", s.execMode === "cli", () => {
-          s.execMode = "cli";
-          this.plugin.saveSettings().then(() => {
-            this.rebuildHeader();
-            this.rebuildToolbar();
-            this.addSystemMessage("\u2705 \u5DF2\u5207\u6362\u5230 CLI \u6A21\u5F0F");
-            new import_obsidian8.Notice("\u5DF2\u5207\u6362\u5230 CLI \u6A21\u5F0F");
-          });
-        });
+        addPopupItem(popup, "API", s.execMode === "api", () => this.switchMode("api"));
+        addPopupItem(popup, "CLI", s.execMode === "cli", () => this.switchMode("cli"));
       });
     });
     this.connectionStatusEl = right.createSpan({ cls: "xiaoyuan-settings-icon" });
@@ -2296,7 +2280,7 @@ var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
           window.open(`http://${connAddr}`, "_blank");
           popup.remove();
         });
-        const closeIcon = actions.createSpan({ cls: "xy-open-code-btn" });
+        const closeIcon = actions.createSpan({ cls: "xy-popup-suffix-btn" });
         (0, import_obsidian8.setIcon)(closeIcon, "x");
         closeIcon.addEventListener("click", async (ev) => {
           ev.stopPropagation();
@@ -3333,6 +3317,15 @@ ${enrichedMessage}`;
     }, this.plugin.settings.maxAttachmentSize);
   }
   // ─── UI helpers ──────────────────────────────────────────────────
+  switchMode(newMode) {
+    this.plugin.settings.execMode = newMode;
+    this.plugin.saveSettings();
+    this.rebuildHeader();
+    this.rebuildToolbar();
+    const label = newMode === "cli" ? "CLI" : "API";
+    this.addSystemMessage(`\u2705 \u5DF2\u5207\u6362\u5230 ${label} \u6A21\u5F0F`);
+    new import_obsidian8.Notice(`\u5DF2\u5207\u6362\u5230 ${label} \u6A21\u5F0F`);
+  }
   setProcessingState(processing) {
     this.thinkingBarEl.classList.toggle("is-active", processing);
     if (processing) {
@@ -3404,12 +3397,9 @@ var XiaoyuanAISettingTab = class extends import_obsidian9.PluginSettingTab {
       dd.addOption("api", "API \u6A21\u5F0F");
       dd.setValue(s.execMode);
       dd.onChange(async (val) => {
-        s.execMode = val;
-        await this.plugin.saveSettings();
         const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_XIAOYUAN_AI_CHAT).first();
         if ((leaf == null ? void 0 : leaf.view) instanceof XiaoyuanAIChatView) {
-          leaf.view.rebuildToolbar();
-          leaf.view.rebuildHeader();
+          leaf.view.switchMode(val);
         }
         this.display();
       });
