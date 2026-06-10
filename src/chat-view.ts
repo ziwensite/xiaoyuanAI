@@ -415,19 +415,23 @@ export class XiaoyuanAIChatView extends ItemView {
     setTooltip(tplBtn, "小元AI工具");
     tplBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      showPopup(tplBtn, (popup) => {
-        const templates = s.promptTemplates || [];
-        if (templates.length === 0) {
-          popup.createDiv({ cls: "xy-popup-item", text: "未配置模板，请在设置中创建" });
-          return;
-        }
-        for (const tpl of templates) {
-          addPopupItem(popup, `${tpl.name} — ${tpl.description}`, false, () => {
+      const menu = new Menu();
+      const templates = s.promptTemplates || [];
+      if (templates.length === 0) {
+        new Notice("未配置模板，请在设置中创建");
+        return;
+      }
+      for (const tpl of templates) {
+        menu.addItem((item) => {
+          item.setTitle(`${tpl.name} — ${tpl.description}`);
+          item.setIcon(tpl.icon);
+          item.onClick(() => {
             this.inputEl.value = `/template:${tpl.name} `;
             this.inputEl.focus();
           });
-        }
-      }, { direction: "up" });
+        });
+      }
+      menu.showAtMouseEvent(e);
     });
   }
 

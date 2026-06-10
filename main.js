@@ -2444,19 +2444,23 @@ var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
     (0, import_obsidian8.setTooltip)(tplBtn, "\u5C0F\u5143AI\u5DE5\u5177");
     tplBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      showPopup(tplBtn, (popup) => {
-        const templates = s.promptTemplates || [];
-        if (templates.length === 0) {
-          popup.createDiv({ cls: "xy-popup-item", text: "\u672A\u914D\u7F6E\u6A21\u677F\uFF0C\u8BF7\u5728\u8BBE\u7F6E\u4E2D\u521B\u5EFA" });
-          return;
-        }
-        for (const tpl of templates) {
-          addPopupItem(popup, `${tpl.name} \u2014 ${tpl.description}`, false, () => {
+      const menu = new import_obsidian8.Menu();
+      const templates = s.promptTemplates || [];
+      if (templates.length === 0) {
+        new import_obsidian8.Notice("\u672A\u914D\u7F6E\u6A21\u677F\uFF0C\u8BF7\u5728\u8BBE\u7F6E\u4E2D\u521B\u5EFA");
+        return;
+      }
+      for (const tpl of templates) {
+        menu.addItem((item) => {
+          item.setTitle(`${tpl.name} \u2014 ${tpl.description}`);
+          item.setIcon(tpl.icon);
+          item.onClick(() => {
             this.inputEl.value = `/template:${tpl.name} `;
             this.inputEl.focus();
           });
-        }
-      }, { direction: "up" });
+        });
+      }
+      menu.showAtMouseEvent(e);
     });
   }
   async syncOpenCodeState() {
