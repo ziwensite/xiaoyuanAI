@@ -782,15 +782,16 @@ this.setProcessingState(true);
     }
 
     if (this.activeAgent === "cli") {
-      const vaultDir = getVaultBasePath();
-      if (this.messages.length > 0 && this.messages[this.messages.length - 1].role === "user") {
-        this.messages[this.messages.length - 1].content = enrichedMessage;
-      }
-      const modeIdentity = "\n\n当前模式：CLI（opencode run）";
-      const allMessages = [
-        { role: "system" as const, content: s.systemPrompt + modeIdentity },
-        ...this.messages.map((m) => ({ role: m.role, content: m.content })),
-      ];
+      try {
+        const vaultDir = getVaultBasePath();
+        if (this.messages.length > 0 && this.messages[this.messages.length - 1].role === "user") {
+          this.messages[this.messages.length - 1].content = enrichedMessage;
+        }
+        const modeIdentity = "\n\n当前模式：CLI（opencode run）";
+        const allMessages = [
+          { role: "system" as const, content: s.systemPrompt + modeIdentity },
+          ...this.messages.map((m) => ({ role: m.role, content: m.content })),
+        ];
       const prompt = allMessages
         .map((m) => `${m.role === "system" ? "[系统]" : m.role === "user" ? "[用户]" : "[助手]"}: ${m.content}`)
         .join("\n\n");
@@ -819,6 +820,9 @@ this.setProcessingState(true);
           if (streamingId) this.addToolLogEntry(streamingId, tool, status);
         },
       );
+    } catch (err: unknown) {
+      console.warn("CLI 调用失败，降级到 API:", err);
+    }
     }
 
     const provider = getActiveProvider(s);
@@ -1319,6 +1323,7 @@ const msgEls = Array.from(this.messagesEl.querySelectorAll(".xiaoyuan-msg"));
     this.plugin.settings.execMode = newMode;
     this.plugin.saveSettings();
     this.rebuildHeader();
+    this.rebuildToolbar();
     const label = newMode === "cli" ? "CLI" : "API";
     this.addSystemMessage(`✅ 前台已切换到 ${label}`);
     new Notice(`前台已切换到 ${label}`);

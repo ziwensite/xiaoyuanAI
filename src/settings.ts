@@ -601,7 +601,11 @@ ${text}
               settings: s,
               vaultDir: getVaultBasePath(),
             });
-            const skills = JSON.parse(result);
+            const jsonStart = result.indexOf("[");
+            const jsonEnd = result.lastIndexOf("]");
+            if (jsonStart === -1 || jsonEnd === -1) throw new Error("AI 未返回有效 JSON");
+            const jsonStr = result.slice(jsonStart, jsonEnd + 1);
+            const skills = JSON.parse(jsonStr);
             if (!Array.isArray(skills)) throw new Error("AI 返回格式错误");
             s.skills = skills;
             await this.plugin.saveSettings();

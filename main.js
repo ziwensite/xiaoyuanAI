@@ -2787,47 +2787,51 @@ ${enrichedMessage}`;
       }
     }
     if (this.activeAgent === "cli") {
-      const vaultDir2 = getVaultBasePath();
-      if (this.messages.length > 0 && this.messages[this.messages.length - 1].role === "user") {
-        this.messages[this.messages.length - 1].content = enrichedMessage;
-      }
-      const modeIdentity2 = "\n\n\u5F53\u524D\u6A21\u5F0F\uFF1ACLI\uFF08opencode run\uFF09";
-      const allMessages = [
-        { role: "system", content: s.systemPrompt + modeIdentity2 },
-        ...this.messages.map((m) => ({ role: m.role, content: m.content }))
-      ];
-      const prompt2 = allMessages.map((m) => `${m.role === "system" ? "[\u7CFB\u7EDF]" : m.role === "user" ? "[\u7528\u6237]" : "[\u52A9\u624B]"}: ${m.content}`).join("\n\n");
-      let streamingId2 = "";
-      const updateThinking2 = (text) => {
-        if (streamingId2) {
-          this.updateStreamingThinking(streamingId2, text);
-        } else {
-          streamingId2 = this.addStreamingMessage("", text);
+      try {
+        const vaultDir2 = getVaultBasePath();
+        if (this.messages.length > 0 && this.messages[this.messages.length - 1].role === "user") {
+          this.messages[this.messages.length - 1].content = enrichedMessage;
         }
-      };
-      return callAIWithHTTPStreaming(
-        prompt2,
-        s,
-        vaultDir2,
-        signal,
-        void 0,
-        (text) => {
-          updateThinking2(text);
-        },
-        (text) => {
-          if (!streamingId2) {
-            streamingId2 = this.addStreamingMessage(text, "");
+        const modeIdentity2 = "\n\n\u5F53\u524D\u6A21\u5F0F\uFF1ACLI\uFF08opencode run\uFF09";
+        const allMessages = [
+          { role: "system", content: s.systemPrompt + modeIdentity2 },
+          ...this.messages.map((m) => ({ role: m.role, content: m.content }))
+        ];
+        const prompt2 = allMessages.map((m) => `${m.role === "system" ? "[\u7CFB\u7EDF]" : m.role === "user" ? "[\u7528\u6237]" : "[\u52A9\u624B]"}: ${m.content}`).join("\n\n");
+        let streamingId2 = "";
+        const updateThinking2 = (text) => {
+          if (streamingId2) {
+            this.updateStreamingThinking(streamingId2, text);
           } else {
-            this.updateStreamingMessage(streamingId2, text);
+            streamingId2 = this.addStreamingMessage("", text);
           }
-        },
-        (diffs) => {
-          this.pendingDiffs = diffs;
-        },
-        (tool, status) => {
-          if (streamingId2) this.addToolLogEntry(streamingId2, tool, status);
-        }
-      );
+        };
+        return callAIWithHTTPStreaming(
+          prompt2,
+          s,
+          vaultDir2,
+          signal,
+          void 0,
+          (text) => {
+            updateThinking2(text);
+          },
+          (text) => {
+            if (!streamingId2) {
+              streamingId2 = this.addStreamingMessage(text, "");
+            } else {
+              this.updateStreamingMessage(streamingId2, text);
+            }
+          },
+          (diffs) => {
+            this.pendingDiffs = diffs;
+          },
+          (tool, status) => {
+            if (streamingId2) this.addToolLogEntry(streamingId2, tool, status);
+          }
+        );
+      } catch (err) {
+        console.warn("CLI \u8C03\u7528\u5931\u8D25\uFF0C\u964D\u7EA7\u5230 API:", err);
+      }
     }
     const provider = getActiveProvider(s);
     if (!provider || !provider.apiKey) throw new Error("API Key \u672A\u914D\u7F6E\u3002\u8BF7\u5728\u8BBE\u7F6E\u4E2D\u586B\u5199\u3002");
@@ -3287,6 +3291,7 @@ ${enrichedMessage}`;
     this.plugin.settings.execMode = newMode;
     this.plugin.saveSettings();
     this.rebuildHeader();
+    this.rebuildToolbar();
     const label = newMode === "cli" ? "CLI" : "API";
     this.addSystemMessage(`\u2705 \u524D\u53F0\u5DF2\u5207\u6362\u5230 ${label}`);
     new import_obsidian8.Notice(`\u524D\u53F0\u5DF2\u5207\u6362\u5230 ${label}`);
@@ -3855,7 +3860,11 @@ ${content}`,
               settings: s,
               vaultDir: getVaultBasePath2()
             });
-            const skills = JSON.parse(result);
+            const jsonStart = result.indexOf("[");
+            const jsonEnd = result.lastIndexOf("]");
+            if (jsonStart === -1 || jsonEnd === -1) throw new Error("AI \u672A\u8FD4\u56DE\u6709\u6548 JSON");
+            const jsonStr = result.slice(jsonStart, jsonEnd + 1);
+            const skills = JSON.parse(jsonStr);
             if (!Array.isArray(skills)) throw new Error("AI \u8FD4\u56DE\u683C\u5F0F\u9519\u8BEF");
             s.skills = skills;
             await this.plugin.saveSettings();
