@@ -20,12 +20,10 @@ export default class XiaoyuanAIPlugin extends Plugin {
     const adapter = this.app.vault.adapter as { getBasePath?: () => string };
     if (adapter.getBasePath) setVaultBasePath(adapter.getBasePath());
 
-    if (this.settings.execMode === "cli") {
+    if (this.settings.execMode !== "api") {
       const resolved = await resolveOpenCodePath(this.settings.opencode.cliPath);
       if (!fsSync.existsSync(resolved)) {
-        this.settings.execMode = "api";
-        await this.saveSettings();
-        new Notice("未检测到 opencode 程序，已自动切换为 API 模式");
+        new Notice("未检测到 opencode 程序，CLI 功能不可用");
       }
     }
 
@@ -97,7 +95,7 @@ export default class XiaoyuanAIPlugin extends Plugin {
       });
     }
 
-    if (this.settings.execMode === "cli" && this.settings.opencode.autoStart) {
+    if (this.settings.opencode.autoStart) {
       this.autoStartServer();
     }
 

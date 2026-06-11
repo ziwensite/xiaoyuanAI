@@ -56,6 +56,7 @@ export class XiaoyuanAIChatView extends ItemView {
   private quoteText = "";
   speakController = new SpeakController();
   private speakIndicator!: HTMLSpanElement;
+  activeAgent: "cli" | "api" = "cli";
   private skillIndex = -1;
 
   constructor(leaf: WorkspaceLeaf, plugin: XiaoyuanAIPlugin) {
@@ -96,11 +97,9 @@ export class XiaoyuanAIChatView extends ItemView {
         if (cmdId) this.app.commands.executeCommandById(cmdId);
       },
     });
-    if (this.plugin.settings.execMode === "cli") {
-      this.syncOpenCodeState();
-    } else {
-      this.checkConnectionStatus();
-    }
+    this.syncOpenCodeState();
+    this.checkConnectionStatus();
+    this.activeAgent = this.plugin.settings.execMode === "api" ? "api" : "cli";
     await this.loadSessions();
   }
 
@@ -134,11 +133,8 @@ export class XiaoyuanAIChatView extends ItemView {
     this.toolbarEl.empty();
     this.buildToolbarContent(this.toolbarEl);
     this.updateAgentBorderClass();
-    if (this.plugin.settings.execMode === "cli") {
-      this.syncOpenCodeState();
-    } else {
-      this.checkConnectionStatus();
-    }
+    this.syncOpenCodeState();
+    this.checkConnectionStatus();
   }
 
   // ─── Header ──────────────────────────────────────────────────────
@@ -185,13 +181,13 @@ export class XiaoyuanAIChatView extends ItemView {
   private buildHeaderContent(right: HTMLSpanElement) {
     const s = this.plugin.settings;
     const modeText = right.createSpan({ cls: "xiaoyuan-mode-selector" });
-    modeText.textContent = s.execMode === "cli" ? "CLI" : "API";
+    modeText.textContent = this.activeAgent === "cli" ? "CLI" : "API";
     setTooltip(modeText, "点击切换执行模式");
     modeText.addEventListener("click", (e) => {
       e.stopPropagation();
       showPopup(modeText, (popup) => {
-        addPopupItem(popup, "API", s.execMode === "api", () => this.switchMode("api"));
-        addPopupItem(popup, "CLI", s.execMode === "cli", () => this.switchMode("cli"));
+        addPopupItem(popup, "API", this.activeAgent === "api", () => this.switchMode("api"));
+        addPopupItem(popup, "CLI", this.activeAgent === "cli", () => this.switchMode("cli"));
       });
     });
 
@@ -205,11 +201,8 @@ export class XiaoyuanAIChatView extends ItemView {
 
     this.updateConnectionStatusUI(false);
     this.connectionStatusEl.addEventListener("click", () => {
-      if (s.execMode === "cli") {
-        this.syncOpenCodeState();
-      } else {
-        this.checkConnectionStatus();
-      }
+      this.syncOpenCodeState();
+      this.checkConnectionStatus();
     });
     openCodeEl.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -463,7 +456,7 @@ export class XiaoyuanAIChatView extends ItemView {
   }
 
   private async checkConnectionStatus() {
-    const ok = await checkConnection(this.plugin.settings, getVaultBasePath());
+    const ok = await checkConnection(this.plugin.settings, getVaultBasePath(), this.activeAgent);
     this.updateConnectionStatusUI(ok);
   }
 
@@ -718,20 +711,14 @@ private async truncateMessagesIfNeeded(): Promise<void> {
     this.inputEl.value = "";
     this.abortController = new AbortController();
     this.pendingDiffs = null;
-    this.setProcessingState(true);
-
-    let statusMsg: HTMLDivElement | null = null;
+this.setProcessingState(true);
 
     try {
       await this.truncateMessagesIfNeeded();
-      if (this.plugin.settings.execMode === "cli") {
-        statusMsg = this.addSystemMessage("正在连接 opencode...");
-      }
-      const response = await this.callAI(text, this.abortController.signal, statusMsg);
+      const response = await this.callAI(text, this.abortController.signal);
       this.attachments = [];
       this.renderQuoteBar();
-      if (statusMsg) statusMsg.remove();
-      if (this.plugin.settings.execMode === "cli") {
+      if (this.activeAgent === "cli") {
         const streamId = await this.finalizeStreamingMessage();
         await this.saveCurrentSession();
         const actualDiffs = this.pendingDiffs as FileDiff[] | null;
@@ -748,7 +735,6 @@ private async truncateMessagesIfNeeded(): Promise<void> {
         await this.saveCurrentSession();
       }
     } catch (err: unknown) {
-      if (statusMsg) statusMsg.remove();
       if (err instanceof DOMException && err.name === "AbortError") {
         for (let i = this.messages.length - 1; i >= 0; i--) {
           if (this.messages[i].role === "user") {
@@ -771,7 +757,6 @@ private async truncateMessagesIfNeeded(): Promise<void> {
 
   private async callAI(
     userMessage: string, signal?: AbortSignal,
-    statusMsg?: HTMLDivElement | null,
   ): Promise<string> {
     const s = this.plugin.settings;
 
@@ -796,25 +781,16 @@ private async truncateMessagesIfNeeded(): Promise<void> {
       }
     }
 
-      if (s.execMode === "cli") {
-        const vaultDir = getVaultBasePath();
-        if (s.opencode.autoStart) {
-          try {
-            await ensureOpenCodeServer(s.opencode.cliPath, s.opencode.hostname, s.opencode.port, vaultDir, true);
-          } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : String(err);
-            new Notice(`⚠ 启动 opencode 失败: ${msg}`);
-            throw new Error(`无法启动 opencode serve: ${msg}`);
-          }
-        }
-        if (this.messages.length > 0 && this.messages[this.messages.length - 1].role === "user") {
-          this.messages[this.messages.length - 1].content = enrichedMessage;
-        }
-        const modeIdentity = "\n\n当前模式：CLI（opencode run）";
-        const allMessages = [
-          { role: "system" as const, content: s.systemPrompt + modeIdentity },
-          ...this.messages.map((m) => ({ role: m.role, content: m.content })),
-        ];
+    if (this.activeAgent === "cli") {
+      const vaultDir = getVaultBasePath();
+      if (this.messages.length > 0 && this.messages[this.messages.length - 1].role === "user") {
+        this.messages[this.messages.length - 1].content = enrichedMessage;
+      }
+      const modeIdentity = "\n\n当前模式：CLI（opencode run）";
+      const allMessages = [
+        { role: "system" as const, content: s.systemPrompt + modeIdentity },
+        ...this.messages.map((m) => ({ role: m.role, content: m.content })),
+      ];
       const prompt = allMessages
         .map((m) => `${m.role === "system" ? "[系统]" : m.role === "user" ? "[用户]" : "[助手]"}: ${m.content}`)
         .join("\n\n");
@@ -829,15 +805,9 @@ private async truncateMessagesIfNeeded(): Promise<void> {
       };
       return callAIWithHTTPStreaming(
         prompt, s, vaultDir, signal,
-        () => {
-          if (statusMsg) {
-            const bubble = statusMsg.querySelector(".xiaoyuan-msg-bubble");
-            if (bubble) bubble.textContent = "已连接，等待响应...";
-          }
-        },
+        undefined,
         (text) => { updateThinking(text); },
         (text) => {
-          if (statusMsg) { statusMsg.remove(); statusMsg = null; }
           if (!streamingId) {
             streamingId = this.addStreamingMessage(text, "");
           } else {
@@ -877,7 +847,6 @@ private async truncateMessagesIfNeeded(): Promise<void> {
       prompt, settings: s, vaultDir, signal,
       onThinking: updateThinking,
       onTextUpdate: (text) => {
-        if (statusMsg) { statusMsg.remove(); statusMsg = null; }
         if (!streamingId) {
           streamingId = this.addStreamingMessage(text, "");
         } else {
@@ -1346,13 +1315,11 @@ const msgEls = Array.from(this.messagesEl.querySelectorAll(".xiaoyuan-msg"));
   // ─── UI helpers ──────────────────────────────────────────────────
 
   switchMode(newMode: "api" | "cli") {
-    this.plugin.settings.execMode = newMode;
-    this.plugin.saveSettings();
+    this.activeAgent = newMode;
     this.rebuildHeader();
-    this.rebuildToolbar();
     const label = newMode === "cli" ? "CLI" : "API";
-    this.addSystemMessage(`✅ 已切换到 ${label} 模式`);
-    new Notice(`已切换到 ${label} 模式`);
+    this.addSystemMessage(`✅ 前台已切换到 ${label}`);
+    new Notice(`前台已切换到 ${label}`);
   }
 
   private setProcessingState(processing: boolean) {

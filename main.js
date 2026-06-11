@@ -1027,8 +1027,8 @@ init_opencode_config();
 init_opencode_config();
 init_opencode_server();
 init_constants();
-async function checkConnection(settings, vaultDir) {
-  if (settings.execMode === "cli") {
+async function checkConnection(settings, vaultDir, mode = "cli") {
+  if (mode === "cli") {
     let ok = false;
     const status = await checkOpenCodeStatus(settings.opencode.cliPath, vaultDir, settings.opencode.port, settings.opencode.hostname);
     if (status.ok) {
@@ -2122,6 +2122,7 @@ var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
     this.attachments = [];
     this.quoteText = "";
     this.speakController = new SpeakController();
+    this.activeAgent = "cli";
     this.skillIndex = -1;
     this.plugin = plugin;
   }
@@ -2166,11 +2167,9 @@ var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
         if (cmdId) this.app.commands.executeCommandById(cmdId);
       }
     });
-    if (this.plugin.settings.execMode === "cli") {
-      this.syncOpenCodeState();
-    } else {
-      this.checkConnectionStatus();
-    }
+    this.syncOpenCodeState();
+    this.checkConnectionStatus();
+    this.activeAgent = this.plugin.settings.execMode === "api" ? "api" : "cli";
     await this.loadSessions();
   }
   async onClose() {
@@ -2200,11 +2199,8 @@ var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
     this.toolbarEl.empty();
     this.buildToolbarContent(this.toolbarEl);
     this.updateAgentBorderClass();
-    if (this.plugin.settings.execMode === "cli") {
-      this.syncOpenCodeState();
-    } else {
-      this.checkConnectionStatus();
-    }
+    this.syncOpenCodeState();
+    this.checkConnectionStatus();
   }
   // ─── Header ──────────────────────────────────────────────────────
   buildHeader() {
@@ -2241,13 +2237,13 @@ var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
   buildHeaderContent(right) {
     const s = this.plugin.settings;
     const modeText = right.createSpan({ cls: "xiaoyuan-mode-selector" });
-    modeText.textContent = s.execMode === "cli" ? "CLI" : "API";
+    modeText.textContent = this.activeAgent === "cli" ? "CLI" : "API";
     (0, import_obsidian8.setTooltip)(modeText, "\u70B9\u51FB\u5207\u6362\u6267\u884C\u6A21\u5F0F");
     modeText.addEventListener("click", (e) => {
       e.stopPropagation();
       showPopup(modeText, (popup) => {
-        addPopupItem(popup, "API", s.execMode === "api", () => this.switchMode("api"));
-        addPopupItem(popup, "CLI", s.execMode === "cli", () => this.switchMode("cli"));
+        addPopupItem(popup, "API", this.activeAgent === "api", () => this.switchMode("api"));
+        addPopupItem(popup, "CLI", this.activeAgent === "cli", () => this.switchMode("cli"));
       });
     });
     this.connectionStatusEl = right.createSpan({ cls: "xiaoyuan-settings-icon" });
@@ -2258,11 +2254,8 @@ var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
     openCodeEl.classList.add("is-disconnected");
     this.updateConnectionStatusUI(false);
     this.connectionStatusEl.addEventListener("click", () => {
-      if (s.execMode === "cli") {
-        this.syncOpenCodeState();
-      } else {
-        this.checkConnectionStatus();
-      }
+      this.syncOpenCodeState();
+      this.checkConnectionStatus();
     });
     openCodeEl.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -2493,7 +2486,7 @@ var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
     }
   }
   async checkConnectionStatus() {
-    const ok = await checkConnection(this.plugin.settings, getVaultBasePath());
+    const ok = await checkConnection(this.plugin.settings, getVaultBasePath(), this.activeAgent);
     this.updateConnectionStatusUI(ok);
   }
   updateConnectionStatusUI(ok) {
@@ -2726,17 +2719,12 @@ ${text}`;
     this.abortController = new AbortController();
     this.pendingDiffs = null;
     this.setProcessingState(true);
-    let statusMsg = null;
     try {
       await this.truncateMessagesIfNeeded();
-      if (this.plugin.settings.execMode === "cli") {
-        statusMsg = this.addSystemMessage("\u6B63\u5728\u8FDE\u63A5 opencode...");
-      }
-      const response = await this.callAI(text, this.abortController.signal, statusMsg);
+      const response = await this.callAI(text, this.abortController.signal);
       this.attachments = [];
       this.renderQuoteBar();
-      if (statusMsg) statusMsg.remove();
-      if (this.plugin.settings.execMode === "cli") {
+      if (this.activeAgent === "cli") {
         const streamId = await this.finalizeStreamingMessage();
         await this.saveCurrentSession();
         const actualDiffs = this.pendingDiffs;
@@ -2753,7 +2741,6 @@ ${text}`;
         await this.saveCurrentSession();
       }
     } catch (err) {
-      if (statusMsg) statusMsg.remove();
       if (err instanceof DOMException && err.name === "AbortError") {
         for (let i = this.messages.length - 1; i >= 0; i--) {
           if (this.messages[i].role === "user") {
@@ -2773,7 +2760,7 @@ ${text}`;
       this.inputEl.focus();
     }
   }
-  async callAI(userMessage, signal, statusMsg) {
+  async callAI(userMessage, signal) {
     const s = this.plugin.settings;
     let enrichedMessage = userMessage;
     if (this.attachments.length > 0) {
@@ -2804,17 +2791,8 @@ ${contextPreview}
 ${enrichedMessage}`;
       }
     }
-    if (s.execMode === "cli") {
+    if (this.activeAgent === "cli") {
       const vaultDir2 = getVaultBasePath();
-      if (s.opencode.autoStart) {
-        try {
-          await ensureOpenCodeServer(s.opencode.cliPath, s.opencode.hostname, s.opencode.port, vaultDir2, true);
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err);
-          new import_obsidian8.Notice(`\u26A0 \u542F\u52A8 opencode \u5931\u8D25: ${msg}`);
-          throw new Error(`\u65E0\u6CD5\u542F\u52A8 opencode serve: ${msg}`);
-        }
-      }
       if (this.messages.length > 0 && this.messages[this.messages.length - 1].role === "user") {
         this.messages[this.messages.length - 1].content = enrichedMessage;
       }
@@ -2837,20 +2815,11 @@ ${enrichedMessage}`;
         s,
         vaultDir2,
         signal,
-        () => {
-          if (statusMsg) {
-            const bubble = statusMsg.querySelector(".xiaoyuan-msg-bubble");
-            if (bubble) bubble.textContent = "\u5DF2\u8FDE\u63A5\uFF0C\u7B49\u5F85\u54CD\u5E94...";
-          }
-        },
+        void 0,
         (text) => {
           updateThinking2(text);
         },
         (text) => {
-          if (statusMsg) {
-            statusMsg.remove();
-            statusMsg = null;
-          }
           if (!streamingId2) {
             streamingId2 = this.addStreamingMessage(text, "");
           } else {
@@ -2890,10 +2859,6 @@ ${enrichedMessage}`;
       signal,
       onThinking: updateThinking,
       onTextUpdate: (text) => {
-        if (statusMsg) {
-          statusMsg.remove();
-          statusMsg = null;
-        }
         if (!streamingId) {
           streamingId = this.addStreamingMessage(text, "");
         } else {
@@ -3323,13 +3288,11 @@ ${enrichedMessage}`;
   }
   // ─── UI helpers ──────────────────────────────────────────────────
   switchMode(newMode) {
-    this.plugin.settings.execMode = newMode;
-    this.plugin.saveSettings();
+    this.activeAgent = newMode;
     this.rebuildHeader();
-    this.rebuildToolbar();
     const label = newMode === "cli" ? "CLI" : "API";
-    this.addSystemMessage(`\u2705 \u5DF2\u5207\u6362\u5230 ${label} \u6A21\u5F0F`);
-    new import_obsidian8.Notice(`\u5DF2\u5207\u6362\u5230 ${label} \u6A21\u5F0F`);
+    this.addSystemMessage(`\u2705 \u524D\u53F0\u5DF2\u5207\u6362\u5230 ${label}`);
+    new import_obsidian8.Notice(`\u524D\u53F0\u5DF2\u5207\u6362\u5230 ${label}`);
   }
   setProcessingState(processing) {
     this.thinkingBarEl.classList.toggle("is-active", processing);
@@ -4187,12 +4150,10 @@ var XiaoyuanAIPlugin = class extends import_obsidian10.Plugin {
     await this.loadSettings();
     const adapter = this.app.vault.adapter;
     if (adapter.getBasePath) setVaultBasePath(adapter.getBasePath());
-    if (this.settings.execMode === "cli") {
+    if (this.settings.execMode !== "api") {
       const resolved = await resolveOpenCodePath(this.settings.opencode.cliPath);
       if (!fsSync.existsSync(resolved)) {
-        this.settings.execMode = "api";
-        await this.saveSettings();
-        new import_obsidian10.Notice("\u672A\u68C0\u6D4B\u5230 opencode \u7A0B\u5E8F\uFF0C\u5DF2\u81EA\u52A8\u5207\u6362\u4E3A API \u6A21\u5F0F");
+        new import_obsidian10.Notice("\u672A\u68C0\u6D4B\u5230 opencode \u7A0B\u5E8F\uFF0CCLI \u529F\u80FD\u4E0D\u53EF\u7528");
       }
     }
     this.registerView(VIEW_TYPE_XIAOYUAN_AI_CHAT, (leaf) => new XiaoyuanAIChatView(leaf, this));
@@ -4261,7 +4222,7 @@ ${content.slice(0, 3e3)}`);
         }
       });
     }
-    if (this.settings.execMode === "cli" && this.settings.opencode.autoStart) {
+    if (this.settings.opencode.autoStart) {
       this.autoStartServer();
     }
     if (this.settings.autoOpen) {

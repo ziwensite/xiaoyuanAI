@@ -3,8 +3,8 @@ import { ensureOpenCodeServer } from "./opencode-server";
 import { getActiveProvider } from "./constants";
 import type { XiaoyuanAISettings } from "./types";
 
-export async function checkConnection(settings: XiaoyuanAISettings, vaultDir: string): Promise<boolean> {
-  if (settings.execMode === "cli") {
+export async function checkConnection(settings: XiaoyuanAISettings, vaultDir: string, mode: "cli" | "api" = "cli"): Promise<boolean> {
+  if (mode === "cli") {
     let ok = false;
     const status = await checkOpenCodeStatus(settings.opencode.cliPath, vaultDir, settings.opencode.port, settings.opencode.hostname);
     if (status.ok) {
