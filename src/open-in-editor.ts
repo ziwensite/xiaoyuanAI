@@ -1,7 +1,6 @@
 import { TFile, Notice } from "obsidian";
 import type { Vault } from "obsidian";
 import type { Workspace } from "obsidian";
-import { simpleHash } from "./utils";
 
 export async function openInEditor(
   content: string,
@@ -17,8 +16,8 @@ export async function openInEditor(
 
     const d = ts ? new Date(ts) : new Date();
     const dateStr = `${String(d.getFullYear())}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}-${String(d.getHours()).padStart(2, "0")}${String(d.getMinutes()).padStart(2, "0")}`;
-    const hash = simpleHash(content);
-    const fileRel = `${tempRel}/msg-${dateStr}-${hash}.md`;
+    const suffix = Math.random().toString(36).slice(2, 8);
+    const fileRel = `${tempRel}/msg-${dateStr}-${suffix}.md`;
 
     const title = (content.split("\n")[0] || "消息").replace(/^#+\s*/, "").slice(0, 50);
     const dateOnly = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;

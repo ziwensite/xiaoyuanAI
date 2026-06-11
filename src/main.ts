@@ -210,15 +210,12 @@ export default class XiaoyuanAIPlugin extends Plugin {
     try {
       const tempDir = path.join(getVaultBasePath(), this.settings.chatHistoryPath, "temp");
       try { await fs.access(tempDir); } catch { return; }
-      const now = Date.now();
-      const maxAge = 24 * 60 * 60 * 1000;
       const names = await fs.readdir(tempDir);
-      for (const name of names) {
-        const fp = path.join(tempDir, name);
-        const stat = await fs.stat(fp);
-        if (stat.isFile() && name.endsWith(".md") && now - stat.mtimeMs > maxAge) {
-          await fs.unlink(fp);
-        }
+      const mdFiles = names.filter(n => n.endsWith(".md")).sort();
+      const maxFiles = 50;
+      while (mdFiles.length > maxFiles) {
+        const f = mdFiles.shift();
+        if (f) await fs.unlink(path.join(tempDir, f));
       }
     } catch (err: unknown) { console.warn("清理临时文件失败:", err); }
   }

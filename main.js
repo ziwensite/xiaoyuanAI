@@ -127,14 +127,6 @@ function parseDiffText(text) {
   }
   return result;
 }
-function simpleHash(s) {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) {
-    h = (h << 5) - h + s.charCodeAt(i);
-    h |= 0;
-  }
-  return (h >>> 0).toString(36);
-}
 function ensureApiUrl(baseUrl) {
   const trimmed = baseUrl.replace(/\/+$/, "");
   return trimmed.endsWith("/chat/completions") ? trimmed : trimmed + "/chat/completions";
@@ -1773,7 +1765,6 @@ function readFileAsBase64(file) {
 
 // src/open-in-editor.ts
 var import_obsidian6 = require("obsidian");
-init_utils();
 async function openInEditor(content, vault, workspace, chatHistoryPath, ts, source) {
   try {
     const tempRel = `${chatHistoryPath}/temp`;
@@ -1783,8 +1774,8 @@ async function openInEditor(content, vault, workspace, chatHistoryPath, ts, sour
     }
     const d = ts ? new Date(ts) : /* @__PURE__ */ new Date();
     const dateStr = `${String(d.getFullYear())}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}-${String(d.getHours()).padStart(2, "0")}${String(d.getMinutes()).padStart(2, "0")}`;
-    const hash = simpleHash(content);
-    const fileRel = `${tempRel}/msg-${dateStr}-${hash}.md`;
+    const suffix = Math.random().toString(36).slice(2, 8);
+    const fileRel = `${tempRel}/msg-${dateStr}-${suffix}.md`;
     const title = (content.split("\n")[0] || "\u6D88\u606F").replace(/^#+\s*/, "").slice(0, 50);
     const dateOnly = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     const frontmatter = `---
@@ -4338,15 +4329,12 @@ ${content.slice(0, 3e3)}`);
       } catch (e) {
         return;
       }
-      const now = Date.now();
-      const maxAge = 24 * 60 * 60 * 1e3;
       const names = await fs4.readdir(tempDir);
-      for (const name of names) {
-        const fp = path4.join(tempDir, name);
-        const stat2 = await fs4.stat(fp);
-        if (stat2.isFile() && name.endsWith(".md") && now - stat2.mtimeMs > maxAge) {
-          await fs4.unlink(fp);
-        }
+      const mdFiles = names.filter((n) => n.endsWith(".md")).sort();
+      const maxFiles = 50;
+      while (mdFiles.length > maxFiles) {
+        const f = mdFiles.shift();
+        if (f) await fs4.unlink(path4.join(tempDir, f));
       }
     } catch (err) {
       console.warn("\u6E05\u7406\u4E34\u65F6\u6587\u4EF6\u5931\u8D25:", err);
