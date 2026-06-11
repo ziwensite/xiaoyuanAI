@@ -618,7 +618,7 @@ export class XiaoyuanAIChatView extends ItemView {
     bubble.createEl("span", { text: "选中文本后右键 → 使用 AI 操作。" });
   }
 
-  private addSystemMessage(text: string): HTMLDivElement {
+  addSystemMessage(text: string): HTMLDivElement {
     const msgEl = this.messagesEl.createDiv({ cls: "xiaoyuan-msg xiaoyuan-msg-system" });
     msgEl.createDiv({ cls: "xiaoyuan-msg-bubble" }).textContent = text;
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;

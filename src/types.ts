@@ -69,6 +69,7 @@ export type PermissionMode = "read-only" | "workspace-write" | "danger-full-acce
 export interface SkillEntry {
   name: string;
   description: string;
+  autoRunInterval?: number;
 }
 
 export interface PromptTemplate {

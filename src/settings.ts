@@ -626,7 +626,7 @@ ${text}
       const headerRow = thead.createEl("tr");
       headerRow.createEl("th", { text: "名称" });
       headerRow.createEl("th", { text: "描述" });
-      headerRow.createEl("th", { text: "执行" });
+      headerRow.createEl("th", { text: "自动执行" });
 
       const tbody = table.createEl("tbody");
       for (const skill of s.skills) {
@@ -634,16 +634,22 @@ ${text}
         row.createEl("td", { text: skill.name });
         row.createEl("td", { text: skill.description });
         const actionCell = row.createEl("td");
-        const execBtn = actionCell.createEl("button", { text: "\u25B6" });
-        execBtn.style.cssText = "padding: 0 6px; font-size: 12px;";
-        execBtn.addEventListener("click", () => {
-          const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_XIAOYUAN_AI_CHAT).first();
-          if (leaf?.view instanceof XiaoyuanAIChatView) {
-            const setting = this.app.setting as { close?: () => void; open?: () => void; openTabById?: (id: string) => void };
-            setting.close?.();
-            leaf.view.inputEl.value = "/" + skill.name + " ";
-            leaf.view.inputEl.focus();
-          }
+        if (skill.autoRunInterval === undefined) skill.autoRunInterval = 0;
+        const select = actionCell.createEl("select", { cls: "dropdown" });
+        const intervals: { value: number; label: string }[] = [
+          { value: 0, label: "关闭" },
+          { value: 60, label: "每小时" },
+          { value: 360, label: "每6小时" },
+          { value: 1440, label: "每天" },
+          { value: 10080, label: "每周" },
+        ];
+        for (const opt of intervals) {
+          select.createEl("option", { value: String(opt.value), text: opt.label });
+        }
+        select.value = String(skill.autoRunInterval);
+        select.addEventListener("change", async () => {
+          skill.autoRunInterval = parseInt(select.value);
+          await this.plugin.saveSettings();
         });
       }
     }

@@ -3885,24 +3885,29 @@ ${content}`,
       const headerRow = thead.createEl("tr");
       headerRow.createEl("th", { text: "\u540D\u79F0" });
       headerRow.createEl("th", { text: "\u63CF\u8FF0" });
-      headerRow.createEl("th", { text: "\u6267\u884C" });
+      headerRow.createEl("th", { text: "\u81EA\u52A8\u6267\u884C" });
       const tbody = table.createEl("tbody");
       for (const skill of s.skills) {
         const row = tbody.createEl("tr");
         row.createEl("td", { text: skill.name });
         row.createEl("td", { text: skill.description });
         const actionCell = row.createEl("td");
-        const execBtn = actionCell.createEl("button", { text: "\u25B6" });
-        execBtn.style.cssText = "padding: 0 6px; font-size: 12px;";
-        execBtn.addEventListener("click", () => {
-          var _a;
-          const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_XIAOYUAN_AI_CHAT).first();
-          if ((leaf == null ? void 0 : leaf.view) instanceof XiaoyuanAIChatView) {
-            const setting = this.app.setting;
-            (_a = setting.close) == null ? void 0 : _a.call(setting);
-            leaf.view.inputEl.value = "/" + skill.name + " ";
-            leaf.view.inputEl.focus();
-          }
+        if (skill.autoRunInterval === void 0) skill.autoRunInterval = 0;
+        const select = actionCell.createEl("select", { cls: "dropdown" });
+        const intervals = [
+          { value: 0, label: "\u5173\u95ED" },
+          { value: 60, label: "\u6BCF\u5C0F\u65F6" },
+          { value: 360, label: "\u6BCF6\u5C0F\u65F6" },
+          { value: 1440, label: "\u6BCF\u5929" },
+          { value: 10080, label: "\u6BCF\u5468" }
+        ];
+        for (const opt of intervals) {
+          select.createEl("option", { value: String(opt.value), text: opt.label });
+        }
+        select.value = String(skill.autoRunInterval);
+        select.addEventListener("change", async () => {
+          skill.autoRunInterval = parseInt(select.value);
+          await this.plugin.saveSettings();
         });
       }
     }
@@ -4150,6 +4155,10 @@ init_ai();
 init_opencode_server();
 init_server();
 var XiaoyuanAIPlugin = class extends import_obsidian10.Plugin {
+  constructor() {
+    super(...arguments);
+    this.lastSkillRun = /* @__PURE__ */ new Map();
+  }
   async onload() {
     await this.loadSettings();
     const adapter = this.app.vault.adapter;
@@ -4226,6 +4235,18 @@ ${content.slice(0, 3e3)}`);
         }
       });
     }
+    this.registerInterval(window.setInterval(() => {
+      const now = Date.now();
+      for (const skill of this.settings.skills) {
+        if (!skill.autoRunInterval) continue;
+        const lastRun = this.lastSkillRun.get(skill.name) || 0;
+        if (now - lastRun >= skill.autoRunInterval * 60 * 1e3) {
+          this.lastSkillRun.set(skill.name, now);
+          this.executeScheduledSkill(skill).catch(() => {
+          });
+        }
+      }
+    }, 6e4));
     if (this.settings.opencode.autoStart) {
       this.autoStartServer();
     }
@@ -4400,6 +4421,23 @@ ${content.slice(0, 3e3)}`);
       apiKey: p.apiKey ? btoa(p.apiKey) : p.apiKey
     }));
     await this.saveData({ ...this.settings, apiProviders: encoded });
+  }
+  async executeScheduledSkill(skill) {
+    const now = /* @__PURE__ */ new Date();
+    const d = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+    const logLine = `- ${d} | \u{1F504} \u81EA\u52A8: ${skill.name} \u2014 ${skill.description}
+`;
+    try {
+      const logPath = path4.join(getVaultBasePath(), "_autoTaskLog.md");
+      await fs4.appendFile(logPath, logLine);
+    } catch (e) {
+    }
+    const leaf = this.activateChatView();
+    if ((leaf == null ? void 0 : leaf.view) instanceof XiaoyuanAIChatView) {
+      leaf.view.addSystemMessage(`\u{1F504} \u81EA\u52A8\u6267\u884C: ${skill.name}`);
+      leaf.view.inputEl.value = `/${skill.name} \u6267\u884C\u5B9A\u65F6\u4EFB\u52A1`;
+      leaf.view.sendMessage();
+    }
   }
   async onunload() {
     stopOpenCodeServer();

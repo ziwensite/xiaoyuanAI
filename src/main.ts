@@ -2,7 +2,7 @@ import * as fs from "fs/promises";
 import * as fsSync from "fs";
 import * as path from "path";
 import { Plugin, WorkspaceLeaf, Notice, MarkdownView, Menu } from "obsidian";
-import type { XiaoyuanAISettings } from "./types";
+import type { XiaoyuanAISettings, SkillEntry } from "./types";
 import { XiaoyuanAIChatView } from "./chat-view";
 import { XiaoyuanAISettingTab } from "./settings";
 import { TextOperationModal } from "./modals";
@@ -14,6 +14,7 @@ import { createActionBtn } from "./action-buttons";
 
 export default class XiaoyuanAIPlugin extends Plugin {
   settings!: XiaoyuanAISettings;
+  private lastSkillRun = new Map<string, number>();
 
   async onload() {
     await this.loadSettings();
@@ -94,6 +95,19 @@ export default class XiaoyuanAIPlugin extends Plugin {
         },
       });
     }
+
+    // 定时 skill 任务
+    this.registerInterval(window.setInterval(() => {
+      const now = Date.now();
+      for (const skill of this.settings.skills) {
+        if (!skill.autoRunInterval) continue;
+        const lastRun = this.lastSkillRun.get(skill.name) || 0;
+        if (now - lastRun >= skill.autoRunInterval * 60 * 1000) {
+          this.lastSkillRun.set(skill.name, now);
+          this.executeScheduledSkill(skill).catch(() => {});
+        }
+      }
+    }, 60000));
 
     if (this.settings.opencode.autoStart) {
       this.autoStartServer();
@@ -278,6 +292,24 @@ export default class XiaoyuanAIPlugin extends Plugin {
       ...p, apiKey: p.apiKey ? btoa(p.apiKey) : p.apiKey,
     }));
     await this.saveData({ ...this.settings, apiProviders: encoded });
+  }
+
+  private async executeScheduledSkill(skill: SkillEntry) {
+    const now = new Date();
+    const d = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+    const logLine = `- ${d} | 🔄 自动: ${skill.name} — ${skill.description}\n`;
+
+    try {
+      const logPath = path.join(getVaultBasePath(), "_autoTaskLog.md");
+      await fs.appendFile(logPath, logLine);
+    } catch {}
+
+    const leaf = this.activateChatView();
+    if (leaf?.view instanceof XiaoyuanAIChatView) {
+      leaf.view.addSystemMessage(`🔄 自动执行: ${skill.name}`);
+      leaf.view.inputEl.value = `/${skill.name} 执行定时任务`;
+      leaf.view.sendMessage();
+    }
   }
 
   async onunload() {
