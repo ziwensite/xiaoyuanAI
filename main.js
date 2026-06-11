@@ -966,7 +966,11 @@ async function callAIWithHTTPStreaming(prompt, settings, vaultDir, signal, onCon
 async function callAISession(options) {
   const { prompt, settings, vaultDir, signal, onThinking, onTextUpdate } = options;
   if (settings.execMode === "cli") {
-    return callAIWithHTTPStreaming(prompt, settings, vaultDir, signal, void 0, onThinking, onTextUpdate);
+    try {
+      return await callAIWithHTTPStreaming(prompt, settings, vaultDir, signal, void 0, onThinking, onTextUpdate);
+    } catch (err) {
+      console.warn("CLI \u8C03\u7528\u5931\u8D25\uFF0C\u964D\u7EA7\u5230 API:", err);
+    }
   }
   const provider = getActiveProvider(settings);
   if (!provider || !provider.apiKey) throw new Error("API Key \u672A\u914D\u7F6E");

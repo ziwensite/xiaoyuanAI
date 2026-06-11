@@ -189,7 +189,11 @@ export interface CallAISessionOptions {
 export async function callAISession(options: CallAISessionOptions): Promise<string> {
   const { prompt, settings, vaultDir, signal, onThinking, onTextUpdate } = options;
   if (settings.execMode === "cli") {
-    return callAIWithHTTPStreaming(prompt, settings, vaultDir, signal, undefined, onThinking, onTextUpdate);
+    try {
+      return await callAIWithHTTPStreaming(prompt, settings, vaultDir, signal, undefined, onThinking, onTextUpdate);
+    } catch (err: unknown) {
+      console.warn("CLI 调用失败，降级到 API:", err);
+    }
   }
   const provider = getActiveProvider(settings);
   if (!provider || !provider.apiKey) throw new Error("API Key 未配置");
