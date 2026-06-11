@@ -29,7 +29,6 @@ import { registerSelectionListener } from "./selection-popup";
 import { renderQuoteBar } from "./quote-bar";
 import { pickFiles, handleFiles } from "./attachment";
 import { openInEditor } from "./open-in-editor";
-import { SpeakController } from "./speak-controller";
 import { createActionBtn } from "./action-buttons";
 import { TextOperationModal } from "./modals";
 
@@ -54,8 +53,6 @@ export class XiaoyuanAIChatView extends ItemView {
   private attachments: Attachment[] = [];
   private attachPreviewEl!: HTMLDivElement;
   private quoteText = "";
-  speakController = new SpeakController();
-  private speakIndicator!: HTMLSpanElement;
   activeAgent: "cli" | "api" = "cli";
   private skillIndex = -1;
 
@@ -74,9 +71,6 @@ export class XiaoyuanAIChatView extends ItemView {
     contentEl.addClass("xiaoyuan-chat-container");
     this.viewContainer = contentEl.createDiv({ cls: "xiaoyuan-chat" });
     this.buildHeader();
-    this.speakController.onChange = (speaking) => {
-      this.speakIndicator.style.display = speaking ? "" : "none";
-    };
     this.thinkingBarEl = this.viewContainer.createDiv({ cls: "xiaoyuan-thinking-bar" });
     this.messagesEl = this.viewContainer.createDiv({ cls: "xiaoyuan-chat-messages" });
     this.buildInputArea();
@@ -88,7 +82,7 @@ export class XiaoyuanAIChatView extends ItemView {
         const rect = sel.getRangeAt(0).getBoundingClientRect();
         return { x: rect.left + rect.width / 2 - 60, y: rect.top - 36 };
       },
-      onSpeak: (text) => this.speakController.start(text),
+      onSpeak: (text) => this.plugin.speakController.start(text),
       onQuote: (text) => this.quote(text),
       onAITools: (text, e) => this.showAIToolsForContent(text, e),
       onCapture: (text) => {
@@ -104,7 +98,6 @@ export class XiaoyuanAIChatView extends ItemView {
   }
 
   async onClose() {
-    this.speakController.stop();
     if (this.abortController) {
       this.abortController.abort();
       this.abortController = null;
@@ -143,11 +136,6 @@ export class XiaoyuanAIChatView extends ItemView {
     const headerEl = this.viewContainer.createDiv({ cls: "xiaoyuan-chat-header" });
     const left = headerEl.createSpan({ cls: "xiaoyuan-chat-header-left" });
     const right = headerEl.createSpan({ cls: "xiaoyuan-chat-header-right" });
-
-    this.speakIndicator = left.createSpan({ cls: "xy-speak-indicator" });
-    setTooltip(this.speakIndicator, "停止朗读");
-    this.speakIndicator.style.display = "none";
-    this.speakIndicator.addEventListener("click", () => this.speakController.stop());
 
     const newChatBtn = left.createSpan({ cls: "xiaoyuan-new-chat-icon" });
     setIcon(newChatBtn, "message-square-plus");
@@ -512,7 +500,7 @@ export class XiaoyuanAIChatView extends ItemView {
         undoMessage: (id) => this.undoMessage(id),
         openInEditor: (c, ts) => this.openInEditor(c, ts),
         quote: (text) => this.quote(text),
-        onSpeak: (text) => this.speakController.start(text),
+        onSpeak: (text) => this.plugin.speakController.start(text),
         onAITools: (c, e) => this.showAIToolsForContent(c, e),
         onCapture: (text) => {
           navigator.clipboard.writeText(text);
@@ -713,7 +701,7 @@ private async truncateMessagesIfNeeded(): Promise<void> {
     this.pendingDiffs = null;
 this.setProcessingState(true);
 
-    try {
+try {
       await this.truncateMessagesIfNeeded();
       const response = await this.callAI(text, this.abortController.signal);
       this.attachments = [];
@@ -721,10 +709,9 @@ this.setProcessingState(true);
       if (this.activeAgent === "cli") {
         const streamId = await this.finalizeStreamingMessage();
         await this.saveCurrentSession();
-        const actualDiffs = this.pendingDiffs as FileDiff[] | null;
-        if (this.plugin.settings.showDiffPreview && streamId && actualDiffs?.length) {
-          const diffs = actualDiffs;
-          this.renderDiffs(streamId, diffs);
+        const pendingDiffs = this.pendingDiffs as FileDiff[] | null;
+        if (this.plugin.settings.showDiffPreview && streamId && pendingDiffs?.length) {
+          this.renderDiffs(streamId, pendingDiffs);
           await this.saveCurrentSession();
         }
       } else {
@@ -881,7 +868,7 @@ private addStreamingMessage(content: string, thinking?: string): string {
       undoMessage: (id) => this.undoMessage(id),
       openInEditor: (c, ts) => this.openInEditor(c, ts),
       quote: (text) => this.quote(text),
-      onSpeak: (text) => this.speakController.start(text),
+      onSpeak: (text) => this.plugin.speakController.start(text),
       onAITools: (c, e) => this.showAIToolsForContent(c, e),
       onCapture: (text) => {
         navigator.clipboard.writeText(text);

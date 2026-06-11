@@ -12,7 +12,6 @@ export const ACTION_LABELS = {
   delete: "删除此对话",
   aiTools: "小元AI工具",
   capture: "捕获",
-  template: "选用模板",
 } as const;
 
 export type ActionType = keyof typeof ACTION_LABELS;
@@ -29,7 +28,6 @@ const ICON_MAP: Record<ActionType, string> = {
   delete: "trash-2",
   aiTools: "sparkles",
   capture: "camera",
-  template: "file-pen",
 };
 
 export function createActionBtn(type: ActionType): HTMLSpanElement {

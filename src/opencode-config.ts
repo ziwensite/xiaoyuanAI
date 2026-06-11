@@ -52,9 +52,7 @@ export function flattenProviders(providers: OpenCodeProvider[]): FlattenResult {
     if (p.configured === false) continue;
     const providerName = p.name || p.id;
     const rawModels = p.models || {};
-    const entries: RawModelEntry[] = Array.isArray(rawModels)
-      ? Object.values(rawModels).map((m) => ({ id: m.id || m.name || "", name: m.name || m.id || "", enabled: m.enabled, capabilities: m.capabilities }))
-      : Object.values(rawModels).map((m) => ({ id: (m as OpenCodeModelDef).id || (m as OpenCodeModelDef).name || "", name: (m as OpenCodeModelDef).name || (m as OpenCodeModelDef).id || "", enabled: (m as OpenCodeModelDef).enabled, capabilities: (m as OpenCodeModelDef).capabilities }));
+    const entries: RawModelEntry[] = toRawModelEntries(rawModels);
     for (const m of entries) {
       if (!m.id) continue;
       if (m.enabled === false) continue;
@@ -141,6 +139,14 @@ interface ProviderConfig {
   models?: Record<string, unknown> | unknown[];
 }
 
+function toRawModelEntries(rawModels: unknown): RawModelEntry[] {
+  const entries = Array.isArray(rawModels) ? rawModels : Object.values(rawModels as Record<string, unknown>);
+  return entries.map((m) => {
+    const mm = m as Record<string, unknown>;
+    return { id: (mm.id as string) || (mm.name as string) || "", name: (mm.name as string) || (mm.id as string) || "", enabled: (mm.enabled as boolean | undefined), capabilities: (mm.capabilities as OpenCodeModelDef["capabilities"]) };
+  });
+}
+
 export function extractModelsFromConfig(parsed: Record<string, unknown>): ModelEntry[] {
   const result = new Map<string, ModelEntry>();
   const providers = (parsed?.providers ?? parsed?.profiles ?? {}) as Record<string, unknown>;
@@ -148,15 +154,7 @@ export function extractModelsFromConfig(parsed: Record<string, unknown>): ModelE
     const pc = cfg as ProviderConfig;
     const providerName = pc.name || providerId;
     const rawModels = pc.models ?? {};
-    const entries: RawModelEntry[] = Array.isArray(rawModels)
-      ? rawModels.map((m) => {
-          const mm = m as Record<string, unknown>;
-          return { id: (mm.id as string) || (mm.name as string) || "", name: (mm.name as string) || (mm.id as string) || "" };
-        })
-      : Object.values(rawModels).map((m) => {
-          const mm = m as Record<string, unknown>;
-          return { id: (mm.id as string) || (mm.name as string) || "", name: (mm.name as string) || (mm.id as string) || "" };
-        });
+    const entries: RawModelEntry[] = toRawModelEntries(rawModels);
     for (const m of entries) {
       if (!m.id) continue;
       const modelId = m.id.includes("/") ? m.id : `${providerId}/${m.id}`;

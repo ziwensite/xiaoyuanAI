@@ -34,7 +34,7 @@ function removeSelectionPopup() {
   document.querySelectorAll(".xy-selection-popup").forEach((el) => el.remove());
 }
 
-function showSelectionPopup(text: string, x: number, y: number, config: SelectionPopupConfig) {
+export function showSelectionPopup(text: string, x: number, y: number, config: SelectionPopupConfig) {
   removeSelectionPopup();
   const popup = document.body.createDiv({ cls: "xy-selection-popup" });
 

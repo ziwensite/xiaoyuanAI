@@ -1,7 +1,7 @@
 import * as fs from "fs/promises";
 import * as fsSync from "fs";
 import * as path from "path";
-import { Plugin, WorkspaceLeaf, Notice, MarkdownView, Menu } from "obsidian";
+import { Plugin, WorkspaceLeaf, Notice, MarkdownView, Menu, setIcon } from "obsidian";
 import type { XiaoyuanAISettings, SkillEntry } from "./types";
 import { XiaoyuanAIChatView } from "./chat-view";
 import { XiaoyuanAISettingTab } from "./settings";
@@ -10,10 +10,12 @@ import { DEFAULT_SETTINGS, VIEW_TYPE_XIAOYUAN_AI_CHAT, DEFAULT_PROMPT_TEMPLATES 
 import { ensureOpenCodeServer, stopOpenCodeServer } from "./ai";
 import { resolveOpenCodePath } from "./opencode-server";
 import { getVaultBasePath, setVaultBasePath } from "./server";
-import { createActionBtn } from "./action-buttons";
+import { showSelectionPopup } from "./selection-popup";
+import { SpeakController } from "./speak-controller";
 
 export default class XiaoyuanAIPlugin extends Plugin {
   settings!: XiaoyuanAISettings;
+  speakController = new SpeakController();
   private lastSkillRun = new Map<string, number>();
 
   async onload() {
@@ -29,6 +31,14 @@ export default class XiaoyuanAIPlugin extends Plugin {
     }
 
     this.registerView(VIEW_TYPE_XIAOYUAN_AI_CHAT, (leaf) => new XiaoyuanAIChatView(leaf, this));
+    const statusBarIndicator = this.addStatusBarItem();
+    statusBarIndicator.addClass("xy-speak-indicator");
+    statusBarIndicator.style.display = "none";
+    setIcon(statusBarIndicator, "volume-2");
+    statusBarIndicator.addEventListener("click", () => this.speakController.stop());
+    this.speakController.onChange = (speaking) => {
+      statusBarIndicator.style.display = speaking ? "" : "none";
+    };
     this.addRibbonIcon("message-circle", "小元AI", () => this.activateChatView());
 
     this.registerEvent(
@@ -143,65 +153,34 @@ export default class XiaoyuanAIPlugin extends Plugin {
         const x = rect.left + rect.width / 2 - 60;
         const y = rect.top - 36;
 
-        document.querySelectorAll(".xy-selection-popup").forEach((el) => el.remove());
-
-        const popup = document.body.createDiv({ cls: "xy-selection-popup" });
-
-        const copyBtn = createActionBtn("copy");
-        copyBtn.addEventListener("click", () => {
-          navigator.clipboard.writeText(text);
-          new Notice("已复制");
-          popup.remove();
+        showSelectionPopup(text, x, y, {
+          getSelectedText: () => text,
+          getPosition: () => ({ x, y }),
+          onSpeak: (t) => this.speakController.start(t),
+          onQuote: (t) => {
+            this.activateChatView();
+            const chatLeaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_XIAOYUAN_AI_CHAT).first();
+            if (chatLeaf?.view instanceof XiaoyuanAIChatView) {
+              chatLeaf.view.quote(t);
+            }
+          },
+          onCapture: (t) => {
+            navigator.clipboard.writeText(t);
+            const cmdId = this.settings.captureCommandId;
+            if (cmdId) this.app.commands.executeCommandById(cmdId);
+          },
+          onAITools: (t, ev) => {
+            const menu = new Menu();
+            for (const tpl of this.settings.promptTemplates) {
+              menu.addItem((item) => {
+                item.setTitle(`${tpl.name} — ${tpl.description}`);
+                item.setIcon(tpl.icon);
+                item.onClick(() => new TextOperationModal(this.app, this, tpl.id, t).open());
+              });
+            }
+            menu.showAtMouseEvent(ev);
+          },
         });
-        popup.appendChild(copyBtn);
-
-        const speakBtn = createActionBtn("speak");
-        speakBtn.addEventListener("click", () => {
-          speechSynthesis.cancel();
-          const u = new SpeechSynthesisUtterance(text.replace(/[#*_`\[\]]/g, ""));
-          u.lang = "zh-CN"; speechSynthesis.speak(u);
-          popup.remove();
-        });
-        popup.appendChild(speakBtn);
-
-        const quoteBtn = createActionBtn("quote");
-        quoteBtn.addEventListener("click", () => {
-          this.activateChatView();
-          const chatLeaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_XIAOYUAN_AI_CHAT).first();
-          if (chatLeaf?.view instanceof XiaoyuanAIChatView) {
-            chatLeaf.view.quote(text);
-          }
-          popup.remove();
-        });
-        popup.appendChild(quoteBtn);
-
-        const captureBtn = createActionBtn("capture");
-        captureBtn.addEventListener("click", () => {
-          navigator.clipboard.writeText(text);
-          const cmdId = this.settings.captureCommandId;
-          if (cmdId) this.app.commands.executeCommandById(cmdId);
-          popup.remove();
-        });
-        popup.appendChild(captureBtn);
-
-        const aiBtn = createActionBtn("aiTools");
-        aiBtn.addEventListener("click", (ev: MouseEvent) => {
-          const menu = new Menu();
-          for (const tpl of this.settings.promptTemplates) {
-            menu.addItem((item) => {
-              item.setTitle(`${tpl.name} — ${tpl.description}`);
-              item.setIcon(tpl.icon);
-              item.onClick(() => new TextOperationModal(this.app, this, tpl.id, text).open());
-            });
-          }
-          menu.showAtMouseEvent(ev);
-          popup.remove();
-        });
-        popup.appendChild(aiBtn);
-
-        popup.style.left = `${x}px`;
-        popup.style.top = `${y}px`;
-        document.body.appendChild(popup);
       }, 10);
     });
   }
@@ -310,6 +289,7 @@ export default class XiaoyuanAIPlugin extends Plugin {
   }
 
   async onunload() {
+    this.speakController.stop();
     stopOpenCodeServer();
     for (const p of this.settings.apiProviders) {
       p.apiKey = "";

@@ -664,7 +664,7 @@ ${text}
   private buildPromptsTab(container: HTMLElement) {
     const s = this.s();
     const templates = s.promptTemplates || [];
-    const builtinIds = ["polish", "summarize", "complete", "expand", "translate", "continue"];
+    const builtinIds = ["polish", "summarize", "complete", "expand", "translate", "translate-en", "continue"];
 
     container.createEl("p", { cls: "xy-settings-desc", text: "管理 Prompt 模板。模板可在聊天/弹窗中快速选用，自动将提示词注入对话。" });
 

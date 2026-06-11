@@ -586,7 +586,7 @@ function flattenProviders(providers) {
     if (p.configured === false) continue;
     const providerName = p.name || p.id;
     const rawModels = p.models || {};
-    const entries = Array.isArray(rawModels) ? Object.values(rawModels).map((m) => ({ id: m.id || m.name || "", name: m.name || m.id || "", enabled: m.enabled, capabilities: m.capabilities })) : Object.values(rawModels).map((m) => ({ id: m.id || m.name || "", name: m.name || m.id || "", enabled: m.enabled, capabilities: m.capabilities }));
+    const entries = toRawModelEntries(rawModels);
     for (const m of entries) {
       if (!m.id) continue;
       if (m.enabled === false) continue;
@@ -664,6 +664,13 @@ function findOpenCodeConfigFiles(vaultDir) {
   }
   return results;
 }
+function toRawModelEntries(rawModels) {
+  const entries = Array.isArray(rawModels) ? rawModels : Object.values(rawModels);
+  return entries.map((m) => {
+    const mm = m;
+    return { id: mm.id || mm.name || "", name: mm.name || mm.id || "", enabled: mm.enabled, capabilities: mm.capabilities };
+  });
+}
 function extractModelsFromConfig(parsed) {
   var _a, _b, _c;
   const result = /* @__PURE__ */ new Map();
@@ -672,13 +679,7 @@ function extractModelsFromConfig(parsed) {
     const pc = cfg;
     const providerName = pc.name || providerId;
     const rawModels = (_c = pc.models) != null ? _c : {};
-    const entries = Array.isArray(rawModels) ? rawModels.map((m) => {
-      const mm = m;
-      return { id: mm.id || mm.name || "", name: mm.name || mm.id || "" };
-    }) : Object.values(rawModels).map((m) => {
-      const mm = m;
-      return { id: mm.id || mm.name || "", name: mm.name || mm.id || "" };
-    });
+    const entries = toRawModelEntries(rawModels);
     for (const m of entries) {
       if (!m.id) continue;
       const modelId = m.id.includes("/") ? m.id : `${providerId}/${m.id}`;
@@ -1548,8 +1549,7 @@ var ACTION_LABELS = {
   open: "\u5728\u7F16\u8F91\u5668\u4E2D\u6253\u5F00",
   delete: "\u5220\u9664\u6B64\u5BF9\u8BDD",
   aiTools: "\u5C0F\u5143AI\u5DE5\u5177",
-  capture: "\u6355\u83B7",
-  template: "\u9009\u7528\u6A21\u677F"
+  capture: "\u6355\u83B7"
 };
 var ICON_MAP = {
   copy: "copy",
@@ -1562,8 +1562,7 @@ var ICON_MAP = {
   open: "notebook-pen",
   delete: "trash-2",
   aiTools: "sparkles",
-  capture: "camera",
-  template: "file-pen"
+  capture: "camera"
 };
 function createActionBtn(type) {
   const btn = document.createElement("span");
@@ -1803,68 +1802,6 @@ source: ${source}` : ""}
     new import_obsidian6.Notice(`\u6253\u5F00\u5931\u8D25: ${err instanceof Error ? err.message : String(err)}`);
   }
 }
-
-// src/speak-controller.ts
-var SpeakController = class {
-  constructor() {
-    this.utterance = null;
-    this.generation = 0;
-    this.onChange = null;
-  }
-  start(text) {
-    if (typeof speechSynthesis === "undefined") {
-      console.warn("[xiaoyuanAI] speechSynthesis API not available in this environment");
-      this.notifyChange(false);
-      return;
-    }
-    this.stop();
-    if (!text.trim()) return;
-    const gen = ++this.generation;
-    try {
-      const cleanText = text.replace(/[#*_`\[\]]/g, "");
-      this.utterance = new SpeechSynthesisUtterance(cleanText);
-      this.utterance.lang = "zh-CN";
-      this.utterance.rate = 1;
-      this.utterance.onend = () => {
-        if (this.generation !== gen) return;
-        this.notifyChange(false);
-      };
-      this.utterance.onerror = (e) => {
-        if (this.generation !== gen) return;
-        if (e.error !== "canceled" && e.error !== "interrupted") {
-          console.warn("[xiaoyuanAI] speechSynthesis error:", e.error);
-        }
-        this.notifyChange(false);
-      };
-      speechSynthesis.speak(this.utterance);
-      this.notifyChange(true);
-    } catch (err) {
-      console.warn("[xiaoyuanAI] failed to start speech synthesis:", err);
-      this.utterance = null;
-      this.notifyChange(false);
-    }
-  }
-  stop() {
-    this.generation++;
-    if (typeof speechSynthesis !== "undefined") {
-      try {
-        speechSynthesis.cancel();
-      } catch (err) {
-        console.warn("[xiaoyuanAI] speechSynthesis.cancel failed:", err);
-      }
-    }
-    this.utterance = null;
-    this.notifyChange(false);
-  }
-  notifyChange(speaking) {
-    var _a;
-    try {
-      (_a = this.onChange) == null ? void 0 : _a.call(this, speaking);
-    } catch (err) {
-      console.warn("[xiaoyuanAI] onChange callback failed:", err);
-    }
-  }
-};
 
 // src/modals.ts
 var import_obsidian7 = require("obsidian");
@@ -2116,7 +2053,6 @@ var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
     this.connectionStatusEl = null;
     this.attachments = [];
     this.quoteText = "";
-    this.speakController = new SpeakController();
     this.activeAgent = "cli";
     this.skillIndex = -1;
     this.plugin = plugin;
@@ -2136,9 +2072,6 @@ var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
     contentEl.addClass("xiaoyuan-chat-container");
     this.viewContainer = contentEl.createDiv({ cls: "xiaoyuan-chat" });
     this.buildHeader();
-    this.speakController.onChange = (speaking) => {
-      this.speakIndicator.style.display = speaking ? "" : "none";
-    };
     this.thinkingBarEl = this.viewContainer.createDiv({ cls: "xiaoyuan-thinking-bar" });
     this.messagesEl = this.viewContainer.createDiv({ cls: "xiaoyuan-chat-messages" });
     this.buildInputArea();
@@ -2153,7 +2086,7 @@ var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
         const rect = sel.getRangeAt(0).getBoundingClientRect();
         return { x: rect.left + rect.width / 2 - 60, y: rect.top - 36 };
       },
-      onSpeak: (text) => this.speakController.start(text),
+      onSpeak: (text) => this.plugin.speakController.start(text),
       onQuote: (text) => this.quote(text),
       onAITools: (text, e) => this.showAIToolsForContent(text, e),
       onCapture: (text) => {
@@ -2168,7 +2101,6 @@ var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
     await this.loadSessions();
   }
   async onClose() {
-    this.speakController.stop();
     if (this.abortController) {
       this.abortController.abort();
       this.abortController = null;
@@ -2202,10 +2134,6 @@ var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
     const headerEl = this.viewContainer.createDiv({ cls: "xiaoyuan-chat-header" });
     const left = headerEl.createSpan({ cls: "xiaoyuan-chat-header-left" });
     const right = headerEl.createSpan({ cls: "xiaoyuan-chat-header-right" });
-    this.speakIndicator = left.createSpan({ cls: "xy-speak-indicator" });
-    (0, import_obsidian8.setTooltip)(this.speakIndicator, "\u505C\u6B62\u6717\u8BFB");
-    this.speakIndicator.style.display = "none";
-    this.speakIndicator.addEventListener("click", () => this.speakController.stop());
     const newChatBtn = left.createSpan({ cls: "xiaoyuan-new-chat-icon" });
     (0, import_obsidian8.setIcon)(newChatBtn, "message-square-plus");
     (0, import_obsidian8.setTooltip)(newChatBtn, "\u65B0\u5EFA\u5BF9\u8BDD");
@@ -2526,7 +2454,7 @@ var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
         undoMessage: (id2) => this.undoMessage(id2),
         openInEditor: (c, ts) => this.openInEditor(c, ts),
         quote: (text) => this.quote(text),
-        onSpeak: (text) => this.speakController.start(text),
+        onSpeak: (text) => this.plugin.speakController.start(text),
         onAITools: (c, e) => this.showAIToolsForContent(c, e),
         onCapture: (text) => {
           navigator.clipboard.writeText(text);
@@ -2722,10 +2650,9 @@ ${text}`;
       if (this.activeAgent === "cli") {
         const streamId = await this.finalizeStreamingMessage();
         await this.saveCurrentSession();
-        const actualDiffs = this.pendingDiffs;
-        if (this.plugin.settings.showDiffPreview && streamId && (actualDiffs == null ? void 0 : actualDiffs.length)) {
-          const diffs = actualDiffs;
-          this.renderDiffs(streamId, diffs);
+        const pendingDiffs = this.pendingDiffs;
+        if (this.plugin.settings.showDiffPreview && streamId && (pendingDiffs == null ? void 0 : pendingDiffs.length)) {
+          this.renderDiffs(streamId, pendingDiffs);
           await this.saveCurrentSession();
         }
       } else {
@@ -2887,7 +2814,7 @@ ${enrichedMessage}`;
       undoMessage: (id2) => this.undoMessage(id2),
       openInEditor: (c, ts) => this.openInEditor(c, ts),
       quote: (text) => this.quote(text),
-      onSpeak: (text) => this.speakController.start(text),
+      onSpeak: (text) => this.plugin.speakController.start(text),
       onAITools: (c, e) => this.showAIToolsForContent(c, e),
       onCapture: (text) => {
         navigator.clipboard.writeText(text);
@@ -3920,7 +3847,7 @@ ${content}`,
   buildPromptsTab(container) {
     const s = this.s();
     const templates = s.promptTemplates || [];
-    const builtinIds = ["polish", "summarize", "complete", "expand", "translate", "continue"];
+    const builtinIds = ["polish", "summarize", "complete", "expand", "translate", "translate-en", "continue"];
     container.createEl("p", { cls: "xy-settings-desc", text: "\u7BA1\u7406 Prompt \u6A21\u677F\u3002\u6A21\u677F\u53EF\u5728\u804A\u5929/\u5F39\u7A97\u4E2D\u5FEB\u901F\u9009\u7528\uFF0C\u81EA\u52A8\u5C06\u63D0\u793A\u8BCD\u6CE8\u5165\u5BF9\u8BDD\u3002" });
     for (let i = 0; i < templates.length; i++) {
       const tpl = templates[i];
@@ -4158,9 +4085,74 @@ init_constants();
 init_ai();
 init_opencode_server();
 init_server();
+
+// src/speak-controller.ts
+var SpeakController = class {
+  constructor() {
+    this.utterance = null;
+    this.generation = 0;
+    this.onChange = null;
+  }
+  start(text) {
+    if (typeof speechSynthesis === "undefined") {
+      console.warn("[xiaoyuanAI] speechSynthesis API not available in this environment");
+      this.notifyChange(false);
+      return;
+    }
+    this.stop();
+    if (!text.trim()) return;
+    const gen = ++this.generation;
+    try {
+      const cleanText = text.replace(/[#*_`\[\]]/g, "");
+      this.utterance = new SpeechSynthesisUtterance(cleanText);
+      this.utterance.lang = "zh-CN";
+      this.utterance.rate = 1;
+      this.utterance.onend = () => {
+        if (this.generation !== gen) return;
+        this.notifyChange(false);
+      };
+      this.utterance.onerror = (e) => {
+        if (this.generation !== gen) return;
+        if (e.error !== "canceled" && e.error !== "interrupted") {
+          console.warn("[xiaoyuanAI] speechSynthesis error:", e.error);
+        }
+        this.notifyChange(false);
+      };
+      speechSynthesis.speak(this.utterance);
+      this.notifyChange(true);
+    } catch (err) {
+      console.warn("[xiaoyuanAI] failed to start speech synthesis:", err);
+      this.utterance = null;
+      this.notifyChange(false);
+    }
+  }
+  stop() {
+    this.generation++;
+    if (typeof speechSynthesis !== "undefined") {
+      try {
+        speechSynthesis.cancel();
+      } catch (err) {
+        console.warn("[xiaoyuanAI] speechSynthesis.cancel failed:", err);
+      }
+    }
+    this.utterance = null;
+    this.notifyChange(false);
+  }
+  notifyChange(speaking) {
+    var _a;
+    try {
+      (_a = this.onChange) == null ? void 0 : _a.call(this, speaking);
+    } catch (err) {
+      console.warn("[xiaoyuanAI] onChange callback failed:", err);
+    }
+  }
+};
+
+// src/main.ts
 var XiaoyuanAIPlugin = class extends import_obsidian10.Plugin {
   constructor() {
     super(...arguments);
+    this.speakController = new SpeakController();
     this.lastSkillRun = /* @__PURE__ */ new Map();
   }
   async onload() {
@@ -4174,6 +4166,14 @@ var XiaoyuanAIPlugin = class extends import_obsidian10.Plugin {
       }
     }
     this.registerView(VIEW_TYPE_XIAOYUAN_AI_CHAT, (leaf) => new XiaoyuanAIChatView(leaf, this));
+    const statusBarIndicator = this.addStatusBarItem();
+    statusBarIndicator.addClass("xy-speak-indicator");
+    statusBarIndicator.style.display = "none";
+    (0, import_obsidian10.setIcon)(statusBarIndicator, "volume-2");
+    statusBarIndicator.addEventListener("click", () => this.speakController.stop());
+    this.speakController.onChange = (speaking) => {
+      statusBarIndicator.style.display = speaking ? "" : "none";
+    };
     this.addRibbonIcon("message-circle", "\u5C0F\u5143AI", () => this.activateChatView());
     this.registerEvent(
       this.app.workspace.on("editor-menu", (menu, editor) => {
@@ -4278,59 +4278,34 @@ ${content.slice(0, 3e3)}`);
         const rect = domSel.getRangeAt(0).getBoundingClientRect();
         const x = rect.left + rect.width / 2 - 60;
         const y = rect.top - 36;
-        document.querySelectorAll(".xy-selection-popup").forEach((el) => el.remove());
-        const popup = document.body.createDiv({ cls: "xy-selection-popup" });
-        const copyBtn = createActionBtn("copy");
-        copyBtn.addEventListener("click", () => {
-          navigator.clipboard.writeText(text);
-          new import_obsidian10.Notice("\u5DF2\u590D\u5236");
-          popup.remove();
-        });
-        popup.appendChild(copyBtn);
-        const speakBtn = createActionBtn("speak");
-        speakBtn.addEventListener("click", () => {
-          speechSynthesis.cancel();
-          const u = new SpeechSynthesisUtterance(text.replace(/[#*_`\[\]]/g, ""));
-          u.lang = "zh-CN";
-          speechSynthesis.speak(u);
-          popup.remove();
-        });
-        popup.appendChild(speakBtn);
-        const quoteBtn = createActionBtn("quote");
-        quoteBtn.addEventListener("click", () => {
-          this.activateChatView();
-          const chatLeaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_XIAOYUAN_AI_CHAT).first();
-          if ((chatLeaf == null ? void 0 : chatLeaf.view) instanceof XiaoyuanAIChatView) {
-            chatLeaf.view.quote(text);
+        showSelectionPopup(text, x, y, {
+          getSelectedText: () => text,
+          getPosition: () => ({ x, y }),
+          onSpeak: (t) => this.speakController.start(t),
+          onQuote: (t) => {
+            this.activateChatView();
+            const chatLeaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_XIAOYUAN_AI_CHAT).first();
+            if ((chatLeaf == null ? void 0 : chatLeaf.view) instanceof XiaoyuanAIChatView) {
+              chatLeaf.view.quote(t);
+            }
+          },
+          onCapture: (t) => {
+            navigator.clipboard.writeText(t);
+            const cmdId = this.settings.captureCommandId;
+            if (cmdId) this.app.commands.executeCommandById(cmdId);
+          },
+          onAITools: (t, ev) => {
+            const menu = new import_obsidian10.Menu();
+            for (const tpl of this.settings.promptTemplates) {
+              menu.addItem((item) => {
+                item.setTitle(`${tpl.name} \u2014 ${tpl.description}`);
+                item.setIcon(tpl.icon);
+                item.onClick(() => new TextOperationModal(this.app, this, tpl.id, t).open());
+              });
+            }
+            menu.showAtMouseEvent(ev);
           }
-          popup.remove();
         });
-        popup.appendChild(quoteBtn);
-        const captureBtn = createActionBtn("capture");
-        captureBtn.addEventListener("click", () => {
-          navigator.clipboard.writeText(text);
-          const cmdId = this.settings.captureCommandId;
-          if (cmdId) this.app.commands.executeCommandById(cmdId);
-          popup.remove();
-        });
-        popup.appendChild(captureBtn);
-        const aiBtn = createActionBtn("aiTools");
-        aiBtn.addEventListener("click", (ev) => {
-          const menu = new import_obsidian10.Menu();
-          for (const tpl of this.settings.promptTemplates) {
-            menu.addItem((item) => {
-              item.setTitle(`${tpl.name} \u2014 ${tpl.description}`);
-              item.setIcon(tpl.icon);
-              item.onClick(() => new TextOperationModal(this.app, this, tpl.id, text).open());
-            });
-          }
-          menu.showAtMouseEvent(ev);
-          popup.remove();
-        });
-        popup.appendChild(aiBtn);
-        popup.style.left = `${x}px`;
-        popup.style.top = `${y}px`;
-        document.body.appendChild(popup);
       }, 10);
     });
   }
@@ -4441,6 +4416,7 @@ ${content.slice(0, 3e3)}`);
     }
   }
   async onunload() {
+    this.speakController.stop();
     stopOpenCodeServer();
     for (const p of this.settings.apiProviders) {
       p.apiKey = "";
