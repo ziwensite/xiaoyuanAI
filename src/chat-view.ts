@@ -1316,6 +1316,8 @@ const msgEls = Array.from(this.messagesEl.querySelectorAll(".xiaoyuan-msg"));
 
   switchMode(newMode: "api" | "cli") {
     this.activeAgent = newMode;
+    this.plugin.settings.execMode = newMode;
+    this.plugin.saveSettings();
     this.rebuildHeader();
     const label = newMode === "cli" ? "CLI" : "API";
     this.addSystemMessage(`✅ 前台已切换到 ${label}`);

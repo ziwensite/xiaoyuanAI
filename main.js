@@ -3289,6 +3289,8 @@ ${enrichedMessage}`;
   // ─── UI helpers ──────────────────────────────────────────────────
   switchMode(newMode) {
     this.activeAgent = newMode;
+    this.plugin.settings.execMode = newMode;
+    this.plugin.saveSettings();
     this.rebuildHeader();
     const label = newMode === "cli" ? "CLI" : "API";
     this.addSystemMessage(`\u2705 \u524D\u53F0\u5DF2\u5207\u6362\u5230 ${label}`);
@@ -3365,6 +3367,8 @@ var XiaoyuanAISettingTab = class extends import_obsidian9.PluginSettingTab {
       dd.addOption("api", "API \u6A21\u5F0F");
       dd.setValue(s.execMode);
       dd.onChange(async (val) => {
+        s.execMode = val;
+        await this.plugin.saveSettings();
         const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_XIAOYUAN_AI_CHAT).first();
         if ((leaf == null ? void 0 : leaf.view) instanceof XiaoyuanAIChatView) {
           leaf.view.switchMode(val);
