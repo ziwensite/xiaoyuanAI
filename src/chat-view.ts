@@ -791,7 +791,7 @@ private async truncateMessagesIfNeeded(): Promise<void> {
   ): Promise<string> {
     const s = this.plugin.settings;
     const assistantConfig = getAssistantConfig(s, targetName);
-    const systemPrompt = assistantConfig?.systemPrompt || s.systemPrompt;
+    const systemPrompt = assistantConfig?.systemPrompt || "";
 
     let enrichedMessage = userMessage;
     if (this.attachments.length > 0) {

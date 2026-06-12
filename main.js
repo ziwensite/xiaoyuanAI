@@ -85,7 +85,7 @@ var init_constants = __esm({
       autoOpen: true,
       showContext: false,
       chatViewType: "right",
-      systemPrompt: "\u4F60\u662F\u4E00\u4E2A AI \u52A9\u624B\uFF0C\u96C6\u6210\u5728 Obsidian \u7B14\u8BB0\u8F6F\u4EF6\u4E2D\u3002\u7528\u6237\u6B63\u5728\u505A\u7B14\u8BB0\u6216\u5199\u4F5C\u3002\u8BF7\u7528\u4E2D\u6587\u56DE\u7B54\uFF0C\u4FDD\u6301\u7B80\u6D01\u4E13\u4E1A\u3002",
+      systemPrompt: "",
       maxTokens: 4096,
       temperature: 0.7,
       chatHistoryPath: "_chatHistory",
@@ -1003,11 +1003,14 @@ async function callAISession(options) {
   }
   const provider = getActiveProvider(settings);
   if (!provider || !provider.apiKey) throw new Error("API Key \u672A\u914D\u7F6E");
+  const activeName = settings.execMode === "api" ? settings.assistantA.name : settings.assistantC.name;
+  const activeCfg = activeName === settings.assistantA.name ? settings.assistantA : settings.assistantC;
+  const systemContent = (activeCfg == null ? void 0 : activeCfg.systemPrompt) || "";
   const resp = await callAIWithAPI(
     ensureApiUrl(provider.baseUrl),
     provider.apiKey,
     provider.model,
-    [{ role: "system", content: settings.systemPrompt }, { role: "user", content: prompt }],
+    [{ role: "system", content: systemContent }, { role: "user", content: prompt }],
     settings.maxTokens,
     settings.temperature,
     true,
@@ -2832,7 +2835,7 @@ ${text}`;
   async callAI(userMessage, targetName, signal) {
     const s = this.plugin.settings;
     const assistantConfig = getAssistantConfig(s, targetName);
-    const systemPrompt = (assistantConfig == null ? void 0 : assistantConfig.systemPrompt) || s.systemPrompt;
+    const systemPrompt = (assistantConfig == null ? void 0 : assistantConfig.systemPrompt) || "";
     let enrichedMessage = userMessage;
     if (this.attachments.length > 0) {
       const attachBlocks = await Promise.all(this.attachments.map(async (att) => {
@@ -4243,24 +4246,17 @@ ${content}`,
         await this.plugin.saveSettings();
       })
     ), "hard-drive");
-    container.createEl("hr");
-    container.createEl("h3", { text: "\u7CFB\u7EDF\u63D0\u793A\u8BCD" });
     this.decorateSetting(new import_obsidian9.Setting(container).setName("\u663E\u793A\u6587\u4EF6\u4E0A\u4E0B\u6587").setDesc("\u5728\u804A\u5929\u5DE5\u5177\u680F\u663E\u793A\u5F53\u524D\u7B14\u8BB0\u7684\u4E0A\u4E0B\u6587\u4FE1\u606F").addToggle((t) => {
       t.setValue(s.showContext);
       t.onChange(async (val) => {
         s.showContext = val;
         await this.plugin.saveSettings();
-        this.display();
+        const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_XIAOYUAN_AI_CHAT).first();
+        if ((leaf == null ? void 0 : leaf.view) instanceof XiaoyuanAIChatView) {
+          leaf.view.rebuildToolbar();
+        }
       });
     }), "file-text");
-    this.decorateSetting(new import_obsidian9.Setting(container).setName("\u7CFB\u7EDF\u63D0\u793A\u8BCD").addTextArea((text) => {
-      text.setValue(s.systemPrompt);
-      text.inputEl.rows = 4;
-      text.onChange(async (val) => {
-        s.systemPrompt = val;
-        await this.plugin.saveSettings();
-      });
-    }), "message-square");
   }
   showModelPicker(trigger, models, onSelect) {
     showPopup(trigger, (popup) => {

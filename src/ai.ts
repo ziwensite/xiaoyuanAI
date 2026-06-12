@@ -197,9 +197,12 @@ export async function callAISession(options: CallAISessionOptions): Promise<stri
   }
   const provider = getActiveProvider(settings);
   if (!provider || !provider.apiKey) throw new Error("API Key 未配置");
+  const activeName = settings.execMode === "api" ? settings.assistantA.name : settings.assistantC.name;
+  const activeCfg = activeName === settings.assistantA.name ? settings.assistantA : settings.assistantC;
+  const systemContent = activeCfg?.systemPrompt || "";
   const resp = await callAIWithAPI(
     ensureApiUrl(provider.baseUrl), provider.apiKey, provider.model,
-    [{ role: "system", content: settings.systemPrompt }, { role: "user", content: prompt }],
+    [{ role: "system", content: systemContent }, { role: "user", content: prompt }],
     settings.maxTokens, settings.temperature, true, signal, settings.apiReasoningEffort,
   );
   return processAPISSEStream(resp, onThinking, onTextUpdate);

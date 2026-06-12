@@ -905,24 +905,20 @@ ${text}
           }),
       ), "hard-drive");
 
-    container.createEl("hr");
-    container.createEl("h3", { text: "系统提示词" });
-
     this.decorateSetting(new Setting(container)
       .setName("显示文件上下文")
       .setDesc("在聊天工具栏显示当前笔记的上下文信息")
       .addToggle((t) => {
         t.setValue(s.showContext);
-        t.onChange(async (val) => { s.showContext = val; await this.plugin.saveSettings(); this.display(); });
+        t.onChange(async (val) => {
+          s.showContext = val;
+          await this.plugin.saveSettings();
+          const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_XIAOYUAN_AI_CHAT).first();
+          if (leaf?.view instanceof XiaoyuanAIChatView) {
+            leaf.view.rebuildToolbar();
+          }
+        });
       }), "file-text");
-
-    this.decorateSetting(new Setting(container)
-      .setName("系统提示词")
-      .addTextArea((text) => {
-        text.setValue(s.systemPrompt);
-        text.inputEl.rows = 4;
-        text.onChange(async (val) => { s.systemPrompt = val; await this.plugin.saveSettings(); });
-      }), "message-square");
 
   }
 

@@ -49,7 +49,7 @@ describe("constants integrity", () => {
     expect(DEFAULT_SETTINGS.maxTokens).toBeGreaterThan(0);
     expect(DEFAULT_SETTINGS.temperature).toBeGreaterThanOrEqual(0);
     expect(DEFAULT_SETTINGS.chatHistoryPath).toBeTruthy();
-    expect(DEFAULT_SETTINGS.systemPrompt).toBeTruthy();
+    expect(typeof DEFAULT_SETTINGS.systemPrompt).toBe("string");
   });
 
   it("chat history path constants are non-empty", () => {

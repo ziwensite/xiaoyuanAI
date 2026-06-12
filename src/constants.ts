@@ -50,7 +50,7 @@ export const DEFAULT_SETTINGS: XiaoyuanAISettings = {
   showContext: false,
   chatViewType: "right",
 
-  systemPrompt: "你是一个 AI 助手，集成在 Obsidian 笔记软件中。用户正在做笔记或写作。请用中文回答，保持简洁专业。",
+  systemPrompt: "",
   maxTokens: 4096,
   temperature: 0.7,
   chatHistoryPath: "_chatHistory",
