@@ -290,10 +290,10 @@ export default class XiaoyuanAIPlugin extends Plugin {
 
   async onunload() {
     this.speakController.stop();
-    stopOpenCodeServer();
     for (const p of this.settings.apiProviders) {
       p.apiKey = "";
     }
     this.app.workspace.detachLeavesOfType(VIEW_TYPE_XIAOYUAN_AI_CHAT);
+    stopOpenCodeServer();
   }
 }

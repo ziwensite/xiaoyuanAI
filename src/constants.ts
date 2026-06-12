@@ -1,4 +1,16 @@
-import type { OpenCodeSettings, XiaoyuanAISettings, ApiProviderConfig, PromptTemplate } from "./types";
+import type { OpenCodeSettings, XiaoyuanAISettings, ApiProviderConfig, PromptTemplate, AssistantConfig } from "./types";
+
+export const DEFAULT_ASSISTANT_A: AssistantConfig = {
+  name: "小A",
+  systemPrompt: "你是助手小A，负责与用户直接对话。你可以分析问题、写作、翻译、润色文本。你的搭档小C擅长文件操作和命令执行，遇到相关任务可用 @小C 委托给ta。小C 的结果会自动出现在你的上下文里。",
+  avatar: "sparkles",
+};
+
+export const DEFAULT_ASSISTANT_C: AssistantConfig = {
+  name: "小C",
+  systemPrompt: "你是助手小C，擅长文件操作和命令执行。你与搭档小A 一起工作，小A 负责与用户直接对话。你被 @小C 时直接回应用户，未被 @时安静待命。小A 可能委托你完成任务，完成后结果会自动出现在小A 的上下文里。",
+  avatar: "server",
+};
 
 export const DEFAULT_OPENCODE_SETTINGS: OpenCodeSettings = {
   cliPath: "opencode",
@@ -48,6 +60,8 @@ export const DEFAULT_SETTINGS: XiaoyuanAISettings = {
   captureCommandId: "",
   promptTemplates: [...DEFAULT_PROMPT_TEMPLATES],
   skills: [],
+  assistantA: { ...DEFAULT_ASSISTANT_A },
+  assistantC: { ...DEFAULT_ASSISTANT_C },
 };
 
 export function getActiveProvider(s: { apiProviders: ApiProviderConfig[]; activeApiProviderId: string }): ApiProviderConfig | undefined {

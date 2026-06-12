@@ -39,10 +39,20 @@ function getActiveProvider(s) {
   if (s.activeApiProviderId) return s.apiProviders.find((p) => p.id === s.activeApiProviderId);
   return s.apiProviders[0];
 }
-var DEFAULT_OPENCODE_SETTINGS, DEFAULT_PROMPT_TEMPLATES, DEFAULT_SETTINGS, CHAT_SESSIONS_KEY, CURRENT_SESSION_KEY, VIEW_TYPE_XIAOYUAN_AI_CHAT;
+var DEFAULT_ASSISTANT_A, DEFAULT_ASSISTANT_C, DEFAULT_OPENCODE_SETTINGS, DEFAULT_PROMPT_TEMPLATES, DEFAULT_SETTINGS, CHAT_SESSIONS_KEY, CURRENT_SESSION_KEY, VIEW_TYPE_XIAOYUAN_AI_CHAT;
 var init_constants = __esm({
   "src/constants.ts"() {
     "use strict";
+    DEFAULT_ASSISTANT_A = {
+      name: "\u5C0FA",
+      systemPrompt: "\u4F60\u662F\u52A9\u624B\u5C0FA\uFF0C\u8D1F\u8D23\u4E0E\u7528\u6237\u76F4\u63A5\u5BF9\u8BDD\u3002\u4F60\u53EF\u4EE5\u5206\u6790\u95EE\u9898\u3001\u5199\u4F5C\u3001\u7FFB\u8BD1\u3001\u6DA6\u8272\u6587\u672C\u3002\u4F60\u7684\u642D\u6863\u5C0FC\u64C5\u957F\u6587\u4EF6\u64CD\u4F5C\u548C\u547D\u4EE4\u6267\u884C\uFF0C\u9047\u5230\u76F8\u5173\u4EFB\u52A1\u53EF\u7528 @\u5C0FC \u59D4\u6258\u7ED9ta\u3002\u5C0FC \u7684\u7ED3\u679C\u4F1A\u81EA\u52A8\u51FA\u73B0\u5728\u4F60\u7684\u4E0A\u4E0B\u6587\u91CC\u3002",
+      avatar: "sparkles"
+    };
+    DEFAULT_ASSISTANT_C = {
+      name: "\u5C0FC",
+      systemPrompt: "\u4F60\u662F\u52A9\u624B\u5C0FC\uFF0C\u64C5\u957F\u6587\u4EF6\u64CD\u4F5C\u548C\u547D\u4EE4\u6267\u884C\u3002\u4F60\u4E0E\u642D\u6863\u5C0FA \u4E00\u8D77\u5DE5\u4F5C\uFF0C\u5C0FA \u8D1F\u8D23\u4E0E\u7528\u6237\u76F4\u63A5\u5BF9\u8BDD\u3002\u4F60\u88AB @\u5C0FC \u65F6\u76F4\u63A5\u56DE\u5E94\u7528\u6237\uFF0C\u672A\u88AB @\u65F6\u5B89\u9759\u5F85\u547D\u3002\u5C0FA \u53EF\u80FD\u59D4\u6258\u4F60\u5B8C\u6210\u4EFB\u52A1\uFF0C\u5B8C\u6210\u540E\u7ED3\u679C\u4F1A\u81EA\u52A8\u51FA\u73B0\u5728\u5C0FA \u7684\u4E0A\u4E0B\u6587\u91CC\u3002",
+      avatar: "server"
+    };
     DEFAULT_OPENCODE_SETTINGS = {
       cliPath: "opencode",
       autoStart: false,
@@ -84,7 +94,9 @@ var init_constants = __esm({
       maxAttachmentSize: 10,
       captureCommandId: "",
       promptTemplates: [...DEFAULT_PROMPT_TEMPLATES],
-      skills: []
+      skills: [],
+      assistantA: { ...DEFAULT_ASSISTANT_A },
+      assistantC: { ...DEFAULT_ASSISTANT_C }
     };
     CHAT_SESSIONS_KEY = "xiaoyuan-chat-sessions";
     CURRENT_SESSION_KEY = "xiaoyuan-current-session";
@@ -204,6 +216,14 @@ function httpGetOpenCode(baseUrl, path5, directory) {
       });
     }).on("error", reject);
   });
+}
+async function healthCheck(baseUrl, vaultDir) {
+  try {
+    await httpGetOpenCode(baseUrl, "/global/health", vaultDir);
+    return true;
+  } catch (e) {
+    return false;
+  }
 }
 function requestOpenCode(base, apiPath, method, body, authHeader) {
   const u = new URL(apiPath, base.replace(/\/+$/, ""));
@@ -474,11 +494,7 @@ function registerProcessCleanup() {
 async function ensureOpenCodeServer(cliPath, hostname, port, vaultDir, autoStart) {
   if (ensureServerPromise) return ensureServerPromise;
   const serverUrl = `http://${hostname || "127.0.0.1"}:${port || 16226}`;
-  try {
-    await httpGetOpenCode(serverUrl, "/global/health", vaultDir);
-    return serverUrl;
-  } catch (e) {
-  }
+  if (await healthCheck(serverUrl, vaultDir)) return serverUrl;
   if (!autoStart) throw new Error("opencode serve \u672A\u8FD0\u884C\uFF0C\u4E14\u81EA\u52A8\u542F\u52A8\u672A\u5F00\u542F");
   ensureServerPromise = (async () => {
     if (autoStartedProc && autoStartedProc.exitCode === null) {
@@ -488,6 +504,7 @@ async function ensureOpenCodeServer(cliPath, hostname, port, vaultDir, autoStart
     const effectiveBin = await resolveOpenCodePath(cliPath);
     const temp = await startTempOpenCodeServer(effectiveBin, vaultDir, port, hostname);
     autoStartedProc = temp.proc;
+    autoStartedVaultDir = vaultDir;
     registerProcessCleanup();
     return temp.url;
   })();
@@ -502,8 +519,16 @@ function stopOpenCodeServer() {
     stopTempServer(autoStartedProc);
     autoStartedProc = null;
   }
+  if (autoStartedVaultDir) {
+    const lockPath = path2.join(autoStartedVaultDir, ".opencode", "server.lock.json");
+    try {
+      fs2.unlinkSync(lockPath);
+    } catch (e) {
+    }
+    autoStartedVaultDir = "";
+  }
 }
-var import_child_process, path2, fs2, OPENCODE_START_TIMEOUT_MS, autoStartedProc, processCleanupRegistered, ensureServerPromise;
+var import_child_process, path2, fs2, OPENCODE_START_TIMEOUT_MS, autoStartedProc, autoStartedVaultDir, processCleanupRegistered, ensureServerPromise;
 var init_opencode_server = __esm({
   "src/opencode-server.ts"() {
     "use strict";
@@ -513,6 +538,7 @@ var init_opencode_server = __esm({
     init_opencode_client();
     OPENCODE_START_TIMEOUT_MS = 15e3;
     autoStartedProc = null;
+    autoStartedVaultDir = "";
     processCleanupRegistered = false;
     ensureServerPromise = null;
   }
@@ -619,7 +645,7 @@ async function fetchModelsViaServer(bin, vaultDir, configuredPort) {
   const serverUrl = `http://127.0.0.1:${configuredPort}`;
   let temp = null;
   try {
-    await httpGetOpenCode(serverUrl, "/global/health", vaultDir);
+    if (!await healthCheck(serverUrl, vaultDir)) throw new Error("\u670D\u52A1\u672A\u5C31\u7EEA");
     const response = await httpGetOpenCode(serverUrl, "/config/providers", vaultDir);
     const data = response;
     const providers = Array.isArray(data) ? data : (_a = data == null ? void 0 : data.providers) != null ? _a : [];
@@ -731,7 +757,7 @@ async function fetchOpenCodeModelsFromCLI(opencodePath, vaultDir, port = 16226) 
 async function fetchOpenCodeAgents(opencodePath, vaultDir, port = 16226) {
   const url = `http://127.0.0.1:${port}`;
   try {
-    await httpGetOpenCode(url, "/global/health", vaultDir);
+    if (!await healthCheck(url, vaultDir)) throw new Error("\u670D\u52A1\u672A\u5C31\u7EEA");
     const agents = await httpGetOpenCode(url, "/agent", vaultDir);
     if (Array.isArray(agents)) return filterAgents(agents);
   } catch (e) {
@@ -757,8 +783,10 @@ async function checkOpenCodeStatus(opencodePath, vaultDir, port = 16226, hostnam
     const effectiveBin = await resolveOpenCodePath(opencodePath);
     const serverUrl = `http://${hostname}:${port}`;
     try {
-      await httpGetOpenCode(serverUrl, "/global/health", vaultDir);
-      return { ok: true, version: "", bin: effectiveBin };
+      if (await healthCheck(serverUrl, vaultDir)) {
+        return { ok: true, version: "", bin: effectiveBin };
+      }
+      throw new Error("health check failed");
     } catch (e) {
       const out = await spawnWithTimeout(effectiveBin, ["--version"], vaultDir, 5e3).catch(() => "");
       return { ok: false, version: out.trim(), bin: effectiveBin, error: "opencode serve \u672A\u8FD0\u884C\n\u8BF7\u6267\u884C opencode serve \u542F\u52A8\u670D\u52A1\uFF0C\u6216\u5F00\u542F\u8BBE\u7F6E\u4E2D\u7684\u300C\u81EA\u52A8\u542F\u52A8\u300D" };
@@ -1002,42 +1030,38 @@ var init_ai = __esm({
   }
 });
 
-// src/main.ts
-var main_exports = {};
-__export(main_exports, {
-  default: () => XiaoyuanAIPlugin
-});
-module.exports = __toCommonJS(main_exports);
-var fs4 = __toESM(require("fs/promises"));
-var fsSync = __toESM(require("fs"));
-var path4 = __toESM(require("path"));
-var import_obsidian10 = require("obsidian");
-
-// src/chat-view.ts
-var import_obsidian8 = require("obsidian");
-init_constants();
-init_ai();
-init_utils();
-init_opencode_config();
-
 // src/connection-checker.ts
-init_opencode_config();
-init_opencode_server();
-init_constants();
+var connection_checker_exports = {};
+__export(connection_checker_exports, {
+  checkConnection: () => checkConnection,
+  getCLIConnections: () => getCLIConnections
+});
+async function getCLIConnections(settings, vaultDir) {
+  const active = [];
+  const lockConn = readServerConn(vaultDir, settings.opencode.port);
+  if (lockConn) {
+    if (await healthCheck(lockConn.url, vaultDir)) {
+      active.push(lockConn.url.replace(/\/$/, ""));
+    }
+  }
+  const configUrl = `http://${settings.opencode.hostname || "127.0.0.1"}:${settings.opencode.port || 16226}`;
+  if (!active.some((u) => u === configUrl) && await healthCheck(configUrl, vaultDir)) {
+    active.push(configUrl);
+  }
+  return active;
+}
 async function checkConnection(settings, vaultDir, mode = "cli") {
   if (mode === "cli") {
-    let ok = false;
-    const status = await checkOpenCodeStatus(settings.opencode.cliPath, vaultDir, settings.opencode.port, settings.opencode.hostname);
-    if (status.ok) {
-      ok = true;
-    } else if (settings.opencode.autoStart) {
+    const urls = await getCLIConnections(settings, vaultDir);
+    if (urls.length > 0) return true;
+    if (settings.opencode.autoStart) {
       try {
         await ensureOpenCodeServer(settings.opencode.cliPath, settings.opencode.hostname, settings.opencode.port, vaultDir, true);
-        ok = true;
+        return true;
       } catch (e) {
       }
     }
-    return ok;
+    return false;
   }
   const provider = getActiveProvider(settings);
   if (!provider || !provider.baseUrl || !provider.apiKey) return false;
@@ -1055,6 +1079,32 @@ async function checkConnection(settings, vaultDir, mode = "cli") {
     return false;
   }
 }
+var init_connection_checker = __esm({
+  "src/connection-checker.ts"() {
+    "use strict";
+    init_opencode_server();
+    init_constants();
+    init_opencode_client();
+  }
+});
+
+// src/main.ts
+var main_exports = {};
+__export(main_exports, {
+  default: () => XiaoyuanAIPlugin
+});
+module.exports = __toCommonJS(main_exports);
+var fs4 = __toESM(require("fs/promises"));
+var fsSync = __toESM(require("fs"));
+var path4 = __toESM(require("path"));
+var import_obsidian10 = require("obsidian");
+
+// src/chat-view.ts
+var import_obsidian8 = require("obsidian");
+init_constants();
+init_ai();
+init_utils();
+init_opencode_config();
 
 // src/session.ts
 init_constants();
@@ -1088,11 +1138,14 @@ function parseMarkdownToMessages(content) {
     const thinkingLines = [];
     let inThinking = false;
     let ts;
-    const headerRegex = /^\*\*(你|小元)\*\* \((?:CLI|API) · (\d{4}-\d{2}-\d{2} \d{2}:\d{2})\):$/;
+    let source = "user";
+    const headerRegex = /^\*\*(你|小元|小A|小C)\*\* \((?:CLI|API) · (\d{4}-\d{2}-\d{2} \d{2}:\d{2})\):$/;
     for (const line of lines) {
       const hMatch = line.match(headerRegex);
       if (hMatch) {
-        role = hMatch[1] === "\u4F60" ? "user" : "assistant";
+        const name = hMatch[1];
+        role = name === "\u4F60" ? "user" : "assistant";
+        source = name === "\u5C0FA" ? "\u5C0FA" : name === "\u5C0FC" ? "\u5C0FC" : role === "user" ? "user" : "\u5C0F\u5143";
         ts = new Date(hMatch[2]).getTime();
         continue;
       }
@@ -1113,7 +1166,8 @@ function parseMarkdownToMessages(content) {
       const msg = {
         id: "msg-" + ++idCounter,
         role,
-        content: msgContent.trim()
+        content: msgContent.trim(),
+        source
       };
       if (thinkingLines.length > 0) msg.thinking = thinkingLines.join("\n").trim();
       if (ts) msg.timestamp = ts;
@@ -1134,7 +1188,8 @@ updated: ${formatDate(now)}
 `;
   messages.forEach((msg) => {
     const ts = msg.timestamp ? ` (${execMode.toUpperCase()} \xB7 ${formatTime(msg.timestamp)}):` : ":";
-    content += `**${msg.role === "user" ? "\u4F60" : "\u5C0F\u5143"}**${ts}
+    const displayName = msg.source && msg.source !== "user" ? msg.source : msg.role === "user" ? "\u4F60" : "\u5C0F\u5143";
+    content += `**${displayName}**${ts}
 
 ${msg.content}
 
@@ -2039,6 +2094,60 @@ var TextOperationModal = class extends import_obsidian7.Modal {
   }
 };
 
+// src/assistant-manager.ts
+function getActiveAssistant(s) {
+  const cfg = s.execMode === "api" ? s.assistantA : s.assistantC;
+  return { name: cfg.name || (s.execMode === "api" ? "\u5C0FA" : "\u5C0FC"), avatar: cfg.avatar || (s.execMode === "api" ? "sparkles" : "server") };
+}
+function getAssistantConfig(s, name) {
+  if (name === s.assistantA.name) return s.assistantA;
+  if (name === s.assistantC.name) return s.assistantC;
+  return null;
+}
+function allAssistantNames(s) {
+  return [s.assistantA.name, s.assistantC.name].filter(Boolean);
+}
+function resolveTarget(text, s) {
+  for (const name of allAssistantNames(s)) {
+    const atMention = `@${name}`;
+    if (text.startsWith(atMention)) {
+      return { target: name, cleanText: text.slice(atMention.length).trim() };
+    }
+    if (text.startsWith(name + "\uFF0C") || text.startsWith(name + ",") || text.startsWith(name + " ")) {
+      const prefix = text.startsWith(name + "\uFF0C") ? name + "\uFF0C" : text.startsWith(name + ",") ? name + "," : name + " ";
+      return { target: name, cleanText: text.slice(prefix.length).trim() };
+    }
+  }
+  const active = getActiveAssistant(s);
+  return { target: active.name, cleanText: text };
+}
+function extractDelegations(text, s) {
+  const names = allAssistantNames(s);
+  if (names.length < 2) return [];
+  const result = [];
+  const re = /@(\S+?)\s+(.+?)(?=\n|$)/g;
+  let match;
+  while ((match = re.exec(text)) !== null) {
+    const candidate = match[1];
+    const task = match[2].trim();
+    if (names.includes(candidate) && task) {
+      result.push({ target: candidate, task });
+    }
+  }
+  return result;
+}
+function buildAssistantMessages(messages, systemPrompt, userContent, source) {
+  const modeIdentity = `
+
+\u5F53\u524D\u52A9\u624B: ${source}`;
+  const allMessages = [
+    { role: "system", content: systemPrompt + modeIdentity },
+    ...messages.map((m) => ({ role: m.role, content: m.content })),
+    { role: "user", content: userContent }
+  ];
+  return allMessages.map((m) => `${m.role === "system" ? "[\u7CFB\u7EDF]" : m.role === "user" ? "[\u7528\u6237]" : `[${source}]`}: ${m.content}`).join("\n\n");
+}
+
 // src/chat-view.ts
 var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
   constructor(leaf, plugin) {
@@ -2096,7 +2205,6 @@ var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
       }
     });
     this.syncOpenCodeState();
-    this.checkConnectionStatus();
     this.activeAgent = this.plugin.settings.execMode === "api" ? "api" : "cli";
     await this.loadSessions();
   }
@@ -2113,12 +2221,12 @@ var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
     await this.saveCurrentSession();
     await this.createNewSession();
   }
-  async addMessage(role, content) {
+  async addMessage(role, content, source) {
     const id = "msg-" + ++this.msgIdCounter;
     const now = Date.now();
-    this.messages.push({ id, role, content, timestamp: now });
+    this.messages.push({ id, role, content, source: source || "user", timestamp: now });
     this.addDateHeaderIfNeeded(now);
-    this.messagesEl.appendChild(await this.renderMessageEl(id, role, content, false, void 0, now));
+    this.messagesEl.appendChild(await this.renderMessageEl(id, role, content, false, void 0, now, source));
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
   }
   rebuildToolbar() {
@@ -2127,7 +2235,6 @@ var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
     this.buildToolbarContent(this.toolbarEl);
     this.updateAgentBorderClass();
     this.syncOpenCodeState();
-    this.checkConnectionStatus();
   }
   // ─── Header ──────────────────────────────────────────────────────
   buildHeader() {
@@ -2178,33 +2285,39 @@ var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
     this.updateConnectionStatusUI(false);
     this.connectionStatusEl.addEventListener("click", () => {
       this.syncOpenCodeState();
-      this.checkConnectionStatus();
     });
     openCodeEl.addEventListener("click", (e) => {
       e.stopPropagation();
-      const port = s.opencode.port || 16226;
-      const host = s.opencode.hostname || "127.0.0.1";
-      const connAddr = `${host}:${port}`;
-      showPopup(openCodeEl, (popup) => {
-        const row = popup.createDiv({ cls: "xy-popup-item" });
-        row.createSpan({ cls: "xy-mcp-dot is-on" });
-        row.createSpan({ text: connAddr });
-        const actions = row.createDiv({ cls: "xy-popup-suffix" });
-        const openIcon = actions.createSpan({ cls: "xy-popup-suffix-btn xiaoyuan-msg-action" });
-        (0, import_obsidian8.setIcon)(openIcon, "external-link");
-        openIcon.addEventListener("click", (ev) => {
-          ev.stopPropagation();
-          window.open(`http://${connAddr}`, "_blank");
-          popup.remove();
-        });
-        const closeIcon = actions.createSpan({ cls: "xy-popup-suffix-btn xiaoyuan-msg-action" });
-        (0, import_obsidian8.setIcon)(closeIcon, "x");
-        closeIcon.addEventListener("click", async (ev) => {
-          ev.stopPropagation();
-          const { stopOpenCodeServer: stopOpenCodeServer2 } = await Promise.resolve().then(() => (init_opencode_server(), opencode_server_exports));
-          stopOpenCodeServer2();
-          popup.remove();
-        });
+      showPopup(openCodeEl, async (popup) => {
+        const { getCLIConnections: getCLIConnections2 } = await Promise.resolve().then(() => (init_connection_checker(), connection_checker_exports));
+        const vaultDir = getVaultBasePath();
+        const urls = await getCLIConnections2(s, vaultDir);
+        if (urls.length === 0) {
+          popup.createDiv({ cls: "xy-popup-item", text: "\u672A\u8FDE\u63A5" });
+          return;
+        }
+        for (const url of urls) {
+          const row = popup.createDiv({ cls: "xy-popup-item" });
+          row.createSpan({ cls: "xy-mcp-dot is-on" });
+          const addr = new URL(url).host;
+          row.createSpan({ text: addr });
+          const actions = row.createDiv({ cls: "xy-popup-suffix" });
+          const openIcon = actions.createSpan({ cls: "xy-popup-suffix-btn xiaoyuan-msg-action" });
+          (0, import_obsidian8.setIcon)(openIcon, "external-link");
+          openIcon.addEventListener("click", (ev) => {
+            ev.stopPropagation();
+            window.open(url, "_blank");
+            popup.remove();
+          });
+          const closeIcon = actions.createSpan({ cls: "xy-popup-suffix-btn xiaoyuan-msg-action" });
+          (0, import_obsidian8.setIcon)(closeIcon, "x");
+          closeIcon.addEventListener("click", async (ev) => {
+            ev.stopPropagation();
+            const { stopOpenCodeServer: stopOpenCodeServer2 } = await Promise.resolve().then(() => (init_opencode_server(), opencode_server_exports));
+            stopOpenCodeServer2();
+            popup.remove();
+          });
+        }
       }, { fullWidth: true });
     });
     const settingsIcon = right.createSpan({ cls: "xiaoyuan-settings-icon" });
@@ -2258,7 +2371,7 @@ var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
         document.querySelectorAll(".xy-skill-popup").forEach((el) => el.remove());
       }
     });
-    this.inputEl.addEventListener("input", () => this.handleSkillInput());
+    this.inputEl.addEventListener("input", () => this.handleSlashOrAtInput());
     container.addEventListener("dragenter", (e) => {
       e.preventDefault();
       container.addClass("xy-drag-over");
@@ -2279,13 +2392,20 @@ var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
       });
     });
   }
-  handleSkillInput() {
+  handleSlashOrAtInput() {
     const existing = document.querySelector(".xy-skill-popup");
     if (existing) {
       existing.remove();
       this.skillIndex = -1;
     }
     const text = this.inputEl.value;
+    const parentEl = this.inputEl.parentElement;
+    if (!parentEl) return;
+    const atMatch = text.match(/@(\w*)$/);
+    if (atMatch) {
+      this.showAtMentionPopup(atMatch[1], parentEl);
+      return;
+    }
     if (!text.startsWith("/") || text.length < 1) return;
     const query = text.slice(1).toLowerCase();
     const s = this.plugin.settings;
@@ -2293,8 +2413,6 @@ var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
     const matchedSkills = hasQuery ? s.skills.filter((sk) => sk.name.toLowerCase().includes(query)) : s.skills;
     const matchedTemplates = hasQuery ? s.promptTemplates.filter((tp) => tp.name.toLowerCase().includes(query)) : s.promptTemplates;
     if (matchedSkills.length === 0 && matchedTemplates.length === 0) return;
-    const parentEl = this.inputEl.parentElement;
-    if (!parentEl) return;
     const popup = parentEl.createDiv({ cls: "xy-skill-popup" });
     for (const skill of matchedSkills) {
       const item = popup.createDiv({ cls: "xy-skill-popup-item" });
@@ -2313,6 +2431,29 @@ var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
       item.createSpan({ cls: "xy-skill-popup-desc", text: tpl.description });
       item.addEventListener("click", () => {
         this.inputEl.value = `/template:${tpl.name} `;
+        this.inputEl.focus();
+        popup.remove();
+        this.skillIndex = -1;
+      });
+    }
+    this.skillIndex = 0;
+    const firstItem = popup.querySelector(".xy-skill-popup-item");
+    if (firstItem) firstItem.classList.add("is-selected");
+  }
+  showAtMentionPopup(query, parentEl) {
+    const s = this.plugin.settings;
+    const names = [s.assistantA.name, s.assistantC.name].filter(Boolean);
+    const matched = query ? names.filter((n) => n.includes(query)) : names;
+    if (matched.length === 0) return;
+    const popup = parentEl.createDiv({ cls: "xy-skill-popup" });
+    for (const name of matched) {
+      const item = popup.createDiv({ cls: "xy-skill-popup-item" });
+      const avatar = name === s.assistantA.name ? s.assistantA.avatar : s.assistantC.avatar;
+      const iconEl = item.createSpan({ cls: "xy-skill-popup-name" });
+      (0, import_obsidian8.setIcon)(iconEl, avatar || "sparkles");
+      item.createSpan({ cls: "xy-skill-popup-desc", text: name });
+      item.addEventListener("click", () => {
+        this.inputEl.value = this.inputEl.value.replace(/@\w*$/, `@${name} `);
         this.inputEl.focus();
         popup.remove();
         this.skillIndex = -1;
@@ -2408,10 +2549,6 @@ var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
       new import_obsidian8.Notice(`\u540C\u6B65\u5931\u8D25\uFF1A${err instanceof Error ? err.message : String(err)}`);
     }
   }
-  async checkConnectionStatus() {
-    const ok = await checkConnection(this.plugin.settings, getVaultBasePath(), this.activeAgent);
-    this.updateConnectionStatusUI(ok);
-  }
   updateConnectionStatusUI(ok) {
     if (!this.connectionStatusEl) return;
     const mode = this.plugin.settings.execMode;
@@ -2424,9 +2561,17 @@ var XiaoyuanAIChatView = class extends import_obsidian8.ItemView {
     (0, import_obsidian8.setTooltip)(this.openCodeEl, `opencode \u670D\u52A1\u5668 (${tip})`);
   }
   // ─── Message rendering ───────────────────────────────────────────
-  async renderMessageEl(id, role, content, streaming = false, thinking, timestamp) {
+  async renderMessageEl(id, role, content, streaming = false, thinking, timestamp, source) {
     const msgEl = createDiv({ cls: `xiaoyuan-msg xiaoyuan-msg-${role}` });
     msgEl.id = id;
+    if (role === "assistant" && source && source !== "user") {
+      const s = this.plugin.settings;
+      const avatar = source === s.assistantA.name ? s.assistantA.avatar : s.assistantC.avatar;
+      const headerEl = msgEl.createDiv({ cls: "xiaoyuan-msg-header" });
+      const avatarEl = headerEl.createSpan({ cls: "xiaoyuan-msg-avatar" });
+      (0, import_obsidian8.setIcon)(avatarEl, avatar || "sparkles");
+      headerEl.createSpan({ cls: "xiaoyuan-msg-name", text: source });
+    }
     const bubbleEl = msgEl.createDiv({ cls: "xiaoyuan-msg-bubble" });
     if (role === "user") {
       const hasImage = /!\[.*?\]\(data:image/.test(content);
@@ -2636,7 +2781,9 @@ ${text}`;
         text = `${tpl.prompt}${templateMatch[2] || ""}`;
       }
     }
-    await this.addMessage("user", text);
+    const { target, cleanText } = resolveTarget(text, this.plugin.settings);
+    const finalText = cleanText || text;
+    await this.addMessage("user", finalText, "user");
     this.updateSessionTitle();
     this.inputEl.value = "";
     this.abortController = new AbortController();
@@ -2644,10 +2791,10 @@ ${text}`;
     this.setProcessingState(true);
     try {
       await this.truncateMessagesIfNeeded();
-      const response = await this.callAI(text, this.abortController.signal);
+      const response = await this.callAI(finalText, target, this.abortController.signal);
       this.attachments = [];
       this.renderQuoteBar();
-      if (this.activeAgent === "cli") {
+      if (target === this.plugin.settings.assistantC.name) {
         const streamId = await this.finalizeStreamingMessage();
         await this.saveCurrentSession();
         const pendingDiffs = this.pendingDiffs;
@@ -2658,7 +2805,7 @@ ${text}`;
       } else {
         const finalized = await this.finalizeStreamingMessage();
         if (!finalized && response) {
-          this.addMessage("assistant", response);
+          this.addMessage("assistant", response, target);
         }
         await this.saveCurrentSession();
       }
@@ -2672,7 +2819,7 @@ ${text}`;
         }
         this.addSystemMessage("\u23F9 \u5DF2\u4E2D\u65AD");
       } else {
-        this.addMessage("assistant", `\u274C \u9519\u8BEF\uFF1A${err instanceof Error ? err.message : String(err)}`);
+        this.addMessage("assistant", `\u274C \u9519\u8BEF\uFF1A${err instanceof Error ? err.message : String(err)}`, target);
       }
       await this.saveCurrentSession();
     } finally {
@@ -2682,8 +2829,10 @@ ${text}`;
       this.inputEl.focus();
     }
   }
-  async callAI(userMessage, signal) {
+  async callAI(userMessage, targetName, signal) {
     const s = this.plugin.settings;
+    const assistantConfig = getAssistantConfig(s, targetName);
+    const systemPrompt = (assistantConfig == null ? void 0 : assistantConfig.systemPrompt) || s.systemPrompt;
     let enrichedMessage = userMessage;
     if (this.attachments.length > 0) {
       const attachBlocks = await Promise.all(this.attachments.map(async (att) => {
@@ -2713,27 +2862,23 @@ ${contextPreview}
 ${enrichedMessage}`;
       }
     }
-    if (this.activeAgent === "cli") {
+    if (this.messages.length > 0 && this.messages[this.messages.length - 1].role === "user") {
+      this.messages[this.messages.length - 1].content = enrichedMessage;
+    }
+    const isCLI = targetName === s.assistantC.name;
+    if (isCLI) {
       try {
         const vaultDir2 = getVaultBasePath();
-        if (this.messages.length > 0 && this.messages[this.messages.length - 1].role === "user") {
-          this.messages[this.messages.length - 1].content = enrichedMessage;
-        }
-        const modeIdentity2 = "\n\n\u5F53\u524D\u6A21\u5F0F\uFF1ACLI\uFF08opencode run\uFF09";
-        const allMessages = [
-          { role: "system", content: s.systemPrompt + modeIdentity2 },
-          ...this.messages.map((m) => ({ role: m.role, content: m.content }))
-        ];
-        const prompt2 = allMessages.map((m) => `${m.role === "system" ? "[\u7CFB\u7EDF]" : m.role === "user" ? "[\u7528\u6237]" : "[\u52A9\u624B]"}: ${m.content}`).join("\n\n");
+        const prompt2 = buildAssistantMessages(this.messages, systemPrompt, enrichedMessage, targetName);
         let streamingId2 = "";
         const updateThinking2 = (text) => {
           if (streamingId2) {
             this.updateStreamingThinking(streamingId2, text);
           } else {
-            streamingId2 = this.addStreamingMessage("", text);
+            streamingId2 = this.addStreamingMessage("", text, targetName);
           }
         };
-        return callAIWithHTTPStreaming(
+        const result2 = await callAIWithHTTPStreaming(
           prompt2,
           s,
           vaultDir2,
@@ -2744,7 +2889,7 @@ ${enrichedMessage}`;
           },
           (text) => {
             if (!streamingId2) {
-              streamingId2 = this.addStreamingMessage(text, "");
+              streamingId2 = this.addStreamingMessage(text, "", targetName);
             } else {
               this.updateStreamingMessage(streamingId2, text);
             }
@@ -2756,29 +2901,33 @@ ${enrichedMessage}`;
             if (streamingId2) this.addToolLogEntry(streamingId2, tool, status);
           }
         );
+        const lastMsg2 = this.messages[this.messages.length - 1];
+        if (lastMsg2 && lastMsg2.role === "assistant") {
+          const delegations = extractDelegations(result2, s);
+          for (const d of delegations) {
+            if (d.target !== targetName) {
+              this.runBackgroundDelegation(d.target, d.task);
+            }
+          }
+        }
+        return result2;
       } catch (err) {
-        console.warn("CLI \u8C03\u7528\u5931\u8D25\uFF0C\u964D\u7EA7\u5230 API:", err);
+        console.warn(`${targetName} \u8C03\u7528\u5931\u8D25\uFF0C\u964D\u7EA7\u5230 API:`, err);
       }
     }
     const provider = getActiveProvider(s);
     if (!provider || !provider.apiKey) throw new Error("API Key \u672A\u914D\u7F6E\u3002\u8BF7\u5728\u8BBE\u7F6E\u4E2D\u586B\u5199\u3002");
-    const modeIdentity = "\n\n\u5F53\u524D\u6A21\u5F0F\uFF1AAPI | \u6A21\u578B\uFF1A" + provider.model + " | \u63D0\u4F9B\u5546\uFF1A" + provider.name;
-    const messages = [
-      { role: "system", content: s.systemPrompt + modeIdentity },
-      ...this.messages.map((m) => ({ role: m.role, content: m.content })),
-      { role: "user", content: enrichedMessage }
-    ];
-    const prompt = messages.map((m) => `${m.role === "system" ? "[\u7CFB\u7EDF]" : m.role === "user" ? "[\u7528\u6237]" : "[\u52A9\u624B]"}: ${m.content}`).join("\n\n");
+    const prompt = buildAssistantMessages(this.messages, systemPrompt, enrichedMessage, targetName);
     const vaultDir = getVaultBasePath();
     let streamingId = "";
     const updateThinking = (text) => {
       if (streamingId) {
         this.updateStreamingThinking(streamingId, text);
       } else {
-        streamingId = this.addStreamingMessage("", text);
+        streamingId = this.addStreamingMessage("", text, targetName);
       }
     };
-    return callAISession({
+    const result = await callAISession({
       prompt,
       settings: s,
       vaultDir,
@@ -2786,19 +2935,50 @@ ${enrichedMessage}`;
       onThinking: updateThinking,
       onTextUpdate: (text) => {
         if (!streamingId) {
-          streamingId = this.addStreamingMessage(text, "");
+          streamingId = this.addStreamingMessage(text, "", targetName);
         } else {
           this.updateStreamingMessage(streamingId, text);
         }
       }
     });
+    const lastMsg = this.messages[this.messages.length - 1];
+    if (lastMsg && lastMsg.role === "assistant") {
+      const delegations = extractDelegations(result, s);
+      for (const d of delegations) {
+        if (d.target !== targetName) {
+          this.runBackgroundDelegation(d.target, d.task);
+        }
+      }
+    }
+    return result;
   }
-  addStreamingMessage(content, thinking) {
+  async runBackgroundDelegation(targetName, task) {
+    const assistantConfig = getAssistantConfig(this.plugin.settings, targetName);
+    if (!assistantConfig) return;
+    this.addSystemMessage(`\u23F3 ${targetName} \u6B63\u5728\u540E\u53F0\u6267\u884C...`);
+    try {
+      const result = await this.callAI(task, targetName);
+      if (result) {
+        this.addMessage("assistant", result, targetName);
+        await this.saveCurrentSession();
+      }
+    } catch (err) {
+      this.addSystemMessage(`\u274C ${targetName} \u6267\u884C\u5931\u8D25: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+  addStreamingMessage(content, thinking, source) {
     const id = "msg-" + ++this.msgIdCounter;
     const now = Date.now();
-    this.messages.push({ id, role: "assistant", content, thinking, timestamp: now });
+    const src = source || this.plugin.settings.assistantC.name;
+    this.messages.push({ id, role: "assistant", content, thinking, source: src, timestamp: now });
     const msgEl = createDiv({ cls: "xiaoyuan-msg xiaoyuan-msg-assistant" });
     msgEl.id = id;
+    const s = this.plugin.settings;
+    const avatar = src === s.assistantA.name ? s.assistantA.avatar : s.assistantC.avatar;
+    const headerEl = msgEl.createDiv({ cls: "xiaoyuan-msg-header" });
+    const avatarEl = headerEl.createSpan({ cls: "xiaoyuan-msg-avatar" });
+    (0, import_obsidian8.setIcon)(avatarEl, avatar || "sparkles");
+    headerEl.createSpan({ cls: "xiaoyuan-msg-name", text: src });
     const bubbleEl = msgEl.createDiv({ cls: "xiaoyuan-msg-bubble" });
     if (thinking && this.plugin.settings.showThinking) {
       const detailsEl = bubbleEl.createEl("details", { cls: "xiaoyuan-thinking" });
@@ -3249,6 +3429,8 @@ function getDateKey(ts) {
 // src/settings.ts
 var import_obsidian9 = require("obsidian");
 init_constants();
+init_connection_checker();
+init_server();
 var XiaoyuanAISettingTab = class extends import_obsidian9.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
@@ -3258,7 +3440,6 @@ var XiaoyuanAISettingTab = class extends import_obsidian9.PluginSettingTab {
   display() {
     const { containerEl } = this;
     containerEl.empty();
-    this.buildModeSelector(containerEl);
     this.buildStatusCard(containerEl);
     this.buildTabBar(containerEl);
     this.buildTabContents(containerEl);
@@ -3287,38 +3468,22 @@ var XiaoyuanAISettingTab = class extends import_obsidian9.PluginSettingTab {
     row.createSpan({ cls: "xy-settings-status-value", text: value });
   }
   // ─── ① Mode Selector ─────────────────────────────────────────────
-  buildModeSelector(container) {
-    const s = this.s();
-    this.decorateSetting(new import_obsidian9.Setting(container).setName("\u667A\u80FD\u52A9\u7406\u6A21\u5F0F").setDesc(s.execMode === "cli" ? "\u6240\u6709\u64CD\u4F5C\u901A\u8FC7 opencode run \u6267\u884C\uFF0C\u9002\u5408\u672C\u5730\u5F00\u53D1\u9879\u76EE" : "\u6240\u6709\u64CD\u4F5C\u76F4\u63A5\u8C03\u7528 OpenAI \u517C\u5BB9 API\uFF0C\u9002\u5408\u7EAF\u5BF9\u8BDD\u573A\u666F").addDropdown((dd) => {
-      dd.addOption("cli", "CLI \u6A21\u5F0F");
-      dd.addOption("api", "API \u6A21\u5F0F");
-      dd.setValue(s.execMode);
-      dd.onChange(async (val) => {
-        s.execMode = val;
-        await this.plugin.saveSettings();
-        const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_XIAOYUAN_AI_CHAT).first();
-        if ((leaf == null ? void 0 : leaf.view) instanceof XiaoyuanAIChatView) {
-          leaf.view.switchMode(val);
-        }
-        this.display();
-      });
-    }), "bot");
-  }
-  // ─── ② Status Card ───────────────────────────────────────────────
+  // ─── ① Status Card ───────────────────────────────────────────────
   async refreshStatusCard() {
     var _a;
     const card = this.containerEl.querySelector(".xy-settings-status");
     if (!card) return;
     const s = this.s();
-    try {
-      const vaultDir = (await Promise.resolve().then(() => (init_server(), server_exports))).getVaultBasePath();
-      const ok = await checkConnection(s, vaultDir);
-      this.updateRow(card, 0, ok ? "\u5DF2\u8FDE\u63A5" : s.execMode === "cli" ? "\u672A\u8FDE\u63A5" : "\u672A\u914D\u7F6E");
-      this.updateRow(card, 1, s.execMode === "cli" ? s.opencode.model || "\u672A\u9009\u62E9" : ((_a = getActiveProvider(s)) == null ? void 0 : _a.model) || "\u672A\u9009\u62E9");
-      this.updateRow(card, 2, s.proxyEnabled ? s.proxyUrl : "\u5DF2\u5173\u95ED");
-    } catch (e) {
-      this.updateRow(card, 0, "\u68C0\u6D4B\u5931\u8D25");
-    }
+    const vaultDir = (await Promise.resolve().then(() => (init_server(), server_exports))).getVaultBasePath();
+    const [cliOk, apiOk] = await Promise.all([
+      checkConnection(s, vaultDir, "cli").catch(() => false),
+      checkConnection(s, vaultDir, "api").catch(() => false)
+    ]);
+    this.updateRow(card, 0, cliOk ? "\u5DF2\u8FDE\u63A5" : "\u672A\u8FDE\u63A5");
+    this.updateRow(card, 1, apiOk ? "\u5DF2\u8FDE\u63A5" : "\u672A\u914D\u7F6E");
+    this.updateRow(card, 2, s.opencode.model || "\u672A\u9009\u62E9");
+    this.updateRow(card, 3, ((_a = getActiveProvider(s)) == null ? void 0 : _a.model) || "\u672A\u9009\u62E9");
+    this.updateRow(card, 4, s.proxyEnabled ? s.proxyUrl : "\u5DF2\u5173\u95ED");
   }
   updateRow(card, index, value) {
     const rows = card.querySelectorAll(".xy-settings-status-row");
@@ -3331,28 +3496,28 @@ var XiaoyuanAISettingTab = class extends import_obsidian9.PluginSettingTab {
     var _a;
     const s = this.s();
     const card = container.createDiv({ cls: "xy-settings-status" });
-    this.addStatusRow(card, "activity", "\u8FDE\u63A5\u72B6\u6001", "\u68C0\u6D4B\u4E2D...");
-    this.addStatusRow(card, "box", "\u5F53\u524D\u6A21\u578B", s.execMode === "cli" ? s.opencode.model || "\u672A\u9009\u62E9" : ((_a = getActiveProvider(s)) == null ? void 0 : _a.model) || "\u672A\u9009\u62E9");
+    this.addStatusRow(card, "terminal-square", "CLI \u72B6\u6001", "\u68C0\u6D4B\u4E2D...");
+    this.addStatusRow(card, "key-round", "API \u72B6\u6001", "\u68C0\u6D4B\u4E2D...");
+    this.addStatusRow(card, "box", "CLI \u6A21\u578B", s.opencode.model || "\u672A\u9009\u62E9");
+    this.addStatusRow(card, "box", "API \u6A21\u578B", ((_a = getActiveProvider(s)) == null ? void 0 : _a.model) || "\u672A\u9009\u62E9");
     this.addStatusRow(card, "waypoints", "\u4EE3\u7406", s.proxyEnabled ? s.proxyUrl : "\u5DF2\u5173\u95ED");
     const actions = card.createDiv({ cls: "xy-settings-status-actions" });
     const refreshBtn = actions.createEl("button", { cls: "xy-status-btn", text: "\u5237\u65B0" });
     refreshBtn.addEventListener("click", async () => {
       await this.refreshStatusCard();
-      if (s.execMode === "cli") {
-        const { fetchOpenCodeModelsFromCLI: fetchOpenCodeModelsFromCLI2, fetchOpenCodeAgents: fetchOpenCodeAgents2 } = await Promise.resolve().then(() => (init_ai(), ai_exports));
-        const { getVaultBasePath: getVaultBasePath2 } = await Promise.resolve().then(() => (init_server(), server_exports));
-        const vaultDir = getVaultBasePath2();
-        try {
-          const result = await fetchOpenCodeModelsFromCLI2(s.opencode.cliPath, vaultDir, s.opencode.port);
-          s.opencodeModels = result.models.map((m) => ({ label: m.displayName, value: m.id }));
-          s.opencodeModelCaps = result.caps;
-          if (result.defaultModel && !s.opencode.model) {
-            s.opencode.model = result.defaultModel;
-          }
-          s.opencodeAgents = await fetchOpenCodeAgents2(s.opencode.cliPath, vaultDir, s.opencode.port);
-          await this.plugin.saveSettings();
-        } catch (e) {
+      const { fetchOpenCodeModelsFromCLI: fetchOpenCodeModelsFromCLI2, fetchOpenCodeAgents: fetchOpenCodeAgents2 } = await Promise.resolve().then(() => (init_ai(), ai_exports));
+      const { getVaultBasePath: getVaultBasePath2 } = await Promise.resolve().then(() => (init_server(), server_exports));
+      const vaultDir = getVaultBasePath2();
+      try {
+        const result = await fetchOpenCodeModelsFromCLI2(s.opencode.cliPath, vaultDir, s.opencode.port);
+        s.opencodeModels = result.models.map((m) => ({ label: m.displayName, value: m.id }));
+        s.opencodeModelCaps = result.caps;
+        if (result.defaultModel && !s.opencode.model) {
+          s.opencode.model = result.defaultModel;
         }
+        s.opencodeAgents = await fetchOpenCodeAgents2(s.opencode.cliPath, vaultDir, s.opencode.port);
+        await this.plugin.saveSettings();
+      } catch (e) {
       }
       this.display();
     });
@@ -3437,13 +3602,20 @@ var XiaoyuanAISettingTab = class extends import_obsidian9.PluginSettingTab {
       (text) => text.setPlaceholder("127.0.0.1").setValue(s.opencode.hostname === "127.0.0.1" ? "" : s.opencode.hostname).onChange(async (val) => {
         s.opencode.hostname = val;
         await this.plugin.saveSettings();
+        const { stopOpenCodeServer: stopOpenCodeServer2 } = await Promise.resolve().then(() => (init_opencode_server(), opencode_server_exports));
+        stopOpenCodeServer2();
       })
     ), "globe");
     this.decorateSetting(new import_obsidian9.Setting(container).setName("Port").setDesc("opencode \u670D\u52A1\u5668\u7AEF\u53E3").addText(
       (text) => text.setPlaceholder("16226").setValue(s.opencode.port === 16226 ? "" : String(s.opencode.port)).onChange(async (val) => {
         const n = parseInt(val);
+        const oldPort = s.opencode.port;
         s.opencode.port = n > 0 ? n : 16226;
         await this.plugin.saveSettings();
+        if (oldPort !== s.opencode.port) {
+          const { stopOpenCodeServer: stopOpenCodeServer2 } = await Promise.resolve().then(() => (init_opencode_server(), opencode_server_exports));
+          stopOpenCodeServer2();
+        }
       })
     ), "plug");
     const modelSetting = this.decorateSetting(new import_obsidian9.Setting(container).setName("\u6A21\u578B").setDesc("\u70B9\u51FB\u9009\u62E9\u6A21\u578B\uFF0C\u6216\u70B9 \u21BB \u4ECE opencode \u540C\u6B65").addText((text) => {
@@ -3557,6 +3729,34 @@ var XiaoyuanAISettingTab = class extends import_obsidian9.PluginSettingTab {
         await this.plugin.saveSettings();
       });
     }), "shield-check");
+    container.createEl("hr");
+    container.createEl("h3", { text: "\u52A9\u624B\u914D\u7F6E\uFF08\u5C0FC\uFF09" });
+    this.decorateSetting(new import_obsidian9.Setting(container).setName("\u540D\u79F0").setDesc("\u4E3A\u7A7A\u5219\u4F7F\u7528\u9ED8\u8BA4\u540D").addText(
+      (text) => text.setPlaceholder("\u5C0FC").setValue(s.assistantC.name === "\u5C0FC" ? "" : s.assistantC.name).onChange(async (val) => {
+        s.assistantC.name = val || "\u5C0FC";
+        await this.plugin.saveSettings();
+      })
+    ), "bot");
+    this.decorateSetting(new import_obsidian9.Setting(container).setName("\u5934\u50CF\u56FE\u6807").addDropdown((dd) => {
+      dd.addOption("server", "server");
+      dd.addOption("bot", "bot");
+      dd.addOption("terminal-square", "terminal-square");
+      dd.addOption("cpu", "cpu");
+      dd.addOption("wrench", "wrench");
+      dd.setValue(s.assistantC.avatar || "server");
+      dd.onChange(async (val) => {
+        s.assistantC.avatar = val;
+        await this.plugin.saveSettings();
+      });
+    }), "image");
+    this.decorateSetting(new import_obsidian9.Setting(container).setName("\u7CFB\u7EDF\u63D0\u793A\u8BCD").addTextArea((text) => {
+      text.setValue(s.assistantC.systemPrompt);
+      text.inputEl.rows = 4;
+      text.onChange(async (val) => {
+        s.assistantC.systemPrompt = val;
+        await this.plugin.saveSettings();
+      });
+    }), "message-square");
   }
   // ─── API 设置 ─────────────────────────────────────────────────────
   buildAPITab(container) {
@@ -3668,6 +3868,34 @@ var XiaoyuanAISettingTab = class extends import_obsidian9.PluginSettingTab {
         await this.plugin.saveSettings();
       })
     ), "subtitles");
+    container.createEl("hr");
+    container.createEl("h3", { text: "\u52A9\u624B\u914D\u7F6E\uFF08\u5C0FA\uFF09" });
+    this.decorateSetting(new import_obsidian9.Setting(container).setName("\u540D\u79F0").setDesc("\u4E3A\u7A7A\u5219\u4F7F\u7528\u9ED8\u8BA4\u540D").addText(
+      (text) => text.setPlaceholder("\u5C0FA").setValue(s.assistantA.name === "\u5C0FA" ? "" : s.assistantA.name).onChange(async (val) => {
+        s.assistantA.name = val || "\u5C0FA";
+        await this.plugin.saveSettings();
+      })
+    ), "bot");
+    this.decorateSetting(new import_obsidian9.Setting(container).setName("\u5934\u50CF\u56FE\u6807").addDropdown((dd) => {
+      dd.addOption("sparkles", "sparkles");
+      dd.addOption("bot", "bot");
+      dd.addOption("message-circle", "message-circle");
+      dd.addOption("smile", "smile");
+      dd.addOption("feather", "feather");
+      dd.setValue(s.assistantA.avatar || "sparkles");
+      dd.onChange(async (val) => {
+        s.assistantA.avatar = val;
+        await this.plugin.saveSettings();
+      });
+    }), "image");
+    this.decorateSetting(new import_obsidian9.Setting(container).setName("\u7CFB\u7EDF\u63D0\u793A\u8BCD").addTextArea((text) => {
+      text.setValue(s.assistantA.systemPrompt);
+      text.inputEl.rows = 4;
+      text.onChange(async (val) => {
+        s.assistantA.systemPrompt = val;
+        await this.plugin.saveSettings();
+      });
+    }), "message-square");
   }
   addProviderText(container, label, value, placeholder, onChange, password = false) {
     const field = container.createDiv({ cls: "xy-api-provider-field" });
@@ -3931,6 +4159,20 @@ ${content}`,
   // ─── 通用设置 ─────────────────────────────────────────────────────
   buildGeneralTab(container) {
     const s = this.s();
+    this.decorateSetting(new import_obsidian9.Setting(container).setName("\u667A\u80FD\u52A9\u7406\u6A21\u5F0F").setDesc(s.execMode === "cli" ? "\u6240\u6709\u64CD\u4F5C\u901A\u8FC7 opencode run \u6267\u884C\uFF0C\u9002\u5408\u672C\u5730\u5F00\u53D1\u9879\u76EE" : "\u6240\u6709\u64CD\u4F5C\u76F4\u63A5\u8C03\u7528 OpenAI \u517C\u5BB9 API\uFF0C\u9002\u5408\u7EAF\u5BF9\u8BDD\u573A\u666F").addDropdown((dd) => {
+      dd.addOption("cli", "CLI \u6A21\u5F0F");
+      dd.addOption("api", "API \u6A21\u5F0F");
+      dd.setValue(s.execMode);
+      dd.onChange(async (val) => {
+        s.execMode = val;
+        await this.plugin.saveSettings();
+        const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_XIAOYUAN_AI_CHAT).first();
+        if ((leaf == null ? void 0 : leaf.view) instanceof XiaoyuanAIChatView) {
+          leaf.view.switchMode(val);
+        }
+        await this.refreshStatusCard();
+      });
+    }), "bot");
     this.decorateSetting(new import_obsidian9.Setting(container).setName("\u542F\u7528\u672C\u5730\u4EE3\u7406").setDesc("\u53EA\u5F71\u54CD\u63D2\u4EF6\u901A\u8FC7 opencode \u542F\u52A8\u7684\u5B50\u8FDB\u7A0B").addToggle((t) => {
       t.setValue(s.proxyEnabled);
       t.onChange(async (val) => {
@@ -4032,7 +4274,7 @@ ${content}`,
         popup.remove();
         try {
           const { fetchOpenCodeModelsFromCLI: fetchOpenCodeModelsFromCLI2, ensureOpenCodeServer: ensureOpenCodeServer2 } = await Promise.resolve().then(() => (init_ai(), ai_exports));
-          const vaultDir = (await Promise.resolve().then(() => (init_server(), server_exports))).getVaultBasePath();
+          const vaultDir = getVaultBasePath();
           await ensureOpenCodeServer2(s.opencode.cliPath, s.opencode.hostname, s.opencode.port, vaultDir, true);
           const result = await fetchOpenCodeModelsFromCLI2(s.opencode.cliPath, vaultDir, s.opencode.port);
           s.opencodeModels = result.models.map((m) => ({ label: m.displayName, value: m.id }));
@@ -4417,10 +4659,10 @@ ${content.slice(0, 3e3)}`);
   }
   async onunload() {
     this.speakController.stop();
-    stopOpenCodeServer();
     for (const p of this.settings.apiProviders) {
       p.apiKey = "";
     }
     this.app.workspace.detachLeavesOfType(VIEW_TYPE_XIAOYUAN_AI_CHAT);
+    stopOpenCodeServer();
   }
 };

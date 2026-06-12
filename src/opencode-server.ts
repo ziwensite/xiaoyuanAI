@@ -1,7 +1,7 @@
 import { spawn, execSync, type ChildProcess } from "child_process";
 import * as path from "path";
 import * as fs from "fs";
-import { httpGetOpenCode } from "./opencode-client";
+import { healthCheck } from "./opencode-client";
 
 const OPENCODE_START_TIMEOUT_MS = 15000;
 
@@ -110,6 +110,7 @@ export function stopTempServer(proc: ChildProcess): void {
 
 // Module-level server state (Obsidian plugin is single-threaded, no concurrency concern)
 let autoStartedProc: ChildProcess | null = null;
+let autoStartedVaultDir = "";
 let processCleanupRegistered = false;
 let ensureServerPromise: Promise<string> | null = null;
 
@@ -137,10 +138,7 @@ export async function ensureOpenCodeServer(
 
   const serverUrl = `http://${hostname || "127.0.0.1"}:${port || 16226}`;
 
-  try {
-    await httpGetOpenCode(serverUrl, "/global/health", vaultDir);
-    return serverUrl;
-  } catch {}
+  if (await healthCheck(serverUrl, vaultDir)) return serverUrl;
 
   if (!autoStart) throw new Error("opencode serve 未运行，且自动启动未开启");
 
@@ -153,6 +151,7 @@ export async function ensureOpenCodeServer(
     const effectiveBin = await resolveOpenCodePath(cliPath);
     const temp = await startTempOpenCodeServer(effectiveBin, vaultDir, port, hostname);
     autoStartedProc = temp.proc;
+    autoStartedVaultDir = vaultDir;
     registerProcessCleanup();
     return temp.url;
   })();
@@ -168,5 +167,10 @@ export function stopOpenCodeServer(): void {
   if (autoStartedProc) {
     stopTempServer(autoStartedProc);
     autoStartedProc = null;
+  }
+  if (autoStartedVaultDir) {
+    const lockPath = path.join(autoStartedVaultDir, ".opencode", "server.lock.json");
+    try { fs.unlinkSync(lockPath); } catch {}
+    autoStartedVaultDir = "";
   }
 }

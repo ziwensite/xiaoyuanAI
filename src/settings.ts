@@ -5,6 +5,7 @@ import { VIEW_TYPE_XIAOYUAN_AI_CHAT, getActiveProvider, DEFAULT_PROMPT_TEMPLATES
 import type { XiaoyuanAISettings, ApiProviderConfig, ReasoningEffort, ReasoningEffortAPI, PermissionMode } from "./types";
 import { showPopup, addPopupItem } from "./popup";
 import { checkConnection } from "./connection-checker";
+import { getVaultBasePath } from "./server";
 
 type TabId = "cli" | "api" | "general" | "skills" | "prompts";
 
@@ -18,7 +19,6 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
-    this.buildModeSelector(containerEl);
     this.buildStatusCard(containerEl);
     this.buildTabBar(containerEl);
     this.buildTabContents(containerEl);
@@ -51,46 +51,24 @@ export class XiaoyuanAISettingTab extends PluginSettingTab {
 
   // ─── ① Mode Selector ─────────────────────────────────────────────
 
-  private buildModeSelector(container: HTMLElement) {
-    const s = this.s();
-    this.decorateSetting(new Setting(container)
-      .setName("智能助理模式")
-      .setDesc(s.execMode === "cli"
-        ? "所有操作通过 opencode run 执行，适合本地开发项目"
-        : "所有操作直接调用 OpenAI 兼容 API，适合纯对话场景")
-      .addDropdown((dd) => {
-        dd.addOption("cli", "CLI 模式");
-        dd.addOption("api", "API 模式");
-        dd.setValue(s.execMode);
-        dd.onChange(async (val) => {
-          s.execMode = val as "api" | "cli";
-          await this.plugin.saveSettings();
-          const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_XIAOYUAN_AI_CHAT).first();
-          if (leaf?.view instanceof XiaoyuanAIChatView) {
-            leaf.view.switchMode(val as "api" | "cli");
-          }
-          this.display();
-        });
-      }), "bot");
-  }
-
-  // ─── ② Status Card ───────────────────────────────────────────────
+  // ─── ① Status Card ───────────────────────────────────────────────
 
 private async refreshStatusCard() {
     const card = this.containerEl.querySelector(".xy-settings-status") as HTMLDivElement | null;
     if (!card) return;
     const s = this.s();
 
-    try {
-      const vaultDir = (await import("./server")).getVaultBasePath();
-      const ok = await checkConnection(s, vaultDir);
-      this.updateRow(card, 0, ok ? "已连接" : (s.execMode === "cli" ? "未连接" : "未配置"));
+    const vaultDir = (await import("./server")).getVaultBasePath();
 
-      this.updateRow(card, 1, s.execMode === "cli" ? (s.opencode.model || "未选择") : (getActiveProvider(s)?.model || "未选择"));
-      this.updateRow(card, 2, s.proxyEnabled ? s.proxyUrl : "已关闭");
-    } catch {
-      this.updateRow(card, 0, "检测失败");
-    }
+    const [cliOk, apiOk] = await Promise.all([
+      checkConnection(s, vaultDir, "cli").catch(() => false),
+      checkConnection(s, vaultDir, "api").catch(() => false),
+    ]);
+    this.updateRow(card, 0, cliOk ? "已连接" : "未连接");
+    this.updateRow(card, 1, apiOk ? "已连接" : "未配置");
+    this.updateRow(card, 2, s.opencode.model || "未选择");
+    this.updateRow(card, 3, getActiveProvider(s)?.model || "未选择");
+    this.updateRow(card, 4, s.proxyEnabled ? s.proxyUrl : "已关闭");
   }
 
   private updateRow(card: HTMLElement, index: number, value: string) {
@@ -105,29 +83,29 @@ private async refreshStatusCard() {
     const s = this.s();
     const card = container.createDiv({ cls: "xy-settings-status" });
 
-    this.addStatusRow(card, "activity", "连接状态", "检测中...");
-    this.addStatusRow(card, "box", "当前模型", s.execMode === "cli" ? (s.opencode.model || "未选择") : (getActiveProvider(s)?.model || "未选择"));
+    this.addStatusRow(card, "terminal-square", "CLI 状态", "检测中...");
+    this.addStatusRow(card, "key-round", "API 状态", "检测中...");
+    this.addStatusRow(card, "box", "CLI 模型", s.opencode.model || "未选择");
+    this.addStatusRow(card, "box", "API 模型", getActiveProvider(s)?.model || "未选择");
     this.addStatusRow(card, "waypoints", "代理", s.proxyEnabled ? s.proxyUrl : "已关闭");
 
     const actions = card.createDiv({ cls: "xy-settings-status-actions" });
     const refreshBtn = actions.createEl("button", { cls: "xy-status-btn", text: "刷新" });
     refreshBtn.addEventListener("click", async () => {
       await this.refreshStatusCard();
-      if (s.execMode === "cli") {
-        const { fetchOpenCodeModelsFromCLI, fetchOpenCodeAgents } = await import("./ai");
-        const { getVaultBasePath } = await import("./server");
-        const vaultDir = getVaultBasePath();
-        try {
-          const result = await fetchOpenCodeModelsFromCLI(s.opencode.cliPath, vaultDir, s.opencode.port);
-          s.opencodeModels = result.models.map((m) => ({ label: m.displayName, value: m.id }));
-          s.opencodeModelCaps = result.caps;
-          if (result.defaultModel && !s.opencode.model) {
-            s.opencode.model = result.defaultModel;
-          }
-          s.opencodeAgents = await fetchOpenCodeAgents(s.opencode.cliPath, vaultDir, s.opencode.port);
-          await this.plugin.saveSettings();
-        } catch {}
-      }
+      const { fetchOpenCodeModelsFromCLI, fetchOpenCodeAgents } = await import("./ai");
+      const { getVaultBasePath } = await import("./server");
+      const vaultDir = getVaultBasePath();
+      try {
+        const result = await fetchOpenCodeModelsFromCLI(s.opencode.cliPath, vaultDir, s.opencode.port);
+        s.opencodeModels = result.models.map((m) => ({ label: m.displayName, value: m.id }));
+        s.opencodeModelCaps = result.caps;
+        if (result.defaultModel && !s.opencode.model) {
+          s.opencode.model = result.defaultModel;
+        }
+        s.opencodeAgents = await fetchOpenCodeAgents(s.opencode.cliPath, vaultDir, s.opencode.port);
+        await this.plugin.saveSettings();
+      } catch {}
       this.display();
     });
 
@@ -213,7 +191,7 @@ private async refreshStatusCard() {
       .setDesc("opencode 服务器主机地址")
       .addText((text) =>
         text.setPlaceholder("127.0.0.1").setValue(s.opencode.hostname === "127.0.0.1" ? "" : s.opencode.hostname)
-          .onChange(async (val) => { s.opencode.hostname = val; await this.plugin.saveSettings(); }),
+          .onChange(async (val) => { s.opencode.hostname = val; await this.plugin.saveSettings(); const { stopOpenCodeServer } = await import("./opencode-server"); stopOpenCodeServer(); }),
       ), "globe");
 
     this.decorateSetting(new Setting(container)
@@ -221,7 +199,7 @@ private async refreshStatusCard() {
       .setDesc("opencode 服务器端口")
       .addText((text) =>
         text.setPlaceholder("16226").setValue(s.opencode.port === 16226 ? "" : String(s.opencode.port))
-          .onChange(async (val) => { const n = parseInt(val); s.opencode.port = n > 0 ? n : 16226; await this.plugin.saveSettings(); }),
+          .onChange(async (val) => { const n = parseInt(val); const oldPort = s.opencode.port; s.opencode.port = n > 0 ? n : 16226; await this.plugin.saveSettings(); if (oldPort !== s.opencode.port) { const { stopOpenCodeServer } = await import("./opencode-server"); stopOpenCodeServer(); } }),
       ), "plug");
 
     const modelSetting = this.decorateSetting(new Setting(container)
@@ -344,6 +322,36 @@ private async refreshStatusCard() {
         dd.setValue(s.defaultPermission);
         dd.onChange(async (val) => { s.defaultPermission = val as PermissionMode; await this.plugin.saveSettings(); });
       }), "shield-check");
+
+    container.createEl("hr");
+    container.createEl("h3", { text: "助手配置（小C）" });
+
+    this.decorateSetting(new Setting(container)
+      .setName("名称")
+      .setDesc("为空则使用默认名")
+      .addText((text) => text.setPlaceholder("小C").setValue(s.assistantC.name === "小C" ? "" : s.assistantC.name)
+        .onChange(async (val) => { s.assistantC.name = val || "小C"; await this.plugin.saveSettings(); }),
+      ), "bot");
+
+    this.decorateSetting(new Setting(container)
+      .setName("头像图标")
+      .addDropdown((dd) => {
+        dd.addOption("server", "server");
+        dd.addOption("bot", "bot");
+        dd.addOption("terminal-square", "terminal-square");
+        dd.addOption("cpu", "cpu");
+        dd.addOption("wrench", "wrench");
+        dd.setValue(s.assistantC.avatar || "server");
+        dd.onChange(async (val) => { s.assistantC.avatar = val; await this.plugin.saveSettings(); });
+      }), "image");
+
+    this.decorateSetting(new Setting(container)
+      .setName("系统提示词")
+      .addTextArea((text) => {
+        text.setValue(s.assistantC.systemPrompt);
+        text.inputEl.rows = 4;
+        text.onChange(async (val) => { s.assistantC.systemPrompt = val; await this.plugin.saveSettings(); });
+      }), "message-square");
 
   }
 
@@ -470,6 +478,36 @@ private async refreshStatusCard() {
         text.setPlaceholder("4096").setValue(s.maxTokens === 4096 ? "" : String(s.maxTokens))
           .onChange(async (val) => { const n = parseInt(val); s.maxTokens = n > 0 ? n : 4096; await this.plugin.saveSettings(); }),
       ), "subtitles");
+
+    container.createEl("hr");
+    container.createEl("h3", { text: "助手配置（小A）" });
+
+    this.decorateSetting(new Setting(container)
+      .setName("名称")
+      .setDesc("为空则使用默认名")
+      .addText((text) => text.setPlaceholder("小A").setValue(s.assistantA.name === "小A" ? "" : s.assistantA.name)
+        .onChange(async (val) => { s.assistantA.name = val || "小A"; await this.plugin.saveSettings(); }),
+      ), "bot");
+
+    this.decorateSetting(new Setting(container)
+      .setName("头像图标")
+      .addDropdown((dd) => {
+        dd.addOption("sparkles", "sparkles");
+        dd.addOption("bot", "bot");
+        dd.addOption("message-circle", "message-circle");
+        dd.addOption("smile", "smile");
+        dd.addOption("feather", "feather");
+        dd.setValue(s.assistantA.avatar || "sparkles");
+        dd.onChange(async (val) => { s.assistantA.avatar = val; await this.plugin.saveSettings(); });
+      }), "image");
+
+    this.decorateSetting(new Setting(container)
+      .setName("系统提示词")
+      .addTextArea((text) => {
+        text.setValue(s.assistantA.systemPrompt);
+        text.inputEl.rows = 4;
+        text.onChange(async (val) => { s.assistantA.systemPrompt = val; await this.plugin.saveSettings(); });
+      }), "message-square");
   }
 
   private addProviderText(
@@ -764,6 +802,26 @@ ${text}
     const s = this.s();
 
     this.decorateSetting(new Setting(container)
+      .setName("智能助理模式")
+      .setDesc(s.execMode === "cli"
+        ? "所有操作通过 opencode run 执行，适合本地开发项目"
+        : "所有操作直接调用 OpenAI 兼容 API，适合纯对话场景")
+      .addDropdown((dd) => {
+        dd.addOption("cli", "CLI 模式");
+        dd.addOption("api", "API 模式");
+        dd.setValue(s.execMode);
+        dd.onChange(async (val) => {
+          s.execMode = val as "api" | "cli";
+          await this.plugin.saveSettings();
+          const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_XIAOYUAN_AI_CHAT).first();
+          if (leaf?.view instanceof XiaoyuanAIChatView) {
+            leaf.view.switchMode(val as "api" | "cli");
+          }
+          await this.refreshStatusCard();
+        });
+      }), "bot");
+
+    this.decorateSetting(new Setting(container)
       .setName("启用本地代理")
       .setDesc("只影响插件通过 opencode 启动的子进程")
       .addToggle((t) => {
@@ -884,7 +942,7 @@ ${text}
         popup.remove();
         try {
           const { fetchOpenCodeModelsFromCLI, ensureOpenCodeServer } = await import("./ai");
-          const vaultDir = (await import("./server")).getVaultBasePath();
+const vaultDir = getVaultBasePath();
           await ensureOpenCodeServer(s.opencode.cliPath, s.opencode.hostname, s.opencode.port, vaultDir, true);
           const result = await fetchOpenCodeModelsFromCLI(s.opencode.cliPath, vaultDir, s.opencode.port);
           s.opencodeModels = result.models.map((m) => ({ label: m.displayName, value: m.id }));

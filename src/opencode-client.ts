@@ -64,6 +64,15 @@ export function httpGetOpenCode(baseUrl: string, path: string, directory: string
   });
 }
 
+export async function healthCheck(baseUrl: string, vaultDir: string): Promise<boolean> {
+  try {
+    await httpGetOpenCode(baseUrl, "/global/health", vaultDir);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function requestOpenCode<T>(
   base: string, apiPath: string, method: string, body?: Record<string, unknown> | undefined, authHeader?: string,
 ): Promise<T> {

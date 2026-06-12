@@ -38,13 +38,16 @@ export function parseMarkdownToMessages(content: string): ChatMessage[] {
     const thinkingLines: string[] = [];
     let inThinking = false;
     let ts: number | undefined;
+    let source = "user";
 
-    const headerRegex = /^\*\*(你|小元)\*\* \((?:CLI|API) · (\d{4}-\d{2}-\d{2} \d{2}:\d{2})\):$/;
+    const headerRegex = /^\*\*(你|小元|小A|小C)\*\* \((?:CLI|API) · (\d{4}-\d{2}-\d{2} \d{2}:\d{2})\):$/;
 
     for (const line of lines) {
       const hMatch = line.match(headerRegex);
       if (hMatch) {
-        role = hMatch[1] === "你" ? "user" : "assistant";
+        const name = hMatch[1];
+        role = name === "你" ? "user" : "assistant";
+        source = name === "小A" ? "小A" : name === "小C" ? "小C" : (role === "user" ? "user" : "小元");
         ts = new Date(hMatch[2]).getTime();
         continue;
       }
@@ -63,6 +66,7 @@ export function parseMarkdownToMessages(content: string): ChatMessage[] {
         id: "msg-" + (++idCounter),
         role,
         content: msgContent.trim(),
+        source,
       };
       if (thinkingLines.length > 0) msg.thinking = thinkingLines.join("\n").trim();
       if (ts) msg.timestamp = ts;
@@ -81,7 +85,8 @@ export function sessionToMarkdown(session: ChatSession | undefined, messages: Ch
     const ts = msg.timestamp
       ? ` (${execMode.toUpperCase()} · ${formatTime(msg.timestamp)}):`
       : ":";
-    content += `**${msg.role === "user" ? "你" : "小元"}**${ts}\n\n${msg.content}\n\n`;
+    const displayName = msg.source && msg.source !== "user" ? msg.source : (msg.role === "user" ? "你" : "小元");
+    content += `**${displayName}**${ts}\n\n${msg.content}\n\n`;
     if (msg.thinking) {
       content += `> [!thinking] 思考过程\n> ${msg.thinking.replace(/\n/g, "\n> ")}\n\n`;
     }

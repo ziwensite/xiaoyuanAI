@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import type { ModelEntry, ModelCaps } from "./types";
-import { httpGetOpenCode } from "./opencode-client";
+import { httpGetOpenCode, healthCheck } from "./opencode-client";
 import { resolveOpenCodePath, spawnWithTimeout, startTempOpenCodeServer, stopTempServer } from "./opencode-server";
 import { tryParseJson } from "./utils";
 
@@ -88,7 +88,7 @@ async function fetchModelsViaServer(
   let temp: { url: string; proc: import("child_process").ChildProcess } | null = null;
 
   try {
-    await httpGetOpenCode(serverUrl, "/global/health", vaultDir);
+    if (!await healthCheck(serverUrl, vaultDir)) throw new Error("服务未就绪");
     const response = await httpGetOpenCode(serverUrl, "/config/providers", vaultDir);
     const data = response as { providers?: OpenCodeProvider[] } | OpenCodeProvider[];
     const providers: OpenCodeProvider[] = Array.isArray(data) ? data : (data?.providers ?? []);
@@ -219,7 +219,7 @@ export async function fetchOpenCodeAgents(
 ): Promise<{ name: string; description?: string }[]> {
   const url = `http://127.0.0.1:${port}`;
   try {
-    await httpGetOpenCode(url, "/global/health", vaultDir);
+    if (!await healthCheck(url, vaultDir)) throw new Error("服务未就绪");
     const agents = (await httpGetOpenCode(url, "/agent", vaultDir)) as AgentEntry[];
     if (Array.isArray(agents)) return filterAgents(agents);
   } catch {}
@@ -252,8 +252,10 @@ export async function checkOpenCodeStatus(
     const effectiveBin = await resolveOpenCodePath(opencodePath);
     const serverUrl = `http://${hostname}:${port}`;
     try {
-      await httpGetOpenCode(serverUrl, "/global/health", vaultDir);
-      return { ok: true, version: "", bin: effectiveBin };
+      if (await healthCheck(serverUrl, vaultDir)) {
+        return { ok: true, version: "", bin: effectiveBin };
+      }
+      throw new Error("health check failed");
     } catch {
       const out = await spawnWithTimeout(effectiveBin, ["--version"], vaultDir, 5000).catch(() => "");
       return { ok: false, version: out.trim(), bin: effectiveBin, error: "opencode serve 未运行\n请执行 opencode serve 启动服务，或开启设置中的「自动启动」" };

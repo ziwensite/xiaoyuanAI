@@ -1219,3 +1219,36 @@ pre:hover .xy-copy-btn {
   background: var(--background-modifier-hover);
   color: var(--text-normal);
 }
+
+/* ═══════════════════════════════════════════════════════
+   Assistant Message Header (Avatar + Name)
+   ═══════════════════════════════════════════════════════ */
+
+.xiaoyuan-msg-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 2px;
+  padding: 0 2px;
+}
+
+.xiaoyuan-msg-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  color: var(--text-muted);
+}
+
+.xiaoyuan-msg-avatar svg {
+  width: 14px;
+  height: 14px;
+}
+
+.xiaoyuan-msg-name {
+  font-size: 0.75em;
+  font-weight: 600;
+  color: var(--text-muted);
+  user-select: none;
+}

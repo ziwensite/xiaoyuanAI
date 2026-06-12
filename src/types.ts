@@ -2,6 +2,7 @@ export interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
+  source: string;
   thinking?: string;
   timestamp?: number;
 }
@@ -80,6 +81,12 @@ export interface PromptTemplate {
   icon: string;
 }
 
+export interface AssistantConfig {
+  name: string;
+  systemPrompt: string;
+  avatar: string;
+}
+
 export interface SSEPartState {
   status?: string;
 }
@@ -125,4 +132,6 @@ export interface XiaoyuanAISettings {
   opencodeAgents?: { name: string; description?: string }[];
   skills: SkillEntry[];
   promptTemplates: PromptTemplate[];
+  assistantA: AssistantConfig;
+  assistantC: AssistantConfig;
 }

@@ -10,7 +10,6 @@ import { VIEW_TYPE_XIAOYUAN_AI_CHAT, getActiveProvider } from "./constants";
 import { callAIWithHTTPStreaming, callAISession, getVaultBasePath, ensureOpenCodeServer } from "./ai";
 import { estimateTokens } from "./utils";
 import { fetchOpenCodeModelsFromCLI } from "./opencode-config";
-import { checkConnection } from "./connection-checker";
 import {
   getChatHistoryPath,
   ensureChatHistoryFolder,
@@ -31,6 +30,7 @@ import { pickFiles, handleFiles } from "./attachment";
 import { openInEditor } from "./open-in-editor";
 import { createActionBtn } from "./action-buttons";
 import { TextOperationModal } from "./modals";
+import { resolveTarget, extractDelegations, buildAssistantMessages, getAssistantConfig } from "./assistant-manager";
 
 export class XiaoyuanAIChatView extends ItemView {
   plugin: XiaoyuanAIPlugin;
@@ -92,7 +92,6 @@ export class XiaoyuanAIChatView extends ItemView {
       },
     });
     this.syncOpenCodeState();
-    this.checkConnectionStatus();
     this.activeAgent = this.plugin.settings.execMode === "api" ? "api" : "cli";
     await this.loadSessions();
   }
@@ -112,12 +111,12 @@ export class XiaoyuanAIChatView extends ItemView {
     await this.createNewSession();
   }
 
-  public async addMessage(role: "user" | "assistant", content: string) {
+  public async addMessage(role: "user" | "assistant", content: string, source?: string) {
     const id = "msg-" + (++this.msgIdCounter);
     const now = Date.now();
-    this.messages.push({ id, role, content, timestamp: now });
+    this.messages.push({ id, role, content, source: source || "user", timestamp: now });
     this.addDateHeaderIfNeeded(now);
-    this.messagesEl.appendChild(await this.renderMessageEl(id, role, content, false, undefined, now));
+    this.messagesEl.appendChild(await this.renderMessageEl(id, role, content, false, undefined, now, source));
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
   }
 
@@ -127,7 +126,6 @@ export class XiaoyuanAIChatView extends ItemView {
     this.buildToolbarContent(this.toolbarEl);
     this.updateAgentBorderClass();
     this.syncOpenCodeState();
-    this.checkConnectionStatus();
   }
 
   // ─── Header ──────────────────────────────────────────────────────
@@ -190,33 +188,39 @@ export class XiaoyuanAIChatView extends ItemView {
     this.updateConnectionStatusUI(false);
     this.connectionStatusEl.addEventListener("click", () => {
       this.syncOpenCodeState();
-      this.checkConnectionStatus();
     });
     openCodeEl.addEventListener("click", (e) => {
       e.stopPropagation();
-      const port = s.opencode.port || 16226;
-      const host = s.opencode.hostname || "127.0.0.1";
-      const connAddr = `${host}:${port}`;
-      showPopup(openCodeEl, (popup) => {
-        const row = popup.createDiv({ cls: "xy-popup-item" });
-        row.createSpan({ cls: "xy-mcp-dot is-on" });
-        row.createSpan({ text: connAddr });
-        const actions = row.createDiv({ cls: "xy-popup-suffix" });
-        const openIcon = actions.createSpan({ cls: "xy-popup-suffix-btn xiaoyuan-msg-action" });
-        setIcon(openIcon, "external-link");
-        openIcon.addEventListener("click", (ev) => {
-          ev.stopPropagation();
-          window.open(`http://${connAddr}`, "_blank");
-          popup.remove();
-        });
-        const closeIcon = actions.createSpan({ cls: "xy-popup-suffix-btn xiaoyuan-msg-action" });
-        setIcon(closeIcon, "x");
-        closeIcon.addEventListener("click", async (ev) => {
-          ev.stopPropagation();
-          const { stopOpenCodeServer } = await import("./opencode-server");
-          stopOpenCodeServer();
-          popup.remove();
-        });
+      showPopup(openCodeEl, async (popup) => {
+        const { getCLIConnections } = await import("./connection-checker");
+        const vaultDir = getVaultBasePath();
+        const urls = await getCLIConnections(s, vaultDir);
+        if (urls.length === 0) {
+          popup.createDiv({ cls: "xy-popup-item", text: "未连接" });
+          return;
+        }
+        for (const url of urls) {
+          const row = popup.createDiv({ cls: "xy-popup-item" });
+          row.createSpan({ cls: "xy-mcp-dot is-on" });
+          const addr = new URL(url).host;
+          row.createSpan({ text: addr });
+          const actions = row.createDiv({ cls: "xy-popup-suffix" });
+          const openIcon = actions.createSpan({ cls: "xy-popup-suffix-btn xiaoyuan-msg-action" });
+          setIcon(openIcon, "external-link");
+          openIcon.addEventListener("click", (ev) => {
+            ev.stopPropagation();
+            window.open(url, "_blank");
+            popup.remove();
+          });
+          const closeIcon = actions.createSpan({ cls: "xy-popup-suffix-btn xiaoyuan-msg-action" });
+          setIcon(closeIcon, "x");
+          closeIcon.addEventListener("click", async (ev) => {
+            ev.stopPropagation();
+            const { stopOpenCodeServer } = await import("./opencode-server");
+            stopOpenCodeServer();
+            popup.remove();
+          });
+        }
       }, { fullWidth: true });
     });
 
@@ -277,7 +281,7 @@ export class XiaoyuanAIChatView extends ItemView {
       }
     });
 
-    this.inputEl.addEventListener("input", () => this.handleSkillInput());
+    this.inputEl.addEventListener("input", () => this.handleSlashOrAtInput());
 
     container.addEventListener("dragenter", (e) => {
       e.preventDefault();
@@ -299,13 +303,22 @@ export class XiaoyuanAIChatView extends ItemView {
     });
   }
 
-  private handleSkillInput() {
+  private handleSlashOrAtInput() {
     const existing = document.querySelector(".xy-skill-popup");
     if (existing) {
       existing.remove();
       this.skillIndex = -1;
     }
     const text = this.inputEl.value;
+    const parentEl = this.inputEl.parentElement;
+    if (!parentEl) return;
+
+    const atMatch = text.match(/@(\w*)$/);
+    if (atMatch) {
+      this.showAtMentionPopup(atMatch[1], parentEl);
+      return;
+    }
+
     if (!text.startsWith("/") || text.length < 1) return;
 
     const query = text.slice(1).toLowerCase();
@@ -320,8 +333,6 @@ export class XiaoyuanAIChatView extends ItemView {
       : s.promptTemplates;
     if (matchedSkills.length === 0 && matchedTemplates.length === 0) return;
 
-    const parentEl = this.inputEl.parentElement;
-    if (!parentEl) return;
     const popup = parentEl.createDiv({ cls: "xy-skill-popup" });
 
     for (const skill of matchedSkills) {
@@ -342,6 +353,32 @@ export class XiaoyuanAIChatView extends ItemView {
       item.createSpan({ cls: "xy-skill-popup-desc", text: tpl.description });
       item.addEventListener("click", () => {
         this.inputEl.value = `/template:${tpl.name} `;
+        this.inputEl.focus();
+        popup.remove();
+        this.skillIndex = -1;
+      });
+    }
+
+    this.skillIndex = 0;
+    const firstItem = popup.querySelector(".xy-skill-popup-item");
+    if (firstItem) firstItem.classList.add("is-selected");
+  }
+
+  private showAtMentionPopup(query: string, parentEl: HTMLElement) {
+    const s = this.plugin.settings;
+    const names = [s.assistantA.name, s.assistantC.name].filter(Boolean);
+    const matched = query ? names.filter((n) => n.includes(query)) : names;
+    if (matched.length === 0) return;
+
+    const popup = parentEl.createDiv({ cls: "xy-skill-popup" });
+    for (const name of matched) {
+      const item = popup.createDiv({ cls: "xy-skill-popup-item" });
+      const avatar = name === s.assistantA.name ? s.assistantA.avatar : s.assistantC.avatar;
+      const iconEl = item.createSpan({ cls: "xy-skill-popup-name" });
+      setIcon(iconEl, avatar || "sparkles");
+      item.createSpan({ cls: "xy-skill-popup-desc", text: name });
+      item.addEventListener("click", () => {
+        this.inputEl.value = this.inputEl.value.replace(/@\w*$/, `@${name} `);
         this.inputEl.focus();
         popup.remove();
         this.skillIndex = -1;
@@ -443,11 +480,6 @@ export class XiaoyuanAIChatView extends ItemView {
     }
   }
 
-  private async checkConnectionStatus() {
-    const ok = await checkConnection(this.plugin.settings, getVaultBasePath(), this.activeAgent);
-    this.updateConnectionStatusUI(ok);
-  }
-
   private updateConnectionStatusUI(ok: boolean) {
     if (!this.connectionStatusEl) return;
     const mode = this.plugin.settings.execMode;
@@ -466,10 +498,19 @@ export class XiaoyuanAIChatView extends ItemView {
 
   private async renderMessageEl(
     id: string, role: "user" | "assistant", content: string,
-    streaming = false, thinking?: string, timestamp?: number,
+    streaming = false, thinking?: string, timestamp?: number, source?: string,
   ): Promise<HTMLDivElement> {
     const msgEl = createDiv({ cls: `xiaoyuan-msg xiaoyuan-msg-${role}` });
     msgEl.id = id;
+
+    if (role === "assistant" && source && source !== "user") {
+      const s = this.plugin.settings;
+      const avatar = source === s.assistantA.name ? s.assistantA.avatar : s.assistantC.avatar;
+      const headerEl = msgEl.createDiv({ cls: "xiaoyuan-msg-header" });
+      const avatarEl = headerEl.createSpan({ cls: "xiaoyuan-msg-avatar" });
+      setIcon(avatarEl, avatar || "sparkles");
+      headerEl.createSpan({ cls: "xiaoyuan-msg-name", text: source });
+    }
 
     const bubbleEl = msgEl.createDiv({ cls: "xiaoyuan-msg-bubble" });
 
@@ -694,19 +735,22 @@ private async truncateMessagesIfNeeded(): Promise<void> {
       }
     }
 
-    await this.addMessage("user", text);
+    const { target, cleanText } = resolveTarget(text, this.plugin.settings);
+    const finalText = cleanText || text;
+
+    await this.addMessage("user", finalText, "user");
     this.updateSessionTitle();
     this.inputEl.value = "";
     this.abortController = new AbortController();
     this.pendingDiffs = null;
-this.setProcessingState(true);
+    this.setProcessingState(true);
 
-try {
+    try {
       await this.truncateMessagesIfNeeded();
-      const response = await this.callAI(text, this.abortController.signal);
+      const response = await this.callAI(finalText, target, this.abortController.signal);
       this.attachments = [];
       this.renderQuoteBar();
-      if (this.activeAgent === "cli") {
+      if (target === this.plugin.settings.assistantC.name) {
         const streamId = await this.finalizeStreamingMessage();
         await this.saveCurrentSession();
         const pendingDiffs = this.pendingDiffs as FileDiff[] | null;
@@ -717,7 +761,7 @@ try {
       } else {
         const finalized = await this.finalizeStreamingMessage();
         if (!finalized && response) {
-          this.addMessage("assistant", response);
+          this.addMessage("assistant", response, target);
         }
         await this.saveCurrentSession();
       }
@@ -731,7 +775,7 @@ try {
         }
         this.addSystemMessage("\u23F9 已中断");
       } else {
-        this.addMessage("assistant", `\u274C 错误：${err instanceof Error ? err.message : String(err)}`);
+        this.addMessage("assistant", `\u274C 错误：${err instanceof Error ? err.message : String(err)}`, target);
       }
       await this.saveCurrentSession();
     } finally {
@@ -743,9 +787,11 @@ try {
   }
 
   private async callAI(
-    userMessage: string, signal?: AbortSignal,
+    userMessage: string, targetName: string, signal?: AbortSignal,
   ): Promise<string> {
     const s = this.plugin.settings;
+    const assistantConfig = getAssistantConfig(s, targetName);
+    const systemPrompt = assistantConfig?.systemPrompt || s.systemPrompt;
 
     let enrichedMessage = userMessage;
     if (this.attachments.length > 0) {
@@ -768,36 +814,32 @@ try {
       }
     }
 
-    if (this.activeAgent === "cli") {
+    if (this.messages.length > 0 && this.messages[this.messages.length - 1].role === "user") {
+      this.messages[this.messages.length - 1].content = enrichedMessage;
+    }
+
+    const isCLI = targetName === s.assistantC.name;
+
+    if (isCLI) {
       try {
         const vaultDir = getVaultBasePath();
-        if (this.messages.length > 0 && this.messages[this.messages.length - 1].role === "user") {
-          this.messages[this.messages.length - 1].content = enrichedMessage;
-        }
-        const modeIdentity = "\n\n当前模式：CLI（opencode run）";
-        const allMessages = [
-          { role: "system" as const, content: s.systemPrompt + modeIdentity },
-          ...this.messages.map((m) => ({ role: m.role, content: m.content })),
-        ];
-      const prompt = allMessages
-        .map((m) => `${m.role === "system" ? "[系统]" : m.role === "user" ? "[用户]" : "[助手]"}: ${m.content}`)
-        .join("\n\n");
+        const prompt = buildAssistantMessages(this.messages, systemPrompt, enrichedMessage, targetName);
 
       let streamingId = "";
       const updateThinking = (text: string) => {
         if (streamingId) {
           this.updateStreamingThinking(streamingId, text);
         } else {
-          streamingId = this.addStreamingMessage("", text);
+          streamingId = this.addStreamingMessage("", text, targetName);
         }
       };
-      return callAIWithHTTPStreaming(
+      const result = await callAIWithHTTPStreaming(
         prompt, s, vaultDir, signal,
         undefined,
         (text) => { updateThinking(text); },
         (text) => {
           if (!streamingId) {
-            streamingId = this.addStreamingMessage(text, "");
+            streamingId = this.addStreamingMessage(text, "", targetName);
           } else {
             this.updateStreamingMessage(streamingId, text);
           }
@@ -807,52 +849,85 @@ try {
           if (streamingId) this.addToolLogEntry(streamingId, tool, status);
         },
       );
+      const lastMsg = this.messages[this.messages.length - 1];
+      if (lastMsg && lastMsg.role === "assistant") {
+        const delegations = extractDelegations(result, s);
+        for (const d of delegations) {
+          if (d.target !== targetName) {
+            this.runBackgroundDelegation(d.target, d.task);
+          }
+        }
+      }
+      return result;
     } catch (err: unknown) {
-      console.warn("CLI 调用失败，降级到 API:", err);
+      console.warn(`${targetName} 调用失败，降级到 API:`, err);
     }
     }
 
     const provider = getActiveProvider(s);
     if (!provider || !provider.apiKey) throw new Error("API Key 未配置。请在设置中填写。");
 
-    const modeIdentity = "\n\n当前模式：API | 模型：" + provider.model + " | 提供商：" + provider.name;
-    const messages = [
-      { role: "system" as const, content: s.systemPrompt + modeIdentity },
-      ...this.messages.map((m) => ({ role: m.role, content: m.content })),
-      { role: "user" as const, content: enrichedMessage },
-    ];
-    const prompt = messages
-      .map((m) => `${m.role === "system" ? "[系统]" : m.role === "user" ? "[用户]" : "[助手]"}: ${m.content}`)
-      .join("\n\n");
-
+    const prompt = buildAssistantMessages(this.messages, systemPrompt, enrichedMessage, targetName);
     const vaultDir = getVaultBasePath();
     let streamingId = "";
     const updateThinking = (text: string) => {
       if (streamingId) {
         this.updateStreamingThinking(streamingId, text);
       } else {
-        streamingId = this.addStreamingMessage("", text);
+        streamingId = this.addStreamingMessage("", text, targetName);
       }
     };
-    return callAISession({
+    const result = await callAISession({
       prompt, settings: s, vaultDir, signal,
       onThinking: updateThinking,
       onTextUpdate: (text) => {
         if (!streamingId) {
-          streamingId = this.addStreamingMessage(text, "");
+          streamingId = this.addStreamingMessage(text, "", targetName);
         } else {
           this.updateStreamingMessage(streamingId, text);
         }
       },
     });
+    const lastMsg = this.messages[this.messages.length - 1];
+    if (lastMsg && lastMsg.role === "assistant") {
+      const delegations = extractDelegations(result, s);
+      for (const d of delegations) {
+        if (d.target !== targetName) {
+          this.runBackgroundDelegation(d.target, d.task);
+        }
+      }
+    }
+    return result;
   }
 
-private addStreamingMessage(content: string, thinking?: string): string {
+  private async runBackgroundDelegation(targetName: string, task: string) {
+    const assistantConfig = getAssistantConfig(this.plugin.settings, targetName);
+    if (!assistantConfig) return;
+    this.addSystemMessage(`⏳ ${targetName} 正在后台执行...`);
+    try {
+      const result = await this.callAI(task, targetName);
+      if (result) {
+        this.addMessage("assistant", result, targetName);
+        await this.saveCurrentSession();
+      }
+    } catch (err: unknown) {
+      this.addSystemMessage(`❌ ${targetName} 执行失败: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+private addStreamingMessage(content: string, thinking?: string, source?: string): string {
     const id = "msg-" + (++this.msgIdCounter);
     const now = Date.now();
-    this.messages.push({ id, role: "assistant", content, thinking, timestamp: now });
+    const src = source || this.plugin.settings.assistantC.name;
+    this.messages.push({ id, role: "assistant", content, thinking, source: src, timestamp: now });
     const msgEl = createDiv({ cls: "xiaoyuan-msg xiaoyuan-msg-assistant" });
     msgEl.id = id;
+    const s = this.plugin.settings;
+    const avatar = src === s.assistantA.name ? s.assistantA.avatar : s.assistantC.avatar;
+    const headerEl = msgEl.createDiv({ cls: "xiaoyuan-msg-header" });
+    const avatarEl = headerEl.createSpan({ cls: "xiaoyuan-msg-avatar" });
+    setIcon(avatarEl, avatar || "sparkles");
+    headerEl.createSpan({ cls: "xiaoyuan-msg-name", text: src });
     const bubbleEl = msgEl.createDiv({ cls: "xiaoyuan-msg-bubble" });
     if (thinking && this.plugin.settings.showThinking) {
       const detailsEl = bubbleEl.createEl("details", { cls: "xiaoyuan-thinking" });
