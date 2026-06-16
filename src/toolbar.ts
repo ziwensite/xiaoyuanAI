@@ -1,4 +1,5 @@
 ﻿import { Notice, setTooltip } from "obsidian";
+import { t } from "./i18n";
 import { showPopup, addPopupItem } from "./popup";
 import { getActiveProvider } from "./constants";
 import type { ReasoningEffort, ReasoningEffortAPI } from "./types";
@@ -17,14 +18,14 @@ export function buildToolbarContent(container: HTMLElement, view: ToolbarHost): 
 
   const attachBtn = container.createSpan({ cls: "xiaoyuan-attach-btn" });
   attachBtn.textContent = "+";
-  setTooltip(attachBtn, "添加附件");
+  setTooltip(attachBtn, t("chat.tooltip.attach"));
   attachBtn.addEventListener("click", () => view.pickFiles());
 
   // Context indicator
   if (s.showContext) {
     const ctxBtn = container.createSpan({ cls: "xiaoyuan-attach-btn" });
     ctxBtn.textContent = "📄";
-    setTooltip(ctxBtn, "将自动附加当前笔记作为上下文");
+    setTooltip(ctxBtn, t("chat.tooltip.context"));
   }
 
   // Agent (CLI only)
@@ -34,7 +35,7 @@ export function buildToolbarContent(container: HTMLElement, view: ToolbarHost): 
       : [{ value: "build", label: "build" }, { value: "plan", label: "plan" }];
     const agentText = container.createSpan({ cls: "xiaoyuan-level-select" });
     agentText.textContent = s.opencode.agent;
-    setTooltip(agentText, "点击切换 agent");
+    setTooltip(agentText, t("chat.agent.tooltip"));
     agentText.addEventListener("click", (e) => {
       e.stopPropagation();
       showPopup(agentText, (popup) => {
@@ -49,7 +50,7 @@ export function buildToolbarContent(container: HTMLElement, view: ToolbarHost): 
               if (m.value === "plan") chatEl.addClass("xy-agent-plan");
               else if (m.value === "build") chatEl.addClass("xy-agent-build");
             }
-            new Notice(`已切换到 agent: ${m.value}`);
+            new Notice(t("setting.cli.agent") + ": " + m.value);
           });
         }
       }, { direction: "up" });
@@ -60,9 +61,9 @@ export function buildToolbarContent(container: HTMLElement, view: ToolbarHost): 
   // Model trigger
   const trigger = container.createSpan({ cls: "xiaoyuan-model-select" });
   trigger.textContent = s.execMode === "cli"
-    ? (s.opencode.model ? s.opencode.model.split("/").pop() || s.opencode.model : "模型")
-    : (getActiveProvider(s)?.model || "模型");
-  setTooltip(trigger, s.execMode === "cli" ? s.opencode.model || "未选择" : getActiveProvider(s)?.model || "未选择");
+    ? (s.opencode.model ? s.opencode.model.split("/").pop() || s.opencode.model : t("chat.model.tooltip"))
+    : (getActiveProvider(s)?.model || t("chat.model.tooltip"));
+  setTooltip(trigger, s.execMode === "cli" ? s.opencode.model || t("status.notConfigured") : getActiveProvider(s)?.model || t("status.notConfigured"));
   trigger.addEventListener("click", (e) => {
     e.stopPropagation();
     showPopup(trigger, async (popup) => {
@@ -70,14 +71,14 @@ export function buildToolbarContent(container: HTMLElement, view: ToolbarHost): 
         let models = s.opencodeModels || [];
         if (models.length === 0) {
           const loadingItem = popup.createDiv({ cls: "xy-popup-item" });
-          loadingItem.createSpan({ cls: "xy-popup-label" }).textContent = "正在同步模型列表...";
+          loadingItem.createSpan({ cls: "xy-popup-label" }).textContent = t("status.checking");
           await view.syncOpenCodeState().catch(() => {});
           models = s.opencodeModels || [];
           popup.empty();
         }
         if (models.length === 0) {
           const emptyItem = popup.createDiv({ cls: "xy-popup-item" });
-          emptyItem.createSpan({ cls: "xy-popup-label" }).textContent = "未获取到模型列表";
+          emptyItem.createSpan({ cls: "xy-popup-label" }).textContent = t("notice.noModels");
           return;
         }
         const groups = new Map<string, { label: string; value: string }[]>();
@@ -110,7 +111,7 @@ export function buildToolbarContent(container: HTMLElement, view: ToolbarHost): 
               const shortName = m.value.split("/").pop() || m.value;
               trigger.textContent = shortName;
               setTooltip(trigger, m.value);
-              new Notice(`已切换到模型: ${shortName}`);
+              new Notice(t("setting.cli.model") + ": " + shortName);
             });
           }
           groupTitle.addEventListener("click", (ev) => {
@@ -122,7 +123,7 @@ export function buildToolbarContent(container: HTMLElement, view: ToolbarHost): 
         }
         popup.createDiv({ cls: "xy-popup-separator" });
         const syncBtn = popup.createDiv({ cls: "xy-popup-item" });
-        syncBtn.createSpan({ cls: "xy-popup-label" }).textContent = "⟳ 同步模型列表";
+        syncBtn.createSpan({ cls: "xy-popup-label" }).textContent = t("status.refresh");
         syncBtn.addEventListener("click", (ev) => {
           ev.stopPropagation();
           popup.remove();
@@ -142,12 +143,12 @@ export function buildToolbarContent(container: HTMLElement, view: ToolbarHost): 
             view.plugin.saveSettings();
             trigger.textContent = p.model;
             setTooltip(trigger, p.name ? `${p.name}: ${p.model}` : p.model);
-            new Notice(`已切换到 ${label}`);
+            new Notice(t("notice.switchedTo", label));
           });
         }
         if (!hasItem) {
           const emptyItem = popup.createDiv({ cls: "xy-popup-item" });
-          emptyItem.createSpan({ cls: "xy-popup-label" }).textContent = "未配置 API 模型，请在设置中添加";
+          emptyItem.createSpan({ cls: "xy-popup-label" }).textContent = t("status.notConfigured");
         }
       }
     }, { direction: "up", maxHeight: "50vh" });
@@ -171,7 +172,7 @@ export function buildToolbarContent(container: HTMLElement, view: ToolbarHost): 
     ];
     const levelText = container.createSpan({ cls: "xiaoyuan-level-select" });
     levelText.textContent = s.defaultReasoning;
-    setTooltip(levelText, "点击切换思考强度");
+    setTooltip(levelText, t("chat.reasoning.tooltip"));
     levelText.addEventListener("click", (e) => {
       e.stopPropagation();
       showPopup(levelText, (popup) => {
@@ -180,7 +181,7 @@ export function buildToolbarContent(container: HTMLElement, view: ToolbarHost): 
             s.defaultReasoning = m.value as ReasoningEffort;
             view.plugin.saveSettings();
             levelText.textContent = m.label;
-            new Notice(`推理强度: ${m.label}`);
+            new Notice(t("setting.cli.reasoning") + ": " + m.label);
           });
         }
       }, { direction: "up" });
@@ -189,7 +190,7 @@ export function buildToolbarContent(container: HTMLElement, view: ToolbarHost): 
   } else {
     const apiLevelText = container.createSpan({ cls: "xiaoyuan-level-select" });
     apiLevelText.textContent = s.apiReasoningEffort;
-    setTooltip(apiLevelText, "点击切换思考强度");
+    setTooltip(apiLevelText, t("chat.reasoning.tooltip"));
     apiLevelText.addEventListener("click", (e) => {
       e.stopPropagation();
       showPopup(apiLevelText, (popup) => {
@@ -198,7 +199,7 @@ export function buildToolbarContent(container: HTMLElement, view: ToolbarHost): 
             s.apiReasoningEffort = m.value as ReasoningEffortAPI;
             view.plugin.saveSettings();
             apiLevelText.textContent = m.label;
-            new Notice(`推理强度: ${m.label}`);
+            new Notice(t("setting.cli.reasoning") + ": " + m.label);
           });
         }
       }, { direction: "up" });

@@ -1,20 +1,21 @@
 import { setIcon, setTooltip } from "obsidian";
+import { t } from "./i18n";
 
-export const ACTION_LABELS = {
-  copy: "复制",
-  speak: "朗读",
-  quote: "引用",
-  edit: "在编辑器中打开",
-  undo: "撤销",
-  replace: "替换选中文本",
-  rename: "重命名",
-  open: "在编辑器中打开",
-  delete: "删除此对话",
-  aiTools: "小元AI工具",
-  capture: "捕获",
-} as const;
+const LABEL_KEYS: Record<string, string> = {
+  copy: "btn.copy",
+  speak: "btn.speak",
+  quote: "btn.quote",
+  edit: "btn.edit",
+  undo: "btn.undo",
+  replace: "btn.replace",
+  rename: "btn.rename",
+  open: "btn.open",
+  delete: "btn.delete",
+  aiTools: "btn.aiTools",
+  capture: "btn.capture",
+};
 
-export type ActionType = keyof typeof ACTION_LABELS;
+export type ActionType = keyof typeof LABEL_KEYS;
 
 const ICON_MAP: Record<ActionType, string> = {
   copy: "copy",
@@ -34,6 +35,6 @@ export function createActionBtn(type: ActionType): HTMLSpanElement {
   const btn = document.createElement("span");
   btn.className = "xiaoyuan-msg-action";
   setIcon(btn, ICON_MAP[type]);
-  setTooltip(btn, ACTION_LABELS[type]);
+  setTooltip(btn, t(LABEL_KEYS[type]));
   return btn;
 }

@@ -1,4 +1,5 @@
 import { App, Modal, Notice, Menu } from "obsidian";
+import { t } from "./i18n";
 import type XiaoyuanAIPlugin from "./main";
 import { callAISession, getVaultBasePath } from "./ai";
 import { VIEW_TYPE_XIAOYUAN_AI_CHAT } from "./constants";
@@ -59,7 +60,7 @@ export class TextOperationModal extends Modal {
 
     const tpl = this.getTpl();
     const headerRow = contentEl.createDiv({ cls: "xiaoyuan-modal-header" });
-    this.titleEl = headerRow.createEl("h3", { text: `AI ${tpl?.name || "操作"}` });
+    this.titleEl = headerRow.createEl("h3", { text: t("modal.title", tpl?.name || "") });
     this.modeLabel = headerRow.createSpan({ cls: "xiaoyuan-modal-mode-label" });
     this.modeLabel.textContent = this.plugin.settings.execMode === "cli" ? "CLI" : "API";
     headerRow.style.cursor = "move";
@@ -67,7 +68,7 @@ export class TextOperationModal extends Modal {
 
     this.thinkingBarEl = contentEl.createDiv({ cls: "xiaoyuan-thinking-bar" });
 
-    this.contentAreaEl = contentEl.createDiv({ cls: "xiaoyuan-modal-content-area", text: "已连接，等待响应..." });
+    this.contentAreaEl = contentEl.createDiv({ cls: "xiaoyuan-modal-content-area", text: t("chat.connected") });
 
     const btnRow = contentEl.createDiv({ cls: "xiaoyuan-modal-btn-row" });
 
@@ -77,14 +78,14 @@ export class TextOperationModal extends Modal {
     const replaceBtn = createActionBtn("replace");
     replaceBtn.addEventListener("click", () => {
       const editor = this.plugin.getActiveEditor();
-      if (editor) { editor.replaceSelection(this.contentAreaEl.textContent || ""); new Notice("已替换"); }
-      else new Notice("未找到活动编辑器");
+      if (editor) { editor.replaceSelection(this.contentAreaEl.textContent || ""); new Notice(t("action.replaced")); }
+      else new Notice(t("notice.noEditor"));
       this.close();
     });
     leftGroup.appendChild(replaceBtn);
 
     const copyBtn = createActionBtn("copy");
-    copyBtn.addEventListener("click", () => { navigator.clipboard.writeText(this.contentAreaEl.textContent || ""); new Notice("已复制"); });
+    copyBtn.addEventListener("click", () => { navigator.clipboard.writeText(this.contentAreaEl.textContent || ""); new Notice(t("action.copied")); });
     leftGroup.appendChild(copyBtn);
 
     const openBtn = createActionBtn("edit");
@@ -102,7 +103,7 @@ export class TextOperationModal extends Modal {
       navigator.clipboard.writeText(content);
       const cmdId = this.plugin.settings.captureCommandId;
       if (cmdId) this.app.commands.executeCommandById(cmdId);
-      new Notice("已捕获");
+      new Notice(t("action.captured"));
     });
     leftGroup.appendChild(captureBtn);
 
@@ -110,7 +111,7 @@ export class TextOperationModal extends Modal {
     this.toolsBtn.addEventListener("click", (e) => this.showAIToolsMenu(e));
     leftGroup.appendChild(this.toolsBtn);
 
-    const closeBtn = rightGroup.createEl("button", { text: "关闭", cls: "xiaoyuan-btn-secondary" });
+    const closeBtn = rightGroup.createEl("button", { text: t("modal.close"), cls: "xiaoyuan-btn-secondary" });
     closeBtn.addEventListener("click", () => this.close());
 
     if (this.inputText) {
@@ -152,10 +153,10 @@ export class TextOperationModal extends Modal {
         const templates = this.plugin.settings.promptTemplates || [];
         for (const tpl of templates) {
           menu.addItem((item) => {
-            item.setTitle(`${tpl.name} — ${tpl.description}`);
-            item.setIcon(tpl.icon);
-            item.onClick(() => {
-              this.titleEl.textContent = `AI ${tpl.name}`;
+              item.setTitle(`${tpl.name} — ${tpl.description}`);
+              item.setIcon(tpl.icon);
+              item.onClick(() => {
+              this.titleEl.textContent = t("modal.title", tpl.name);
               this.contentAreaEl.textContent = text;
               this.activeTplId = tpl.id;
               this.inputText = text;
@@ -188,7 +189,7 @@ export class TextOperationModal extends Modal {
 
   private async reprocessWithTpl(tpl: PromptTemplate) {
     const fullText = this.contentAreaEl.textContent || "";
-    if (!fullText.trim()) { new Notice("内容为空，请先输入内容"); return; }
+    if (!fullText.trim()) { new Notice(t("modal.contentEmpty")); return; }
 
     const sel = window.getSelection();
     let textToProcess = "";
@@ -197,8 +198,8 @@ export class TextOperationModal extends Modal {
     }
     if (!textToProcess) textToProcess = fullText;
 
-    this.titleEl.textContent = `AI ${tpl.name}`;
-    this.contentAreaEl.textContent = "已连接，等待响应...";
+    this.titleEl.textContent = t("modal.title", tpl.name);
+    this.contentAreaEl.textContent = t("chat.connected");
     this.contentAreaEl.contentEditable = "false";
 
     this.thinkingBarEl.classList.add("is-active");
@@ -208,13 +209,13 @@ export class TextOperationModal extends Modal {
       const vaultDir = getVaultBasePath();
       const result = await callAISession({
         prompt, settings: s, vaultDir,
-        onThinking: (text) => { this.contentAreaEl.textContent = `思考中... ${text}`; },
+        onThinking: (text) => { this.contentAreaEl.textContent = t("modal.ai.thinking", text); },
         onTextUpdate: (text) => { this.contentAreaEl.textContent = text; },
       });
       this.contentAreaEl.textContent = result;
       this.contentAreaEl.contentEditable = "true";
     } catch (err: unknown) {
-      this.contentAreaEl.textContent = `\u274C 错误：${err instanceof Error ? err.message : String(err)}`;
+      this.contentAreaEl.textContent = t("modal.error", err instanceof Error ? err.message : String(err));
     } finally {
       this.thinkingBarEl.classList.remove("is-active");
     }
@@ -229,13 +230,13 @@ export class TextOperationModal extends Modal {
       const vaultDir = getVaultBasePath();
       const result = await callAISession({
         prompt, settings: s, vaultDir,
-        onThinking: (text) => { this.contentAreaEl.textContent = `思考中... ${text}`; },
+        onThinking: (text) => { this.contentAreaEl.textContent = t("modal.ai.thinking", text); },
         onTextUpdate: (text) => { this.contentAreaEl.textContent = text; },
       });
       this.contentAreaEl.textContent = result;
       this.contentAreaEl.contentEditable = "true";
     } catch (err: unknown) {
-      this.contentAreaEl.textContent = `\u274C 错误：${err instanceof Error ? err.message : String(err)}`;
+      this.contentAreaEl.textContent = t("modal.error", err instanceof Error ? err.message : String(err));
     } finally {
       this.thinkingBarEl.classList.remove("is-active");
     }

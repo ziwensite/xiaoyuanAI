@@ -6,8 +6,10 @@ import type { XiaoyuanAISettings, ApiProviderConfig, ReasoningEffort, ReasoningE
 import { showPopup, addPopupItem } from "./popup";
 import { checkConnection } from "./connection-checker";
 import { getVaultBasePath } from "./server";
+import { t } from "./i18n";
+import manifest from "../manifest.json";
 
-type TabId = "cli" | "api" | "general" | "skills" | "prompts";
+type TabId = "cli" | "api" | "general" | "skills" | "prompts" | "about";
 
 export class XiaoyuanAISettingTab extends PluginSettingTab {
   plugin: XiaoyuanAIPlugin;
@@ -64,11 +66,11 @@ private async refreshStatusCard() {
       checkConnection(s, vaultDir, "cli").catch(() => false),
       checkConnection(s, vaultDir, "api").catch(() => false),
     ]);
-    this.updateRow(card, 0, cliOk ? "已连接" : "未连接");
-    this.updateRow(card, 1, apiOk ? "已连接" : "未配置");
-    this.updateRow(card, 2, s.opencode.model || "未选择");
-    this.updateRow(card, 3, getActiveProvider(s)?.model || "未选择");
-    this.updateRow(card, 4, s.proxyEnabled ? s.proxyUrl : "已关闭");
+    this.updateRow(card, 0, cliOk ? t("status.connected") : t("status.disconnected"));
+    this.updateRow(card, 1, apiOk ? t("status.connected") : t("status.notConfigured"));
+    this.updateRow(card, 2, s.opencode.model || t("status.notSelected"));
+    this.updateRow(card, 3, getActiveProvider(s)?.model || t("status.notSelected"));
+    this.updateRow(card, 4, s.proxyEnabled ? s.proxyUrl : t("status.closed"));
   }
 
   private updateRow(card: HTMLElement, index: number, value: string) {
@@ -83,14 +85,14 @@ private async refreshStatusCard() {
     const s = this.s();
     const card = container.createDiv({ cls: "xy-settings-status" });
 
-    this.addStatusRow(card, "terminal-square", "CLI 状态", "检测中...");
-    this.addStatusRow(card, "key-round", "API 状态", "检测中...");
-    this.addStatusRow(card, "box", "CLI 模型", s.opencode.model || "未选择");
-    this.addStatusRow(card, "box", "API 模型", getActiveProvider(s)?.model || "未选择");
-    this.addStatusRow(card, "waypoints", "代理", s.proxyEnabled ? s.proxyUrl : "已关闭");
+    this.addStatusRow(card, "terminal-square", t("status.cli"), t("status.checking"));
+    this.addStatusRow(card, "key-round", t("status.api"), t("status.checking"));
+    this.addStatusRow(card, "box", t("status.cli.model"), s.opencode.model || t("status.notSelected"));
+    this.addStatusRow(card, "box", t("status.api.model"), getActiveProvider(s)?.model || t("status.notSelected"));
+    this.addStatusRow(card, "waypoints", t("status.proxy"), s.proxyEnabled ? s.proxyUrl : t("status.closed"));
 
     const actions = card.createDiv({ cls: "xy-settings-status-actions" });
-    const refreshBtn = actions.createEl("button", { cls: "xy-status-btn", text: "刷新" });
+    const refreshBtn = actions.createEl("button", { cls: "xy-status-btn", text: t("status.refresh") });
     refreshBtn.addEventListener("click", async () => {
       await this.refreshStatusCard();
       const { fetchOpenCodeModelsFromCLI, fetchOpenCodeAgents } = await import("./ai");
@@ -116,11 +118,12 @@ private async refreshStatusCard() {
 
   private buildTabBar(container: HTMLElement) {
     const tabs: { id: TabId; icon: string; label: string }[] = [
-      { id: "general", icon: "settings", label: "通用" },
-      { id: "cli", icon: "terminal-square", label: "CLI 设置" },
-      { id: "api", icon: "key-round", label: "API 设置" },
-      { id: "skills", icon: "wand-sparkles", label: "Skills" },
-      { id: "prompts", icon: "file-pen", label: "Prompt 模板" },
+      { id: "general", icon: "settings", label: t("tab.general") },
+      { id: "cli", icon: "terminal-square", label: t("tab.cli") },
+      { id: "api", icon: "key-round", label: t("tab.api") },
+      { id: "skills", icon: "wand-sparkles", label: t("tab.skills") },
+      { id: "prompts", icon: "file-pen", label: t("tab.prompts") },
+      { id: "about", icon: "info", label: t("tab.about") },
     ];
     const bar = container.createDiv({ cls: "xy-settings-tabs" });
     for (const t of tabs) {
@@ -147,6 +150,7 @@ private async refreshStatusCard() {
       case "general": this.buildGeneralTab(container); break;
       case "skills": this.buildSkillsTab(container); break;
       case "prompts": this.buildPromptsTab(container); break;
+      case "about": this.buildAboutTab(container); break;
     }
   }
 
@@ -156,8 +160,8 @@ private async refreshStatusCard() {
     const s = this.s();
 
     const pathSetting = this.decorateSetting(new Setting(container)
-      .setName("OpenCode 路径")
-      .setDesc("可执行文件路径。全局安装填 opencode，非全局写完整绝对路径。")
+      .setName(t("setting.cli.path"))
+      .setDesc(t("setting.cli.path.desc"))
       .addText((text) =>
         text.setPlaceholder("opencode").setValue(s.opencode.cliPath === "opencode" ? "" : s.opencode.cliPath)
           .onChange(async (val) => { s.opencode.cliPath = val; await this.plugin.saveSettings(); }),
@@ -166,13 +170,13 @@ private async refreshStatusCard() {
       try {
         const { resolveOpenCodePath } = await import("./opencode-server");
         const detected = await resolveOpenCodePath(s.opencode.cliPath);
-        if (detected && detected !== s.opencode.cliPath) pathSetting.setDesc(`已检测到: ${detected}`);
+        if (detected && detected !== s.opencode.cliPath) pathSetting.setDesc(t("setting.cli.path.detected", detected));
       } catch {}
     })();
 
     this.decorateSetting(new Setting(container)
-      .setName("自动启动 OpenCode Server")
-      .setDesc("打开 Obsidian 或检测到服务未运行时自动启动 opencode serve")
+      .setName(t("setting.cli.autoStart"))
+      .setDesc(t("setting.cli.autoStart.desc"))
       .addToggle((t) => {
         t.setValue(s.opencode.autoStart);
         t.onChange(async (val) => {
@@ -188,7 +192,7 @@ private async refreshStatusCard() {
 
     this.decorateSetting(new Setting(container)
       .setName("Host")
-      .setDesc("opencode 服务器主机地址")
+      .setDesc(t("setting.cli.host.desc"))
       .addText((text) =>
         text.setPlaceholder("127.0.0.1").setValue(s.opencode.hostname === "127.0.0.1" ? "" : s.opencode.hostname)
           .onChange(async (val) => { s.opencode.hostname = val; await this.plugin.saveSettings(); const { stopOpenCodeServer } = await import("./opencode-server"); stopOpenCodeServer(); }),
@@ -196,17 +200,17 @@ private async refreshStatusCard() {
 
     this.decorateSetting(new Setting(container)
       .setName("Port")
-      .setDesc("opencode 服务器端口")
+      .setDesc(t("setting.cli.port.desc"))
       .addText((text) =>
         text.setPlaceholder("16226").setValue(s.opencode.port === 16226 ? "" : String(s.opencode.port))
           .onChange(async (val) => { const n = parseInt(val); const oldPort = s.opencode.port; s.opencode.port = n > 0 ? n : 16226; await this.plugin.saveSettings(); if (oldPort !== s.opencode.port) { const { stopOpenCodeServer } = await import("./opencode-server"); stopOpenCodeServer(); } }),
       ), "plug");
 
     const modelSetting = this.decorateSetting(new Setting(container)
-      .setName("模型")
-      .setDesc("点击选择模型，或点 ↻ 从 opencode 同步")
+      .setName(t("setting.cli.model"))
+      .setDesc(t("setting.cli.model.desc"))
       .addText((text) => {
-        text.setPlaceholder("点击选择或输入 providerID/modelID").setValue(s.opencode.model);
+        text.setPlaceholder(t("setting.cli.model.placeholder")).setValue(s.opencode.model);
         text.inputEl.addClass("xy-model-picker-trigger");
         text.inputEl.readOnly = false;
         text.onChange(async (val) => {
@@ -223,7 +227,7 @@ private async refreshStatusCard() {
       })
       .addButton((btn) => {
         btn.setButtonText("↻");
-        btn.setTooltip("从 opencode 同步模型列表");
+        btn.setTooltip(t("setting.cli.model.syncTooltip"));
         btn.onClick(async () => {
           const { fetchOpenCodeModelsFromCLI, fetchOpenCodeAgents } = await import("./ai");
           const { getVaultBasePath } = await import("./server");
@@ -235,11 +239,11 @@ private async refreshStatusCard() {
               s.opencode.model = result.defaultModel;
             }
             await this.plugin.saveSettings();
-            new Notice(result.models.length === 0 ? "未找到模型" : `已同步 ${result.models.length} 个模型`);
+            new Notice(result.models.length === 0 ? t("notice.noModels") : t("notice.syncModels", String(result.models.length)));
             this.display();
             s.opencodeAgents = await fetchOpenCodeAgents(s.opencode.cliPath, getVaultBasePath(), s.opencode.port).catch(() => s.opencodeAgents);
             await this.plugin.saveSettings();
-          } catch (err: unknown) { new Notice(`同步失败：${err instanceof Error ? err.message : String(err)}`); }
+          } catch (err: unknown) { new Notice(t("notice.syncFailed", err instanceof Error ? err.message : String(err))); }
         });
       }), "box");
 
@@ -247,15 +251,28 @@ private async refreshStatusCard() {
       const caps = s.opencodeModelCaps?.[s.opencode.model];
       if (caps) {
         const inputFlags: string[] = [];
-        for (const [k, v] of Object.entries({ 文本: caps.text, 图像: caps.image, PDF: caps.pdf, 音频: caps.audio, 视频: caps.video })) {
+        const inputLabels: [string, boolean][] = [
+          [t("cap.text"), caps.text],
+          [t("cap.image"), caps.image],
+          ["PDF", caps.pdf],
+          [t("cap.audio"), caps.audio],
+          [t("cap.video"), caps.video],
+        ];
+        for (const [k, v] of inputLabels) {
           inputFlags.push(v ? `${k}✓` : `${k}×`);
         }
-        modelSetting.descEl.createDiv({ text: `输入: ${inputFlags.join(" ")}` });
+        modelSetting.descEl.createDiv({ text: t("cap.input") + ": " + inputFlags.join(" ") });
         const featFlags: string[] = [];
-        for (const [k, v] of Object.entries({ 推理: caps.reasoning, 工具: caps.toolcall, 附件: caps.attachment, 温度: caps.temperature })) {
+        const featLabels: [string, boolean][] = [
+          [t("cap.reasoning"), caps.reasoning],
+          [t("cap.toolcall"), caps.toolcall],
+          [t("cap.attachment"), caps.attachment],
+          [t("cap.temperature"), caps.temperature],
+        ];
+        for (const [k, v] of featLabels) {
           featFlags.push(v ? `${k}✓` : `${k}×`);
         }
-        modelSetting.descEl.createDiv({ text: `功能: ${featFlags.join(" ")}` });
+        modelSetting.descEl.createDiv({ text: t("cap.features") + ": " + featFlags.join(" ") });
       }
     }
 
@@ -267,10 +284,10 @@ private async refreshStatusCard() {
       const inList = allItems.some((a) => a.name === currentAgent);
       const currentDesc = allItems.find((a) => a.name === currentAgent)?.description;
       this.decorateSetting(new Setting(container)
-        .setName("Agent")
+        .setName(t("setting.cli.agent"))
         .setDesc(currentAgent
-          ? `当前: ${currentAgent}${currentDesc ? ` (${currentDesc})` : ""}`
-          : "选择 agent")
+          ? t("setting.cli.agent.current") + ": " + currentAgent + (currentDesc ? ` (${currentDesc})` : "")
+          : t("setting.cli.agent.desc"))
         .addDropdown((dd) => {
           for (const a of allItems) dd.addOption(a.name, a.name);
           dd.setValue(inList ? currentAgent : allItems[0]?.name || "build");
@@ -282,7 +299,7 @@ private async refreshStatusCard() {
         })
         .addButton((btn) => {
           btn.setButtonText("↻");
-          btn.setTooltip("从 opencode 同步 agent 列表");
+          btn.setTooltip(t("setting.cli.agent.syncTooltip"));
           btn.onClick(async () => {
             try {
               const { fetchOpenCodeAgents } = await import("./ai");
@@ -291,16 +308,16 @@ private async refreshStatusCard() {
               const agents = await fetchOpenCodeAgents(s.opencode.cliPath, vaultDir, s.opencode.port);
               s.opencodeAgents = agents;
               await this.plugin.saveSettings();
-              new Notice(`已同步 ${agents.length} 个 agent`);
+              new Notice(t("notice.syncAgents", String(agents.length)));
               this.display();
-            } catch (err: unknown) { new Notice(`同步失败：${err instanceof Error ? err.message : String(err)}`); }
+            } catch (err: unknown) { new Notice(t("notice.syncFailed", err instanceof Error ? err.message : String(err))); }
           });
         }), "bot");
     }
 
     this.decorateSetting(new Setting(container)
-      .setName("思考强度")
-      .setDesc("控制模型的推理深度")
+      .setName(t("setting.cli.reasoning"))
+      .setDesc(t("setting.cli.reasoning.desc"))
       .addDropdown((dd) => {
         dd.addOption("none", "none");
         dd.addOption("minimal", "minimal");
@@ -313,28 +330,28 @@ private async refreshStatusCard() {
       }), "brain");
 
     this.decorateSetting(new Setting(container)
-      .setName("文件权限")
-      .setDesc('AI 对工作区文件的访问权限（仅"完全放开"时传递 --dangerously-skip-permissions）')
+      .setName(t("setting.cli.permission"))
+      .setDesc(t("setting.cli.permission.desc.full"))
       .addDropdown((dd) => {
-        dd.addOption("read-only", "只读");
-        dd.addOption("workspace-write", "工作区可写");
-        dd.addOption("danger-full-access", "完全放开");
+        dd.addOption("read-only", t("setting.cli.permission.ro"));
+        dd.addOption("workspace-write", t("setting.cli.permission.ww"));
+        dd.addOption("danger-full-access", t("setting.cli.permission.dfa"));
         dd.setValue(s.defaultPermission);
         dd.onChange(async (val) => { s.defaultPermission = val as PermissionMode; await this.plugin.saveSettings(); });
       }), "shield-check");
 
     container.createEl("hr");
-    container.createEl("h3", { text: "助手配置（小C）" });
+    container.createEl("h3", { text: t("setting.assistant.title") + t("assistant.suffixC") });
 
     this.decorateSetting(new Setting(container)
-      .setName("名称")
-      .setDesc("为空则使用默认名")
-      .addText((text) => text.setPlaceholder("小C").setValue(s.assistantC.name === "小C" ? "" : s.assistantC.name)
-        .onChange(async (val) => { s.assistantC.name = val || "小C"; await this.plugin.saveSettings(); }),
+      .setName(t("setting.assistant.name"))
+      .setDesc(t("setting.assistant.name.desc"))
+      .addText((text) => text.setPlaceholder(t("assistant.defaultNameC")).setValue(s.assistantC.name === t("assistant.defaultNameC") ? "" : s.assistantC.name)
+        .onChange(async (val) => { s.assistantC.name = val || t("assistant.defaultNameC"); await this.plugin.saveSettings(); }),
       ), "bot");
 
     this.decorateSetting(new Setting(container)
-      .setName("头像图标")
+      .setName(t("setting.assistant.avatar"))
       .addDropdown((dd) => {
         dd.addOption("server", "server");
         dd.addOption("bot", "bot");
@@ -346,7 +363,7 @@ private async refreshStatusCard() {
       }), "image");
 
     this.decorateSetting(new Setting(container)
-      .setName("系统提示词")
+      .setName(t("setting.assistant.prompt"))
       .addTextArea((text) => {
         text.setValue(s.assistantC.systemPrompt);
         text.inputEl.rows = 4;
@@ -369,35 +386,35 @@ private async refreshStatusCard() {
 
       const head = card.createDiv({ cls: "xy-api-provider-head" });
       const title = head.createDiv({ cls: "xy-api-provider-title" });
-      const nameSpan = title.createSpan({ text: provider.name || "未命名" });
-      const modelSmall = title.createEl("small", { text: ` · ${provider.model || "未选择模型"}` });
+      const nameSpan = title.createSpan({ text: provider.name || t("api.provider.unnamed") });
+      const modelSmall = title.createEl("small", { text: " · " + (provider.model || t("api.provider.noModel")) });
       const updateHeader = () => {
-        nameSpan.textContent = provider.name || "未命名";
-        modelSmall.textContent = ` · ${provider.model || "未选择模型"}`;
+        nameSpan.textContent = provider.name || t("api.provider.unnamed");
+        modelSmall.textContent = " · " + (provider.model || t("api.provider.noModel"));
       };
 
       const headActions = head.createDiv({ cls: "xy-api-provider-actions" });
 
       if (!isActive) {
-        const activateBtn = headActions.createEl("button", { cls: "xy-status-btn", text: "启用" });
+        const activateBtn = headActions.createEl("button", { cls: "xy-status-btn", text: t("setting.api.provider.activate") });
         activateBtn.addEventListener("click", async () => {
           s.activeApiProviderId = provider.id;
           await this.plugin.saveSettings();
           this.display();
           const ok = await this.testApiConnection(provider);
-          new Notice(ok ? `✅ 已切换到: ${provider.name}` : `❌ 连接失败: ${provider.name}`);
+          new Notice(ok ? t("notice.switchedTo", provider.name) : t("notice.connFailed", provider.name));
         });
       }
 
-      const testBtn = headActions.createEl("button", { cls: "xy-status-btn", text: "连接测试" });
+      const testBtn = headActions.createEl("button", { cls: "xy-status-btn", text: t("setting.api.provider.test") });
       testBtn.addEventListener("click", async () => {
         const ok = await this.testApiConnection(provider);
-        new Notice(ok ? `✅ ${provider.name} 连接成功` : `❌ ${provider.name} 连接失败`);
+        new Notice(ok ? t("notice.connSuccess", provider.name) : t("notice.connFailGeneric", provider.name));
       });
 
-      const deleteBtn = headActions.createEl("button", { cls: "xy-status-btn", text: "删除" });
+      const deleteBtn = headActions.createEl("button", { cls: "xy-status-btn", text: t("setting.api.provider.delete") });
       deleteBtn.addEventListener("click", async () => {
-        if (providers.length <= 1) { new Notice("至少保留一个 API 提供者"); return; }
+        if (providers.length <= 1) { new Notice(t("setting.api.provider.leastOne")); return; }
         s.apiProviders = providers.filter(p => p.id !== provider.id);
         if (s.activeApiProviderId === provider.id) {
           s.activeApiProviderId = s.apiProviders[0]?.id || "";
@@ -417,7 +434,7 @@ private async refreshStatusCard() {
         content.style.display = collapsed ? "none" : "";
       });
 
-      this.addProviderText(content, "名称", provider.name, "例如 OpenAI API", async (val) => {
+      this.addProviderText(content, t("setting.api.provider.name"), provider.name, t("api.provider.namePlaceholder"), async (val) => {
         provider.name = val;
         await this.plugin.saveSettings();
         updateHeader();
@@ -428,7 +445,7 @@ private async refreshStatusCard() {
         await this.plugin.saveSettings();
       });
 
-      this.addProviderText(content, "模型", provider.model, "gpt-4o", async (val) => {
+      this.addProviderText(content, t("setting.api.provider.model"), provider.model, "gpt-4o", async (val) => {
         provider.model = val;
         await this.plugin.saveSettings();
         updateHeader();
@@ -441,20 +458,20 @@ private async refreshStatusCard() {
     }
 
     const addBtn = container.createDiv({ cls: "xy-settings-status-actions" });
-    const newBtn = addBtn.createEl("button", { cls: "xy-status-btn", text: "+ 新增 API 提供者" });
+    const newBtn = addBtn.createEl("button", { cls: "xy-status-btn", text: t("setting.api.provider.new") });
     newBtn.addEventListener("click", async () => {
       const newId = `provider_${Date.now()}`;
-      s.apiProviders.push({ id: newId, name: "新 API", baseUrl: "", model: "", apiKey: "" });
+      s.apiProviders.push({ id: newId, name: t("api.provider.newName"), baseUrl: "", model: "", apiKey: "" });
       await this.plugin.saveSettings();
       this.display();
     });
 
     container.createEl("hr");
-    container.createEl("h3", { text: "API 参数" });
+    container.createEl("h3", { text: t("setting.api.params") });
 
     this.decorateSetting(new Setting(container)
-      .setName("思考强度")
-      .setDesc("控制模型的推理深度（none / low / medium / high）")
+      .setName(t("setting.api.reasoning"))
+      .setDesc(t("setting.api.reasoning.desc"))
       .addDropdown((dd) => {
         dd.addOption("none", "none");
         dd.addOption("low", "low");
@@ -465,32 +482,32 @@ private async refreshStatusCard() {
       }), "brain");
 
     this.decorateSetting(new Setting(container)
-      .setName("温度")
-      .setDesc("模型输出的随机性（0=确定，2=随机）")
+      .setName(t("setting.api.temperature"))
+      .setDesc(t("setting.api.temperature.desc"))
       .addSlider((slider) =>
         slider.setLimits(0, 2, 0.1).setValue(s.temperature)
           .onChange(async (val) => { s.temperature = val; await this.plugin.saveSettings(); }),
       ), "thermometer");
 
     this.decorateSetting(new Setting(container)
-      .setName("最大 Token 数")
+      .setName(t("setting.api.maxTokens"))
       .addText((text) =>
         text.setPlaceholder("4096").setValue(s.maxTokens === 4096 ? "" : String(s.maxTokens))
           .onChange(async (val) => { const n = parseInt(val); s.maxTokens = n > 0 ? n : 4096; await this.plugin.saveSettings(); }),
       ), "subtitles");
 
     container.createEl("hr");
-    container.createEl("h3", { text: "助手配置（小A）" });
+    container.createEl("h3", { text: t("setting.assistant.title") + t("assistant.suffixA") });
 
     this.decorateSetting(new Setting(container)
-      .setName("名称")
-      .setDesc("为空则使用默认名")
-      .addText((text) => text.setPlaceholder("小A").setValue(s.assistantA.name === "小A" ? "" : s.assistantA.name)
-        .onChange(async (val) => { s.assistantA.name = val || "小A"; await this.plugin.saveSettings(); }),
+      .setName(t("setting.assistant.name"))
+      .setDesc(t("setting.assistant.name.desc"))
+      .addText((text) => text.setPlaceholder(t("assistant.defaultNameA")).setValue(s.assistantA.name === t("assistant.defaultNameA") ? "" : s.assistantA.name)
+        .onChange(async (val) => { s.assistantA.name = val || t("assistant.defaultNameA"); await this.plugin.saveSettings(); }),
       ), "bot");
 
     this.decorateSetting(new Setting(container)
-      .setName("头像图标")
+      .setName(t("setting.assistant.avatar"))
       .addDropdown((dd) => {
         dd.addOption("sparkles", "sparkles");
         dd.addOption("bot", "bot");
@@ -502,7 +519,7 @@ private async refreshStatusCard() {
       }), "image");
 
     this.decorateSetting(new Setting(container)
-      .setName("系统提示词")
+      .setName(t("setting.assistant.prompt"))
       .addTextArea((text) => {
         text.setValue(s.assistantA.systemPrompt);
         text.inputEl.rows = 4;
@@ -548,20 +565,20 @@ private async refreshStatusCard() {
 // ── Setting 1: AGENTS.MD ────────────────────────────────────
 
     this.decorateSetting(new Setting(container)
-      .setName("AGENTS.MD")
-      .setDesc("点击下方创建按钮，AI 自动生成。路径为 /AGENTS.md")
+      .setName(t("setting.skills.agents"))
+      .setDesc(t("setting.skills.agents.desc"))
       .addButton((btn) => {
-        btn.setButtonText("创建");
+        btn.setButtonText(t("setting.skills.create"));
         btn.onClick(async () => {
           const file = this.app.vault.getAbstractFileByPath("AGENTS.md");
           if (file && file instanceof TFile) {
-            new Notice("AGENTS.md 已存在，请使用「修改」按钮编辑");
+            new Notice(t("setting.skills.exists"));
             return;
           }
           const text = inputEl.value.trim();
-          if (!text) { new Notice("请先输入描述"); return; }
+          if (!text) { new Notice(t("setting.skills.inputFirst")); return; }
           btn.setDisabled(true);
-          btn.setButtonText("生成中...");
+          btn.setButtonText(t("setting.skills.generating"));
           try {
             const { callAISession } = await import("./ai");
             const { getVaultBasePath } = await import("./server");
@@ -576,28 +593,28 @@ ${text}
               vaultDir: getVaultBasePath(),
             });
             await this.app.vault.create("AGENTS.md", result.trim());
-            new Notice("AGENTS.md 已生成");
+            new Notice(t("setting.skills.generated"));
             inputEl.value = "";
             btn.setDisabled(false);
-            btn.setButtonText("创建");
+            btn.setButtonText(t("setting.skills.create"));
           } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : String(err);
             if (msg.includes("configure") || msg.includes("connection") || msg.includes("API") || msg.includes("key")) {
-              new Notice("请先配置 AI 连接");
+              new Notice(t("skill.sync.notice"));
             } else {
-              new Notice(`创建失败: ${msg}`);
+              new Notice(t("skill.create.failed", msg));
             }
             btn.setDisabled(false);
-            btn.setButtonText("创建");
+            btn.setButtonText(t("setting.skills.create"));
           }
         });
       })
       .addButton((btn) => {
-        btn.setButtonText("修改");
+        btn.setButtonText(t("setting.skills.edit"));
         btn.onClick(() => {
           const file = this.app.vault.getAbstractFileByPath("AGENTS.md");
           if (!file || !(file instanceof TFile)) {
-            new Notice("AGENTS.md 不存在，请先创建");
+            new Notice(t("setting.skills.notExist"));
             return;
           }
           this.app.workspace.openLinkText("AGENTS.md", "/");
@@ -607,23 +624,23 @@ ${text}
 
     const inputEl: HTMLTextAreaElement = container.createEl("textarea", {
       cls: "xy-skills-generate-input",
-      attr: { placeholder: "描述你想要创建的AGENTS.MD（自然语言、参考链接均可），点击上方创建按钮，AI 自动生成。比如：\n帮助写作、翻译等" },
+      attr: { placeholder: t("setting.skills.create.desc") },
     });
 
     // ── Setting 2: Skills列表 ──────────────────────────────────
 
     this.decorateSetting(new Setting(container)
-      .setName("Skills列表")
-      .setDesc("从 AGENTS.md 更新 skill 列表")
+      .setName(t("setting.skills.list"))
+      .setDesc(t("setting.skills.list.desc"))
       .addButton((btn) => {
         btn.setButtonText("↻");
-        btn.setTooltip("从 AGENTS.md 更新");
+        btn.setTooltip(t("setting.skills.syncTooltip"));
         btn.onClick(async () => {
           btn.setDisabled(true);
           try {
             const file = this.app.vault.getAbstractFileByPath("AGENTS.md");
             if (!file || !(file instanceof TFile)) {
-              new Notice("AGENTS.md 不存在，请先创建");
+              new Notice(t("setting.skills.notExist"));
               btn.setDisabled(false);
               return;
             }
@@ -641,20 +658,20 @@ ${text}
             });
             const jsonStart = result.indexOf("[");
             const jsonEnd = result.lastIndexOf("]");
-            if (jsonStart === -1 || jsonEnd === -1) throw new Error("AI 未返回有效 JSON");
+            if (jsonStart === -1 || jsonEnd === -1) throw new Error(t("error.aiNoValidJson"));
             const jsonStr = result.slice(jsonStart, jsonEnd + 1);
             const skills = JSON.parse(jsonStr);
-            if (!Array.isArray(skills)) throw new Error("AI 返回格式错误");
+            if (!Array.isArray(skills)) throw new Error(t("error.aiFormatError"));
             s.skills = skills;
             await this.plugin.saveSettings();
-            new Notice(`已同步 ${skills.length} 个 skill`);
+            new Notice(t("notice.syncSkills", String(skills.length)));
             this.display();
           } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : String(err);
             if (msg.includes("configure") || msg.includes("connection") || msg.includes("API") || msg.includes("key")) {
-              new Notice("请先配置 AI 连接");
+              new Notice(t("skill.sync.notice"));
             } else {
-              new Notice(`更新失败: ${msg}`);
+              new Notice(t("skill.sync.failed", msg));
             }
             btn.setDisabled(false);
           }
@@ -666,9 +683,9 @@ ${text}
       const table = container.createEl("table", { cls: "xy-skills-table" });
       const thead = table.createEl("thead");
       const headerRow = thead.createEl("tr");
-      headerRow.createEl("th", { text: "名称" });
-      headerRow.createEl("th", { text: "描述" });
-      headerRow.createEl("th", { text: "自动执行" });
+      headerRow.createEl("th", { text: t("setting.skills.table.name") });
+      headerRow.createEl("th", { text: t("setting.skills.table.desc") });
+      headerRow.createEl("th", { text: t("setting.skills.table.autoRun") });
 
       const tbody = table.createEl("tbody");
       for (const skill of s.skills) {
@@ -679,11 +696,11 @@ ${text}
         if (skill.autoRunInterval === undefined) skill.autoRunInterval = 0;
         const select = actionCell.createEl("select", { cls: "dropdown" });
         const intervals: { value: number; label: string }[] = [
-          { value: 0, label: "关闭" },
-          { value: 60, label: "每小时" },
-          { value: 360, label: "每6小时" },
-          { value: 1440, label: "每天" },
-          { value: 10080, label: "每周" },
+          { value: 0, label: t("interval.off") },
+          { value: 60, label: t("interval.hourly") },
+          { value: 360, label: t("interval.6hours") },
+          { value: 1440, label: t("interval.daily") },
+          { value: 10080, label: t("interval.weekly") },
         ];
         for (const opt of intervals) {
           select.createEl("option", { value: String(opt.value), text: opt.label });
@@ -704,7 +721,7 @@ ${text}
     const templates = s.promptTemplates || [];
     const builtinIds = ["polish", "summarize", "complete", "expand", "translate", "translate-en", "continue"];
 
-    container.createEl("p", { cls: "xy-settings-desc", text: "管理 Prompt 模板。模板可在聊天/弹窗中快速选用，自动将提示词注入对话。" });
+    container.createEl("p", { cls: "xy-settings-desc", text: t("setting.prompts.title") });
 
     for (let i = 0; i < templates.length; i++) {
       const tpl = templates[i];
@@ -715,10 +732,10 @@ ${text}
       const title = head.createDiv({ cls: "xy-api-provider-title" });
       const nameSpan = title.createSpan({ text: tpl.name });
       title.createEl("small", { text: ` · ${tpl.description}` });
-      if (builtin) title.createEl("small", { text: " · 默认", cls: "xy-mcp-disabled" });
+      if (builtin) title.createEl("small", { text: t("setting.prompts.default"), cls: "xy-mcp-disabled" });
 
       const updateHeader = () => {
-        nameSpan.textContent = tpl.name || "未命名";
+        nameSpan.textContent = tpl.name || t("api.provider.unnamed");
       };
 
       let collapsed = true;
@@ -732,20 +749,20 @@ ${text}
         content.style.display = collapsed ? "none" : "";
       });
 
-      this.addPromptsFieldText(content, "名称", tpl.name, "润色", async (val) => {
+      this.addPromptsFieldText(content, t("setting.prompts.name"), tpl.name, t("setting.prompts.namePlaceholder"), async (val) => {
         tpl.name = val;
         await this.plugin.saveSettings();
         updateHeader();
       });
 
-      this.addPromptsFieldText(content, "描述", tpl.description, "改进表达和流畅度", async (val) => {
+      this.addPromptsFieldText(content, t("setting.prompts.desc.label"), tpl.description, t("setting.prompts.descPlaceholder"), async (val) => {
         tpl.description = val;
         await this.plugin.saveSettings();
       });
 
       const promptField = content.createDiv({ cls: "xy-api-provider-field" });
-      promptField.createSpan({ cls: "xy-api-provider-label", text: "提示词" });
-      const promptArea = promptField.createEl("textarea", { cls: "xy-api-provider-input", attr: { rows: "4", placeholder: "留空则使用默认提示词" } });
+      promptField.createSpan({ cls: "xy-api-provider-label", text: t("setting.prompts.prompt") });
+      const promptArea = promptField.createEl("textarea", { cls: "xy-api-provider-input", attr: { rows: "4", placeholder: t("setting.prompts.placeholder") } });
       promptArea.value = tpl.prompt;
       promptArea.addEventListener("change", async () => {
         tpl.prompt = promptArea.value.trim();
@@ -754,7 +771,7 @@ ${text}
 
       const btnField = content.createDiv({ cls: "xy-api-provider-field" });
       if (builtin) {
-        const restoreBtn = btnField.createEl("button", { cls: "xy-status-btn", text: "恢复默认" });
+        const restoreBtn = btnField.createEl("button", { cls: "xy-status-btn", text: t("setting.prompts.restore") });
         restoreBtn.addEventListener("click", async () => {
           const def = DEFAULT_PROMPT_TEMPLATES.find(d => d.id === tpl.id);
           if (def) {
@@ -767,7 +784,7 @@ ${text}
           }
         });
       } else {
-        const deleteBtn = btnField.createEl("button", { cls: "xy-status-btn", text: "删除" });
+        const deleteBtn = btnField.createEl("button", { cls: "xy-status-btn", text: t("setting.prompts.delete") });
         deleteBtn.addEventListener("click", async () => {
           s.promptTemplates.splice(i, 1);
           await this.plugin.saveSettings();
@@ -777,9 +794,9 @@ ${text}
     }
 
     const addBtn = container.createDiv({ cls: "xy-settings-status-actions" });
-    const newBtn = addBtn.createEl("button", { cls: "xy-status-btn", text: "+ 新增模板" });
+    const newBtn = addBtn.createEl("button", { cls: "xy-status-btn", text: t("setting.prompts.add") });
     newBtn.addEventListener("click", async () => {
-      s.promptTemplates.push({ id: "tpl-" + Date.now(), name: "新模板", description: "自定义 Prompt 模板，根据你的需求修改提示词", prompt: "请根据以下要求处理文本：\n\n", icon: "file-pen" });
+      s.promptTemplates.push({ id: "tpl-" + Date.now(), name: t("setting.prompts.newName"), description: t("setting.prompts.newDesc"), prompt: t("setting.prompts.defaultPrompt"), icon: "file-pen" });
       await this.plugin.saveSettings();
       this.display();
     });
@@ -802,13 +819,13 @@ ${text}
     const s = this.s();
 
     this.decorateSetting(new Setting(container)
-      .setName("智能助理模式")
+      .setName(t("setting.general.mode"))
       .setDesc(s.execMode === "cli"
-        ? "所有操作通过 opencode run 执行，适合本地开发项目"
-        : "所有操作直接调用 OpenAI 兼容 API，适合纯对话场景")
+        ? t("mode.cli.desc")
+        : t("mode.api.desc"))
       .addDropdown((dd) => {
-        dd.addOption("cli", "CLI 模式");
-        dd.addOption("api", "API 模式");
+        dd.addOption("cli", t("mode.cli"));
+        dd.addOption("api", t("mode.api"));
         dd.setValue(s.execMode);
         dd.onChange(async (val) => {
           s.execMode = val as "api" | "cli";
@@ -822,34 +839,34 @@ ${text}
       }), "bot");
 
     this.decorateSetting(new Setting(container)
-      .setName("启用本地代理")
-      .setDesc("只影响插件通过 opencode 启动的子进程")
+      .setName(t("setting.proxy"))
+      .setDesc(t("setting.proxy.desc"))
       .addToggle((t) => {
         t.setValue(s.proxyEnabled);
         t.onChange(async (val) => { s.proxyEnabled = val; await this.plugin.saveSettings(); });
       }), "waypoints");
 
     this.decorateSetting(new Setting(container)
-      .setName("代理地址")
-      .setDesc("HTTP 代理地址")
+      .setName(t("setting.proxyUrl"))
+      .setDesc(t("setting.proxyUrl.desc"))
       .addText((text) =>
         text.setPlaceholder("http://127.0.0.1:7890").setValue(s.proxyUrl)
           .onChange(async (val) => { s.proxyUrl = val.trim(); await this.plugin.saveSettings(); }),
       ), "route");
 
     this.decorateSetting(new Setting(container)
-      .setName("启动时自动打开侧栏")
+      .setName(t("setting.autoOpen"))
       .addToggle((t) => {
         t.setValue(s.autoOpen);
         t.onChange(async (val) => { s.autoOpen = val; await this.plugin.saveSettings(); });
       }), "panel-right-open");
 
     this.decorateSetting(new Setting(container)
-      .setName("选中捕获命令")
-      .setDesc('选中文本后点击「捕获」按钮时触发的 Obsidian 命令，选中文本会自动复制到剪贴板')
+      .setName(t("setting.captureCmd"))
+      .setDesc(t("setting.captureCmd.desc"))
       .addDropdown((dd) => {
         const cmds = this.app.commands.listCommands();
-        dd.addOption("", "不执行命令（仅复制到剪贴板）");
+        dd.addOption("", t("setting.captureCmd.none"));
         for (const cmd of cmds) {
           dd.addOption(cmd.id, `${cmd.name} (${cmd.id})`);
         }
@@ -858,44 +875,44 @@ ${text}
       }), "camera");
 
     container.createEl("hr");
-    container.createEl("h3", { text: "聊天设置" });
+    container.createEl("h3", { text: t("setting.general.chatSettings") });
 
     this.decorateSetting(new Setting(container)
-      .setName("聊天历史存储路径")
-      .setDesc("聊天历史 Markdown 文件的存储目录")
+      .setName(t("setting.chatPath"))
+      .setDesc(t("setting.chatPath.desc"))
       .addText((text) =>
         text.setPlaceholder("_chatHistory").setValue(s.chatHistoryPath === "_chatHistory" ? "" : s.chatHistoryPath)
           .onChange(async (val) => { s.chatHistoryPath = val.trim() || "_chatHistory"; await this.plugin.saveSettings(); }),
       ), "folder");
 
     this.decorateSetting(new Setting(container)
-      .setName("聊天面板位置")
+      .setName(t("setting.chatPosition"))
       .addDropdown((dd) => {
-        dd.addOption("left", "左侧");
-        dd.addOption("right", "右侧");
+        dd.addOption("left", t("setting.chatPosition.left"));
+        dd.addOption("right", t("setting.chatPosition.right"));
         dd.setValue(s.chatViewType);
         dd.onChange(async (val) => { s.chatViewType = val as "left" | "right"; await this.plugin.saveSettings(); });
       }), "layout-dashboard");
 
     this.decorateSetting(new Setting(container)
-      .setName("Diff 预览")
-      .setDesc("在 AI 回复中显示文件变更预览")
+      .setName(t("setting.diff"))
+      .setDesc(t("setting.diff.desc"))
       .addToggle((t) => {
         t.setValue(s.showDiffPreview);
         t.onChange(async (val) => { s.showDiffPreview = val; await this.plugin.saveSettings(); });
       }), "file-diff");
 
     this.decorateSetting(new Setting(container)
-      .setName("显示思考过程")
-      .setDesc("在 AI 回复中以折叠块显示模型的思考过程")
+      .setName(t("setting.thinking"))
+      .setDesc(t("setting.thinking.desc"))
       .addToggle((t) => {
         t.setValue(s.showThinking);
         t.onChange(async (val) => { s.showThinking = val; await this.plugin.saveSettings(); });
       }), "brain");
 
     this.decorateSetting(new Setting(container)
-      .setName("附件大小上限")
-      .setDesc("单位 MB，超出限制的文件会被跳过")
+      .setName(t("setting.attachSize"))
+      .setDesc(t("setting.attachSize.desc"))
       .addText((text) =>
         text.setPlaceholder("10").setValue(s.maxAttachmentSize === 10 ? "" : String(s.maxAttachmentSize))
           .onChange(async (val) => {
@@ -906,8 +923,8 @@ ${text}
       ), "hard-drive");
 
     this.decorateSetting(new Setting(container)
-      .setName("显示文件上下文")
-      .setDesc("在聊天工具栏显示当前笔记的上下文信息")
+      .setName(t("setting.context"))
+      .setDesc(t("setting.context.desc"))
       .addToggle((t) => {
         t.setValue(s.showContext);
         t.onChange(async (val) => {
@@ -922,6 +939,62 @@ ${text}
 
   }
 
+  private buildAboutTab(container: HTMLElement) {
+    const card = container.createDiv({ cls: "xy-settings-status" });
+
+    const titleRow = card.createDiv({ cls: "xy-settings-status-row" });
+    const iconSpan = titleRow.createSpan({ cls: "xy-settings-status-icon" });
+    setIcon(iconSpan, "sparkles");
+    titleRow.createSpan({ cls: "xy-settings-status-label", text: manifest.name || t("about.title") });
+    titleRow.createSpan({ cls: "xy-settings-status-value", text: `v${manifest.version}` });
+
+    const descRow = card.createDiv({ cls: "xy-settings-status-row" });
+    const descIcon = descRow.createSpan({ cls: "xy-settings-status-icon" });
+    setIcon(descIcon, "file-text");
+    descRow.createSpan({ cls: "xy-settings-status-label", text: t("about.desc") });
+    descRow.createSpan({ cls: "xy-settings-status-value", text: manifest.description });
+
+    const authorRow = card.createDiv({ cls: "xy-settings-status-row" });
+    const authorIcon = authorRow.createSpan({ cls: "xy-settings-status-icon" });
+    setIcon(authorIcon, "user");
+    authorRow.createSpan({ cls: "xy-settings-status-label", text: t("about.author") });
+    authorRow.createSpan({ cls: "xy-settings-status-value", text: manifest.author || "ziwensite" });
+
+    const licenseRow = card.createDiv({ cls: "xy-settings-status-row" });
+    const licIcon = licenseRow.createSpan({ cls: "xy-settings-status-icon" });
+    setIcon(licIcon, "scale");
+    licenseRow.createSpan({ cls: "xy-settings-status-label", text: t("about.license") });
+    licenseRow.createSpan({ cls: "xy-settings-status-value", text: "MIT" });
+
+    const depRow = card.createDiv({ cls: "xy-settings-status-row" });
+    const depIcon = depRow.createSpan({ cls: "xy-settings-status-icon" });
+    setIcon(depIcon, "package");
+    depRow.createSpan({ cls: "xy-settings-status-label", text: t("about.dep") });
+    depRow.createSpan({ cls: "xy-settings-status-value", text: "opencode CLI" });
+
+    container.createEl("hr");
+
+    const linkCard = container.createDiv({ cls: "xy-settings-status" });
+    const ghRow = linkCard.createDiv({ cls: "xy-settings-status-row" });
+    const ghIcon = ghRow.createSpan({ cls: "xy-settings-status-icon" });
+    setIcon(ghIcon, "github");
+    ghRow.createSpan({ cls: "xy-settings-status-label", text: t("about.github") });
+    const ghLink = ghRow.createEl("a", { cls: "xy-settings-status-value", text: "ziwensite/xiaoyuanAI", href: "https://github.com/ziwensite/xiaoyuanAI" });
+    ghLink.target = "_blank";
+    ghLink.style.color = "var(--interactive-accent)";
+
+    const issueRow = linkCard.createDiv({ cls: "xy-settings-status-row" });
+    const issueIcon = issueRow.createSpan({ cls: "xy-settings-status-icon" });
+    setIcon(issueIcon, "bug");
+    issueRow.createSpan({ cls: "xy-settings-status-label", text: t("about.issues") });
+    const issueLink = issueRow.createEl("a", { cls: "xy-settings-status-value", text: t("about.issues.text"), href: "https://github.com/ziwensite/xiaoyuanAI/issues" });
+    issueLink.target = "_blank";
+    issueLink.style.color = "var(--interactive-accent)";
+
+    container.createEl("hr");
+    container.createEl("p", { cls: "xy-settings-desc", text: t("about.tech") });
+  }
+
   private showModelPicker(
     trigger: HTMLElement,
     models: { label: string; value: string }[],
@@ -932,7 +1005,7 @@ ${text}
       const currentModel = s.opencode.model;
 
       const syncItem = popup.createDiv({ cls: "xy-popup-item" });
-      syncItem.createSpan({ cls: "xy-popup-label" }).textContent = "⟳ 同步模型列表";
+      syncItem.createSpan({ cls: "xy-popup-label" }).textContent = t("modelPicker.syncModels");
       syncItem.addEventListener("click", async (ev) => {
         ev.stopPropagation();
         popup.remove();
@@ -947,15 +1020,15 @@ const vaultDir = getVaultBasePath();
             s.opencode.model = result.defaultModel || result.models[0]?.id || "";
           }
           await this.plugin.saveSettings();
-          new Notice(`已同步 ${result.models.length} 个模型`);
+          new Notice(t("notice.syncModels", String(result.models.length)));
         } catch (err: unknown) {
-          new Notice(`同步失败: ${err instanceof Error ? err.message : String(err)}`);
+          new Notice(t("notice.syncFailed", err instanceof Error ? err.message : String(err)));
         }
       });
 
       const groups = new Map<string, { label: string; value: string }[]>();
       for (const m of models) {
-        const provider = m.value.includes("/") ? m.value.split("/")[0] : "其他";
+        const provider = m.value.includes("/") ? m.value.split("/")[0] : t("modelPicker.other");
         const list = groups.get(provider);
         if (list) {
           list.push(m);

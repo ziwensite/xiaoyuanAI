@@ -31,6 +31,7 @@ import { openInEditor } from "./open-in-editor";
 import { createActionBtn } from "./action-buttons";
 import { TextOperationModal } from "./modals";
 import { resolveTarget, extractDelegations, buildAssistantMessages, getAssistantConfig } from "./assistant-manager";
+import { t } from "./i18n";
 
 export class XiaoyuanAIChatView extends ItemView {
   plugin: XiaoyuanAIPlugin;
@@ -137,12 +138,12 @@ export class XiaoyuanAIChatView extends ItemView {
 
     const newChatBtn = left.createSpan({ cls: "xiaoyuan-new-chat-icon" });
     setIcon(newChatBtn, "message-square-plus");
-    setTooltip(newChatBtn, "新建对话");
+    setTooltip(newChatBtn, t("chat.sessionTitle.default"));
     newChatBtn.addEventListener("click", () => this.newChat());
 
     this.sessionSelector = left.createSpan({ cls: "xiaoyuan-session-selector" });
     setTooltip(this.sessionSelector, "点击选择会话");
-    this.sessionSelector.textContent = "新对话";
+    this.sessionSelector.textContent = t("chat.sessionTitle.default");
     this.sessionSelector.addEventListener("click", async (e) => {
       e.stopPropagation();
       await this.showSessionDropdown(e);
@@ -156,10 +157,8 @@ export class XiaoyuanAIChatView extends ItemView {
     if (!headerEl) return;
     const right = headerEl.querySelector(".xiaoyuan-chat-header-right");
     if (!right) return;
-    // remove status dot if exists
     const oldDot = right.querySelector(".xy-status-dot");
     if (oldDot) oldDot.remove();
-    // remove old mode selector & settings icon (recreated by buildHeader)
     (right as HTMLSpanElement).empty();
     this.buildHeaderContent(right as HTMLSpanElement);
   }
@@ -167,13 +166,13 @@ export class XiaoyuanAIChatView extends ItemView {
   private buildHeaderContent(right: HTMLSpanElement) {
     const s = this.plugin.settings;
     const modeText = right.createSpan({ cls: "xiaoyuan-mode-selector" });
-    modeText.textContent = this.activeAgent === "cli" ? "CLI" : "API";
-    setTooltip(modeText, "点击切换执行模式");
+    modeText.textContent = this.activeAgent === "cli" ? t("chat.switchMode.cli") : t("chat.switchMode.api");
+    setTooltip(modeText, t("chat.mode.tooltip"));
     modeText.addEventListener("click", (e) => {
       e.stopPropagation();
       showPopup(modeText, (popup) => {
-        addPopupItem(popup, "API", this.activeAgent === "api", () => this.switchMode("api"));
-        addPopupItem(popup, "CLI", this.activeAgent === "cli", () => this.switchMode("cli"));
+        addPopupItem(popup, t("chat.switchMode.api"), this.activeAgent === "api", () => this.switchMode("api"));
+        addPopupItem(popup, t("chat.switchMode.cli"), this.activeAgent === "cli", () => this.switchMode("cli"));
       });
     });
 
@@ -196,7 +195,7 @@ export class XiaoyuanAIChatView extends ItemView {
         const vaultDir = getVaultBasePath();
         const urls = await getCLIConnections(s, vaultDir);
         if (urls.length === 0) {
-          popup.createDiv({ cls: "xy-popup-item", text: "未连接" });
+          popup.createDiv({ cls: "xy-popup-item", text: t("chat.server.disconnected") });
           return;
         }
         for (const url of urls) {
@@ -243,7 +242,7 @@ export class XiaoyuanAIChatView extends ItemView {
 
     this.inputEl = container.createEl("textarea", {
       cls: "xiaoyuan-chat-input",
-      attr: { placeholder: "输入你的问题..." },
+      attr: { placeholder: t("chat.placeholder") },
     });
 
     this.attachPreviewEl = container.createDiv({ cls: "xiaoyuan-attach-preview" });
@@ -416,7 +415,7 @@ export class XiaoyuanAIChatView extends ItemView {
       e.stopPropagation();
       showPopup(wikiBtn, (popup) => {
         if (s.skills.length === 0) {
-          popup.createDiv({ cls: "xy-popup-item", text: "未配置 Skill，请先在设置中同步" });
+          popup.createDiv({ cls: "xy-popup-item", text: t("inputAt.empty") });
           return;
         }
         for (const skill of s.skills) {
@@ -430,13 +429,13 @@ export class XiaoyuanAIChatView extends ItemView {
 
     const tplBtn = container.createSpan({ cls: "xiaoyuan-wiki-btn" });
     setIcon(tplBtn, "sparkles");
-    setTooltip(tplBtn, "小元AI工具");
+    setTooltip(tplBtn, t("btn.aiTools"));
     tplBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       const menu = new Menu();
       const templates = s.promptTemplates || [];
       if (templates.length === 0) {
-        new Notice("未配置模板，请在设置中创建");
+        new Notice(t("inputAt.noTemplates"));
         return;
       }
       for (const tpl of templates) {
@@ -473,10 +472,10 @@ export class XiaoyuanAIChatView extends ItemView {
       }
       await this.plugin.saveSettings();
       this.updateConnectionStatusUI(true);
-      if (result.models.length > 0) new Notice(`已同步 ${result.models.length} 个模型`);
+      if (result.models.length > 0) new Notice(t("notice.syncModels", String(result.models.length)));
     } catch (err: unknown) {
       this.updateConnectionStatusUI(false);
-      new Notice(`同步失败：${err instanceof Error ? err.message : String(err)}`);
+      new Notice(t("notice.syncFailed", err instanceof Error ? err.message : String(err)));
     }
   }
 
@@ -526,7 +525,7 @@ export class XiaoyuanAIChatView extends ItemView {
       const s = this.plugin.settings;
       if (thinking && s.showThinking) {
         const detailsEl = bubbleEl.createEl("details", { cls: "xiaoyuan-thinking" });
-        detailsEl.createEl("summary", { text: "\u{1F914} 思考过程" });
+        detailsEl.createEl("summary", { text: t("chat.thinking") });
         const tc = detailsEl.createDiv({ cls: "xiaoyuan-thinking-content" });
         tc.textContent = thinking.trim();
       }
@@ -571,12 +570,12 @@ export class XiaoyuanAIChatView extends ItemView {
       if (pre.querySelector(".xy-copy-btn")) return;
       const btn = document.createElement("button");
       btn.className = "xy-copy-btn";
-      btn.textContent = "复制";
+      btn.textContent = t("btn.copy");
       pre.style.position = "relative";
       btn.addEventListener("click", () => {
         navigator.clipboard.writeText(pre.textContent || "");
-        btn.textContent = "已复制";
-        setTimeout(() => { btn.textContent = "复制"; }, 2000);
+        btn.textContent = t("chat.copied");
+        setTimeout(() => { btn.textContent = t("btn.copy"); }, 2000);
       });
       pre.appendChild(btn);
     });
@@ -623,13 +622,12 @@ export class XiaoyuanAIChatView extends ItemView {
 
   private addWelcomeMessage() {
     const s = this.plugin.settings;
-    const modeInfo = s.execMode === "cli"
-      ? "当前模式：CLI（opencode run）"
-      : "当前模式：API（直接调用）";
+    const modeLabel = s.execMode === "cli" ? t("chat.switchMode.cli") : t("chat.switchMode.api");
+    const modeInfo = `${t("chat.welcome.mode")}：${modeLabel}`;
 
     const msgEl = this.messagesEl.createDiv({ cls: "xiaoyuan-msg xiaoyuan-msg-assistant xiaoyuan-welcome" });
     const bubble = msgEl.createDiv({ cls: "xiaoyuan-msg-bubble" });
-    bubble.createEl("span", { text: "👋 你好！我是小元。" });
+    bubble.createEl("span", { text: t("chat.welcome.title") });
     bubble.createEl("br");
     bubble.createEl("br");
     bubble.createEl("span", { text: modeInfo });
@@ -637,14 +635,14 @@ export class XiaoyuanAIChatView extends ItemView {
     bubble.createEl("br");
     bubble.createEl("span", { text: "我可以帮你：" });
     bubble.createEl("br");
-    bubble.createEl("span", { text: "• 💬 聊天对话" });
+    bubble.createEl("span", { text: "• " + t("chat.welcome.help1") });
     bubble.createEl("br");
-    bubble.createEl("span", { text: "• ✍️ 润色、总结、补全笔记" });
+    bubble.createEl("span", { text: "• " + t("chat.welcome.help2") });
     bubble.createEl("br");
-    bubble.createEl("span", { text: "• 🔍 查询维基知识" });
+    bubble.createEl("span", { text: "• " + t("chat.welcome.help3") });
     bubble.createEl("br");
     bubble.createEl("br");
-    bubble.createEl("span", { text: "选中文本后右键 → 使用 AI 操作。" });
+    bubble.createEl("span", { text: t("chat.welcome.help4") });
   }
 
   addSystemMessage(text: string): HTMLDivElement {
@@ -689,7 +687,7 @@ private async truncateMessagesIfNeeded(): Promise<void> {
 
     this.messages = this.messages.slice(removed);
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
-    this.addSystemMessage(`已自动截断 ${removed} 条历史消息以控制 Token 用量`);
+    this.addSystemMessage(t("chat.systemMsg.truncated", String(removed)));
   }
 
   private showAIToolsForContent(content: string, e: MouseEvent) {
@@ -773,9 +771,9 @@ private async truncateMessagesIfNeeded(): Promise<void> {
             break;
           }
         }
-        this.addSystemMessage("\u23F9 已中断");
+        this.addSystemMessage(t("chat.interrupted"));
       } else {
-        this.addMessage("assistant", `\u274C 错误：${err instanceof Error ? err.message : String(err)}`, target);
+        this.addMessage("assistant", t("chat.error") + "：" + (err instanceof Error ? err.message : String(err)), target);
       }
       await this.saveCurrentSession();
     } finally {
@@ -865,7 +863,7 @@ private async truncateMessagesIfNeeded(): Promise<void> {
     }
 
     const provider = getActiveProvider(s);
-    if (!provider || !provider.apiKey) throw new Error("API Key 未配置。请在设置中填写。");
+    if (!provider || !provider.apiKey) throw new Error(t("chat.ai.error.config"));
 
     const prompt = buildAssistantMessages(this.messages, systemPrompt, enrichedMessage, targetName);
     const vaultDir = getVaultBasePath();
@@ -903,7 +901,7 @@ private async truncateMessagesIfNeeded(): Promise<void> {
   private async runBackgroundDelegation(targetName: string, task: string) {
     const assistantConfig = getAssistantConfig(this.plugin.settings, targetName);
     if (!assistantConfig) return;
-    this.addSystemMessage(`⏳ ${targetName} 正在后台执行...`);
+    this.addSystemMessage(t("chat.systemMsg.background", targetName));
     try {
       const result = await this.callAI(task, targetName);
       if (result) {
@@ -911,7 +909,7 @@ private async truncateMessagesIfNeeded(): Promise<void> {
         await this.saveCurrentSession();
       }
     } catch (err: unknown) {
-      this.addSystemMessage(`❌ ${targetName} 执行失败: ${err instanceof Error ? err.message : String(err)}`);
+      this.addSystemMessage(t("chat.systemMsg.bgFailed", targetName, err instanceof Error ? err.message : String(err)));
     }
   }
 
@@ -931,7 +929,7 @@ private addStreamingMessage(content: string, thinking?: string, source?: string)
     const bubbleEl = msgEl.createDiv({ cls: "xiaoyuan-msg-bubble" });
     if (thinking && this.plugin.settings.showThinking) {
       const detailsEl = bubbleEl.createEl("details", { cls: "xiaoyuan-thinking" });
-      detailsEl.createEl("summary", { text: "\u{1F914} 思考过程" });
+      detailsEl.createEl("summary", { text: t("chat.thinking") });
       const tc = detailsEl.createDiv({ cls: "xiaoyuan-thinking-content" });
       tc.textContent = thinking;
     }
@@ -978,7 +976,7 @@ private addStreamingMessage(content: string, thinking?: string, source?: string)
       if (!bubbleEl) return;
       const detailsEl = document.createElement("details");
       detailsEl.className = "xiaoyuan-thinking";
-      detailsEl.createEl("summary", { text: "\u{1F914} 思考过程" });
+      detailsEl.createEl("summary", { text: t("chat.thinking") });
       tc = detailsEl.createDiv({ cls: "xiaoyuan-thinking-content" });
       tc.textContent = thinking;
       bubbleEl.prepend(detailsEl);
@@ -1030,7 +1028,7 @@ private addStreamingMessage(content: string, thinking?: string, source?: string)
 
     if (hasContent && lastMsg.thinking && this.plugin.settings.showThinking) {
       const detailsEl = bubbleEl.createEl("details", { cls: "xiaoyuan-thinking" });
-      detailsEl.createEl("summary", { text: "\u{1F914} 思考过程" });
+      detailsEl.createEl("summary", { text: t("chat.thinking") });
       const tc = detailsEl.createDiv({ cls: "xiaoyuan-thinking-content" });
       tc.textContent = lastMsg.thinking.trim();
       bubbleEl.prepend(detailsEl);
@@ -1111,7 +1109,7 @@ private addStreamingMessage(content: string, thinking?: string, source?: string)
           const now = Date.now();
           const newSession: ChatSession = {
             id: "session-" + now,
-            title: oldMessages[0]?.content?.slice(0, 30) || "历史对话",
+            title: oldMessages[0]?.content?.slice(0, 30) || t("chat.sessionTitle.history"),
             createdAt: now,
             updatedAt: now,
           };
@@ -1156,7 +1154,7 @@ private addStreamingMessage(content: string, thinking?: string, source?: string)
 
   private sessionTitleFromMessages(): string {
     const firstUser = this.messages.find(m => m.role === "user");
-    const text = firstUser?.content || this.messages[0]?.content || "新对话";
+    const text = firstUser?.content || this.messages[0]?.content || t("chat.sessionTitle.default");
     const cleaned = text.replace(/^#+\s*/, "").replace(/[*_`~]/g, "").trim();
     return cleaned.length > 30 ? cleaned.slice(0, 30) + "…" : cleaned;
   }
@@ -1167,8 +1165,8 @@ private addStreamingMessage(content: string, thinking?: string, source?: string)
     const session = this.sessions.find((s) => s.id === this.currentSessionId);
     if (session) {
       session.updatedAt = Date.now();
-      if (session.title === "新对话" || session.title === "") {
-        session.title = this.messages.length > 0 ? this.sessionTitleFromMessages() : "新对话";
+      if (session.title === t("chat.sessionTitle.default") || session.title === "") {
+        session.title = this.messages.length > 0 ? this.sessionTitleFromMessages() : t("chat.sessionTitle.default");
         this.updateSessionSelector();
       }
     }
@@ -1178,7 +1176,7 @@ private addStreamingMessage(content: string, thinking?: string, source?: string)
 
   private updateSessionTitle() {
     const session = this.sessions.find((s) => s.id === this.currentSessionId);
-    if (session && (session.title === "新对话" || session.title === "") && this.messages.length > 0) {
+    if (session && (session.title === t("chat.sessionTitle.default") || session.title === "") && this.messages.length > 0) {
       session.title = this.sessionTitleFromMessages();
       session.updatedAt = Date.now();
       this.updateSessionSelector();
@@ -1189,7 +1187,7 @@ private addStreamingMessage(content: string, thinking?: string, source?: string)
     const now = Date.now();
     const newSession: ChatSession = {
       id: "session-" + now,
-      title: "新对话",
+      title: t("chat.sessionTitle.default"),
       createdAt: now,
       updatedAt: now,
     };
@@ -1203,13 +1201,13 @@ private addStreamingMessage(content: string, thinking?: string, source?: string)
   }
 
   private async switchSession(sessionId: string) {
-    if (this.abortController) { new Notice("请等待当前 AI 回复完成"); return; }
+    if (this.abortController) { new Notice(t("chat.waitForResponse")); return; }
     await this.saveCurrentSession();
 
     const filePath = getChatHistoryPath(this.plugin.settings.chatHistoryPath) + "/" + sessionId + ".md";
     const exists = await this.app.vault.adapter.exists(filePath).catch(() => false);
     if (!exists) {
-      new Notice("会话文件已被删除");
+      new Notice(t("chat.session.fileDeleted"));
       this.sessions = this.sessions.filter(s => s.id !== sessionId);
       this.updateSessionSelector();
       return;
@@ -1221,14 +1219,14 @@ private addStreamingMessage(content: string, thinking?: string, source?: string)
       await this.loadSession(session);
       this.updateSessionSelector();
       await saveSessionsMeta(this.plugin, this.sessions, this.currentSessionId);
-      this.addSystemMessage(`已切换到会话: ${session.title}`);
+      this.addSystemMessage(t("chat.session.switched") + ": " + session.title);
     }
   }
 
   private async deleteSession(sessionId: string) {
-    if (this.abortController) { new Notice("请等待当前 AI 回复完成"); return; }
+    if (this.abortController) { new Notice(t("chat.waitForResponse")); return; }
     if (this.sessions.length <= 1) {
-      new Notice("至少保留一个对话");
+      new Notice(t("chat.session.atLeastOne"));
       return;
     }
 
@@ -1246,7 +1244,7 @@ private addStreamingMessage(content: string, thinking?: string, source?: string)
 
     await saveSessionsMeta(this.plugin, this.sessions, this.currentSessionId);
     this.updateSessionSelector();
-    new Notice("已删除");
+    new Notice(t("chat.session.deleted"));
   }
 
   private async showSessionDropdown(_e: MouseEvent) {
@@ -1259,7 +1257,7 @@ private addStreamingMessage(content: string, thinking?: string, source?: string)
     const headerEl = this.viewContainer.querySelector<HTMLElement>(".xiaoyuan-chat-header");
     if (!headerEl) return;
     showPopup(headerEl, (popup) => {
-      const searchInput = popup.createEl("input", { cls: "xy-popup-search", type: "text", placeholder: "搜索会话..." });
+      const searchInput = popup.createEl("input", { cls: "xy-popup-search", type: "text", placeholder: t("chat.session.search") });
       const listEl = popup.createDiv({ cls: "xy-popup-session-list" });
 
       for (const session of this.sessions) {
@@ -1386,20 +1384,20 @@ const msgEls = Array.from(this.messagesEl.querySelectorAll(".xiaoyuan-msg"));
     this.plugin.saveSettings();
     this.rebuildHeader();
     this.rebuildToolbar();
-    const label = newMode === "cli" ? "CLI" : "API";
-    this.addSystemMessage(`✅ 前台已切换到 ${label}`);
-    new Notice(`前台已切换到 ${label}`);
+    const label = newMode === "cli" ? t("chat.switchMode.cli") : t("chat.switchMode.api");
+    this.addSystemMessage(t("chat.switchMode.msg", label));
+    new Notice(t("chat.switchMode.notice", label));
   }
 
   private setProcessingState(processing: boolean) {
     this.thinkingBarEl.classList.toggle("is-active", processing);
     if (processing) {
       setIcon(this.sendBtn, "circle-stop");
-      setTooltip(this.sendBtn, "停止");
+      setTooltip(this.sendBtn, t("btn.stop"));
       this.sendBtn.classList.add("is-stop");
     } else {
       setIcon(this.sendBtn, "circle-arrow-right");
-      setTooltip(this.sendBtn, "发送");
+      setTooltip(this.sendBtn, t("btn.send"));
       this.sendBtn.classList.remove("is-stop");
     }
   }
@@ -1417,5 +1415,3 @@ function getDateKey(ts: number): string {
 }
 
 // ─── Exported popup helpers ───────────────────────────────────────
-
-

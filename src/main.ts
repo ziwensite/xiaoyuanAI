@@ -12,6 +12,7 @@ import { resolveOpenCodePath } from "./opencode-server";
 import { getVaultBasePath, setVaultBasePath } from "./server";
 import { showSelectionPopup } from "./selection-popup";
 import { SpeakController } from "./speak-controller";
+import { t, initLocale } from "./i18n";
 
 export default class XiaoyuanAIPlugin extends Plugin {
   settings!: XiaoyuanAISettings;
@@ -19,6 +20,7 @@ export default class XiaoyuanAIPlugin extends Plugin {
   private lastSkillRun = new Map<string, number>();
 
   async onload() {
+    initLocale();
     await this.loadSettings();
     const adapter = this.app.vault.adapter as { getBasePath?: () => string };
     if (adapter.getBasePath) setVaultBasePath(adapter.getBasePath());
@@ -26,7 +28,7 @@ export default class XiaoyuanAIPlugin extends Plugin {
     if (this.settings.execMode !== "api") {
       const resolved = await resolveOpenCodePath(this.settings.opencode.cliPath);
       if (!fsSync.existsSync(resolved)) {
-        new Notice("未检测到 opencode 程序，CLI 功能不可用");
+        new Notice(t("notice.opencodeNotFound"));
       }
     }
 
@@ -61,14 +63,14 @@ export default class XiaoyuanAIPlugin extends Plugin {
 
     this.addCommand({
       id: "xiaoyuanAI-toggle-chat",
-      name: "切换小元AI聊天面板",
+      name: t("cmd.toggle"),
       callback: () => this.activateChatView(),
       hotkeys: [{ modifiers: ["Ctrl", "Shift"], key: "C" }],
     });
 
     this.addCommand({
       id: "xiaoyuanAI-new-chat",
-      name: "\u{1F4AC} 新建 AI 对话",
+      name: t("cmd.newChat"),
       callback: () => {
         const leaf = this.activateChatView();
         if (leaf?.view instanceof XiaoyuanAIChatView) leaf.view.newChat();
@@ -77,14 +79,14 @@ export default class XiaoyuanAIPlugin extends Plugin {
     });
 
     this.addCommand({
-      id: "xiaoyuanAI-chat-with-note", name: "\u{1F4C4} 用当前笔记开启 AI 对话",
+      id: "xiaoyuanAI-chat-with-note", name: t("cmd.chatWithNote"),
       callback: async () => {
         const file = this.app.workspace.getActiveFile();
-        if (!file) { new Notice("请先打开一个笔记"); return; }
+        if (!file) { new Notice(t("notice.noEditor")); return; }
         const content = await this.app.vault.read(file);
         const leaf = this.activateChatView();
         if (leaf?.view instanceof XiaoyuanAIChatView) {
-          leaf.view.addMessage("user", `我有一段笔记内容，帮我分析：\n\n${content.slice(0, 3000)}`);
+          leaf.view.addMessage("user", t("cmd.chatWithNote.msg", content.slice(0, 3000)));
         }
       },
     });
@@ -273,7 +275,7 @@ export default class XiaoyuanAIPlugin extends Plugin {
   private async executeScheduledSkill(skill: SkillEntry) {
     const now = new Date();
     const d = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-    const logLine = `- ${d} | 🔄 自动: ${skill.name} — ${skill.description}\n`;
+    const logLine = `- ${d} | ${t("chat.systemMsg.autoExec")}: ${skill.name} — ${skill.description}\n`;
 
     try {
       const logPath = path.join(getVaultBasePath(), "_autoTaskLog.md");
@@ -282,8 +284,8 @@ export default class XiaoyuanAIPlugin extends Plugin {
 
     const leaf = this.activateChatView();
     if (leaf?.view instanceof XiaoyuanAIChatView) {
-      leaf.view.addSystemMessage(`🔄 自动执行: ${skill.name}`);
-      leaf.view.inputEl.value = `/${skill.name} 执行定时任务`;
+      leaf.view.addSystemMessage(`${t("chat.systemMsg.autoExec")}: ${skill.name}`);
+      leaf.view.inputEl.value = `/${skill.name} ${t("chat.systemMsg.autoExec")}`;
       leaf.view.sendMessage();
     }
   }
