@@ -4808,8 +4808,8 @@ ${content}`,
     container.createEl("hr");
     container.createEl("h3", { text: t("setting.general.chatSettings") });
     this.decorateSetting(new import_obsidian9.Setting(container).setName(t("setting.chatPath")).setDesc(t("setting.chatPath.desc")).addText(
-      (text) => text.setPlaceholder("_chatHistory").setValue(s.chatHistoryPath === "_chatHistory" ? "" : s.chatHistoryPath).onChange(async (val) => {
-        s.chatHistoryPath = val.trim() || "_chatHistory";
+      (text) => text.setPlaceholder("_xiaoyuanAI/chatHistory").setValue(s.chatHistoryPath === "_xiaoyuanAI/chatHistory" ? "" : s.chatHistoryPath).onChange(async (val) => {
+        s.chatHistoryPath = val.trim() || "_xiaoyuanAI/chatHistory";
         await this.plugin.saveSettings();
       })
     ), "folder");

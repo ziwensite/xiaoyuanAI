@@ -881,8 +881,8 @@ ${text}
       .setName(t("setting.chatPath"))
       .setDesc(t("setting.chatPath.desc"))
       .addText((text) =>
-        text.setPlaceholder("_chatHistory").setValue(s.chatHistoryPath === "_chatHistory" ? "" : s.chatHistoryPath)
-          .onChange(async (val) => { s.chatHistoryPath = val.trim() || "_chatHistory"; await this.plugin.saveSettings(); }),
+        text.setPlaceholder("_xiaoyuanAI/chatHistory").setValue(s.chatHistoryPath === "_xiaoyuanAI/chatHistory" ? "" : s.chatHistoryPath)
+          .onChange(async (val) => { s.chatHistoryPath = val.trim() || "_xiaoyuanAI/chatHistory"; await this.plugin.saveSettings(); }),
       ), "folder");
 
     this.decorateSetting(new Setting(container)
