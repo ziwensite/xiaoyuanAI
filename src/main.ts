@@ -41,7 +41,7 @@ export default class XiaoyuanAIPlugin extends Plugin {
     this.speakController.onChange = (speaking) => {
       statusBarIndicator.style.display = speaking ? "" : "none";
     };
-    this.addRibbonIcon("message-circle", "小元AI", () => this.activateChatView());
+    this.addRibbonIcon("message-circle", "小元AI · XiaoyuanAI", () => this.activateChatView());
 
     this.registerEvent(
       this.app.workspace.on("editor-menu", (menu, editor) => {
