@@ -4002,7 +4002,7 @@ init_server();
 // manifest.json
 var manifest_default = {
   id: "xiaoyuanAI",
-  name: "\u5C0F\u5143AI \xB7 XiaoyuanAI",
+  name: "XiaoyuanAI",
   version: "1.0.1",
   minAppVersion: "1.5.0",
   description: "AI \u804A\u5929\u3001\u6587\u672C\u6DA6\u8272\u3001\u7EF4\u57FA\u7BA1\u7406 \u2014 \u5C06 AI \u80FD\u529B\u96C6\u6210\u5230 Obsidian | AI chat, text polish, wiki management",
@@ -5056,7 +5056,7 @@ var XiaoyuanAIPlugin = class extends import_obsidian10.Plugin {
     this.speakController.onChange = (speaking) => {
       statusBarIndicator.style.display = speaking ? "" : "none";
     };
-    this.addRibbonIcon("message-circle", "\u5C0F\u5143AI \xB7 XiaoyuanAI", () => this.activateChatView());
+    this.addRibbonIcon("message-circle", "XiaoyuanAI", () => this.activateChatView());
     this.registerEvent(
       this.app.workspace.on("editor-menu", (menu, editor) => {
         const sel = editor.getSelection();
