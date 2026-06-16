@@ -6,7 +6,7 @@ import type { XiaoyuanAISettings, SkillEntry } from "./types";
 import { XiaoyuanAIChatView } from "./chat-view";
 import { XiaoyuanAISettingTab } from "./settings";
 import { TextOperationModal } from "./modals";
-import { DEFAULT_SETTINGS, VIEW_TYPE_XIAOYUAN_AI_CHAT, DEFAULT_PROMPT_TEMPLATES } from "./constants";
+import { DEFAULT_SETTINGS, VIEW_TYPE_XIAOYUAN_AI_CHAT, DEFAULT_PROMPT_TEMPLATES, DEFAULT_ASSISTANT_A, DEFAULT_ASSISTANT_C } from "./constants";
 import { ensureOpenCodeServer, stopOpenCodeServer } from "./ai";
 import { resolveOpenCodePath } from "./opencode-server";
 import { getVaultBasePath, setVaultBasePath } from "./server";
@@ -246,10 +246,23 @@ export default class XiaoyuanAIPlugin extends Plugin {
         try { p.apiKey = atob(p.apiKey); } catch { /* 明文 Key，无需解码 */ }
       }
     }
-    // 补全缺失的内置模板
-    for (const def of DEFAULT_PROMPT_TEMPLATES) {
-      if (!this.settings.promptTemplates.some(t => t.id === def.id)) {
-        this.settings.promptTemplates.push({ ...def });
+    // 补全/更新内置模板（跟随 i18n 语言）
+    const templateIds = ["polish", "summarize", "complete", "expand", "continue", "translate", "translate-en"];
+    for (const id of templateIds) {
+      const def = DEFAULT_PROMPT_TEMPLATES.find(d => d.id === id);
+      const existing = this.settings.promptTemplates.find(t => t.id === id);
+      if (existing) {
+        if (def && existing.prompt === def.prompt) {
+          existing.name = t(`template.${id}.name`);
+          existing.description = t(`template.${id}.desc`);
+          existing.prompt = t(`template.${id}.prompt`);
+        }
+        if (def && !existing.icon) existing.icon = def.icon;
+      } else if (def) {
+        this.settings.promptTemplates.push({
+          id, name: t(`template.${id}.name`), description: t(`template.${id}.desc`),
+          prompt: t(`template.${id}.prompt`), icon: def.icon,
+        });
       }
     }
     // 补全旧条目缺失的 icon 字段
@@ -264,6 +277,13 @@ export default class XiaoyuanAIPlugin extends Plugin {
       const bi = orderMap.get(b.id) ?? 999;
       return ai - bi;
     });
+    // 助手默认提示词跟随 i18n
+    if (!this.settings.assistantA.systemPrompt || this.settings.assistantA.systemPrompt === DEFAULT_ASSISTANT_A.systemPrompt) {
+      this.settings.assistantA.systemPrompt = t("assistant.defaultPromptA");
+    }
+    if (!this.settings.assistantC.systemPrompt || this.settings.assistantC.systemPrompt === DEFAULT_ASSISTANT_C.systemPrompt) {
+      this.settings.assistantC.systemPrompt = t("assistant.defaultPromptC");
+    }
   }
   async saveSettings() {
     const encoded = this.settings.apiProviders.map(p => ({
@@ -278,7 +298,7 @@ export default class XiaoyuanAIPlugin extends Plugin {
     const logLine = `- ${d} | ${t("chat.systemMsg.autoExec")}: ${skill.name} — ${skill.description}\n`;
 
     try {
-      const logPath = path.join(getVaultBasePath(), "_autoTaskLog.md");
+      const logPath = path.join(getVaultBasePath(), "_xiaoyuanAI", "autoTaskLog.md");
       await fs.appendFile(logPath, logLine);
     } catch {}
 

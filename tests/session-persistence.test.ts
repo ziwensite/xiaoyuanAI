@@ -33,7 +33,7 @@ describe("getChatHistoryPath", () => {
   });
 
   it("returns default path when empty", () => {
-    expect(getChatHistoryPath("")).toBe(".chatHistory");
+    expect(getChatHistoryPath("")).toBe("_xiaoyuanAI/chatHistory");
   });
 });
 

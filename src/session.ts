@@ -5,7 +5,7 @@ import { CHAT_SESSIONS_KEY, CURRENT_SESSION_KEY } from "./constants";
 import { formatDate, formatTime } from "./utils";
 
 export function getChatHistoryPath(chatHistoryPath: string): string {
-  return chatHistoryPath || ".chatHistory";
+  return chatHistoryPath || "_xiaoyuanAI/chatHistory";
 }
 
 function getSessionFilePath(chatHistoryPath: string, sessionId: string): string {

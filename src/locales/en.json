@@ -270,5 +270,30 @@
   "error.aiNoValidJson": "AI did not return valid JSON",
   "error.aiFormatError": "AI returned malformed format",
 
-  "popup.stopSpeaking": "Stop speaking"
+  "popup.stopSpeaking": "Stop speaking",
+
+  "assistant.defaultPromptA": "You are assistant XiaoA, responsible for direct conversation with the user. You can analyze, write, translate, and polish text. Your partner XiaoC specializes in file operations and command execution. When encountering relevant tasks, you can delegate to @XiaoC. XiaoC's results will automatically appear in your context.",
+  "assistant.defaultPromptC": "You are assistant XiaoC, specializing in file operations and command execution. You work alongside XiaoA who handles direct conversation. When @XiaoC'd, respond directly to the user. When not @'d, stay on standby. XiaoA may delegate tasks to you, and your results will automatically appear in XiaoA's context.",
+
+  "template.polish.name": "Polish",
+  "template.polish.desc": "Improve expression, grammar, and fluency",
+  "template.polish.prompt": "You are a text polishing assistant. Polish the following text to improve expression, grammar, and fluency while preserving the original meaning. Output only the polished result without any explanation:\n\n",
+  "template.summarize.name": "Summarize",
+  "template.summarize.desc": "Extract key points",
+  "template.summarize.prompt": "You are a summarization assistant. Provide a concise summary of the following text, extracting key points. Output only the summary:\n\n",
+  "template.complete.name": "Complete",
+  "template.complete.desc": "Naturally complete content based on context",
+  "template.complete.prompt": "You are a writing assistant. Naturally complete the following content based on context, maintaining a consistent style:\n\n",
+  "template.expand.name": "Expand",
+  "template.expand.desc": "Add details and depth",
+  "template.expand.prompt": "You are a writing assistant. Expand the following content by adding details, examples, and depth while preserving core ideas:\n\n",
+  "template.continue.name": "Continue",
+  "template.continue.desc": "Naturally continue the content",
+  "template.continue.prompt": "You are a writing assistant. Naturally continue the following content while maintaining a consistent style:\n\n",
+  "template.translate.name": "Translate to Chinese",
+  "template.translate.desc": "Translate text to Chinese",
+  "template.translate.prompt": "You are a translation assistant. Translate the following text to Chinese, maintaining professionalism and fluency:\n\n",
+  "template.translate-en.name": "Translate to English",
+  "template.translate-en.desc": "Translate text to English",
+  "template.translate-en.prompt": "You are a translation assistant. Translate the following text to English, maintaining professionalism and fluency:\n\n"
 }

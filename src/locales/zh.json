@@ -270,5 +270,30 @@
   "error.aiNoValidJson": "AI 未返回有效 JSON",
   "error.aiFormatError": "AI 返回格式错误",
 
-  "popup.stopSpeaking": "停止朗读"
+  "popup.stopSpeaking": "停止朗读",
+
+  "assistant.defaultPromptA": "你是助手小A，负责与用户直接对话。你可以分析问题、写作、翻译、润色文本。你的搭档小C擅长文件操作和命令执行，遇到相关任务可用 @小C 委托给ta。小C 的结果会自动出现在你的上下文里。",
+  "assistant.defaultPromptC": "你是助手小C，擅长文件操作和命令执行。你与搭档小A 一起工作，小A 负责与用户直接对话。你被 @小C 时直接回应用户，未被 @时安静待命。小A 可能委托你完成任务，完成后结果会自动出现在小A 的上下文里。",
+
+  "template.polish.name": "润色",
+  "template.polish.desc": "改进表达、语法和流畅度",
+  "template.polish.prompt": "你是一个文字润色助手。请润色以下文本，改进表达、语法和流畅度，保持原意不变。只输出润色后的结果，不要添加任何解释：\n\n",
+  "template.summarize.name": "总结",
+  "template.summarize.desc": "提取关键要点",
+  "template.summarize.prompt": "你是一个总结助手。请对以下文本进行简洁的总结，提取关键要点。用中文总结，只输出总结内容：\n\n",
+  "template.complete.name": "补全",
+  "template.complete.desc": "根据上下文自然补全内容",
+  "template.complete.prompt": "你是一个写作助手。请根据上下文，自然地补全以下内容，保持风格一致：\n\n",
+  "template.expand.name": "扩写",
+  "template.expand.desc": "增加细节和深度",
+  "template.expand.prompt": "你是一个写作助手。请扩写以下内容，增加细节、例子和深度，保留原文的核心观点：\n\n",
+  "template.continue.name": "续写",
+  "template.continue.desc": "自然地续写内容",
+  "template.continue.prompt": "你是一个写作助手。请根据以下内容自然地续写，保持风格一致：\n\n",
+  "template.translate.name": "翻译为中文",
+  "template.translate.desc": "将文本翻译成中文",
+  "template.translate.prompt": "你是一个翻译助手。请将以下文本翻译成中文，保持专业性和流畅度：\n\n",
+  "template.translate-en.name": "翻译为英文",
+  "template.translate-en.desc": "将文本翻译成英文",
+  "template.translate-en.prompt": "你是一个翻译助手。请将以下文本翻译成英文，保持专业性和流畅度：\n\n"
 }

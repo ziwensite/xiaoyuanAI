@@ -53,7 +53,7 @@ export const DEFAULT_SETTINGS: XiaoyuanAISettings = {
   systemPrompt: "",
   maxTokens: 4096,
   temperature: 0.7,
-  chatHistoryPath: "_chatHistory",
+  chatHistoryPath: "_xiaoyuanAI/chatHistory",
   showDiffPreview: true,
   showThinking: true,
   maxAttachmentSize: 10,

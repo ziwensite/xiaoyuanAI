@@ -88,7 +88,7 @@ var init_constants = __esm({
       systemPrompt: "",
       maxTokens: 4096,
       temperature: 0.7,
-      chatHistoryPath: "_chatHistory",
+      chatHistoryPath: "_xiaoyuanAI/chatHistory",
       showDiffPreview: true,
       showThinking: true,
       maxAttachmentSize: 10,
@@ -1113,7 +1113,7 @@ init_opencode_config();
 init_constants();
 init_utils();
 function getChatHistoryPath(chatHistoryPath) {
-  return chatHistoryPath || ".chatHistory";
+  return chatHistoryPath || "_xiaoyuanAI/chatHistory";
 }
 function getSessionFilePath(chatHistoryPath, sessionId) {
   return `${getChatHistoryPath(chatHistoryPath)}/${sessionId}.md`;
@@ -1639,7 +1639,30 @@ var zh_default = {
   "assistant.suffixA": "\uFF08\u5C0FA\uFF09",
   "error.aiNoValidJson": "AI \u672A\u8FD4\u56DE\u6709\u6548 JSON",
   "error.aiFormatError": "AI \u8FD4\u56DE\u683C\u5F0F\u9519\u8BEF",
-  "popup.stopSpeaking": "\u505C\u6B62\u6717\u8BFB"
+  "popup.stopSpeaking": "\u505C\u6B62\u6717\u8BFB",
+  "assistant.defaultPromptA": "\u4F60\u662F\u52A9\u624B\u5C0FA\uFF0C\u8D1F\u8D23\u4E0E\u7528\u6237\u76F4\u63A5\u5BF9\u8BDD\u3002\u4F60\u53EF\u4EE5\u5206\u6790\u95EE\u9898\u3001\u5199\u4F5C\u3001\u7FFB\u8BD1\u3001\u6DA6\u8272\u6587\u672C\u3002\u4F60\u7684\u642D\u6863\u5C0FC\u64C5\u957F\u6587\u4EF6\u64CD\u4F5C\u548C\u547D\u4EE4\u6267\u884C\uFF0C\u9047\u5230\u76F8\u5173\u4EFB\u52A1\u53EF\u7528 @\u5C0FC \u59D4\u6258\u7ED9ta\u3002\u5C0FC \u7684\u7ED3\u679C\u4F1A\u81EA\u52A8\u51FA\u73B0\u5728\u4F60\u7684\u4E0A\u4E0B\u6587\u91CC\u3002",
+  "assistant.defaultPromptC": "\u4F60\u662F\u52A9\u624B\u5C0FC\uFF0C\u64C5\u957F\u6587\u4EF6\u64CD\u4F5C\u548C\u547D\u4EE4\u6267\u884C\u3002\u4F60\u4E0E\u642D\u6863\u5C0FA \u4E00\u8D77\u5DE5\u4F5C\uFF0C\u5C0FA \u8D1F\u8D23\u4E0E\u7528\u6237\u76F4\u63A5\u5BF9\u8BDD\u3002\u4F60\u88AB @\u5C0FC \u65F6\u76F4\u63A5\u56DE\u5E94\u7528\u6237\uFF0C\u672A\u88AB @\u65F6\u5B89\u9759\u5F85\u547D\u3002\u5C0FA \u53EF\u80FD\u59D4\u6258\u4F60\u5B8C\u6210\u4EFB\u52A1\uFF0C\u5B8C\u6210\u540E\u7ED3\u679C\u4F1A\u81EA\u52A8\u51FA\u73B0\u5728\u5C0FA \u7684\u4E0A\u4E0B\u6587\u91CC\u3002",
+  "template.polish.name": "\u6DA6\u8272",
+  "template.polish.desc": "\u6539\u8FDB\u8868\u8FBE\u3001\u8BED\u6CD5\u548C\u6D41\u7545\u5EA6",
+  "template.polish.prompt": "\u4F60\u662F\u4E00\u4E2A\u6587\u5B57\u6DA6\u8272\u52A9\u624B\u3002\u8BF7\u6DA6\u8272\u4EE5\u4E0B\u6587\u672C\uFF0C\u6539\u8FDB\u8868\u8FBE\u3001\u8BED\u6CD5\u548C\u6D41\u7545\u5EA6\uFF0C\u4FDD\u6301\u539F\u610F\u4E0D\u53D8\u3002\u53EA\u8F93\u51FA\u6DA6\u8272\u540E\u7684\u7ED3\u679C\uFF0C\u4E0D\u8981\u6DFB\u52A0\u4EFB\u4F55\u89E3\u91CA\uFF1A\n\n",
+  "template.summarize.name": "\u603B\u7ED3",
+  "template.summarize.desc": "\u63D0\u53D6\u5173\u952E\u8981\u70B9",
+  "template.summarize.prompt": "\u4F60\u662F\u4E00\u4E2A\u603B\u7ED3\u52A9\u624B\u3002\u8BF7\u5BF9\u4EE5\u4E0B\u6587\u672C\u8FDB\u884C\u7B80\u6D01\u7684\u603B\u7ED3\uFF0C\u63D0\u53D6\u5173\u952E\u8981\u70B9\u3002\u7528\u4E2D\u6587\u603B\u7ED3\uFF0C\u53EA\u8F93\u51FA\u603B\u7ED3\u5185\u5BB9\uFF1A\n\n",
+  "template.complete.name": "\u8865\u5168",
+  "template.complete.desc": "\u6839\u636E\u4E0A\u4E0B\u6587\u81EA\u7136\u8865\u5168\u5185\u5BB9",
+  "template.complete.prompt": "\u4F60\u662F\u4E00\u4E2A\u5199\u4F5C\u52A9\u624B\u3002\u8BF7\u6839\u636E\u4E0A\u4E0B\u6587\uFF0C\u81EA\u7136\u5730\u8865\u5168\u4EE5\u4E0B\u5185\u5BB9\uFF0C\u4FDD\u6301\u98CE\u683C\u4E00\u81F4\uFF1A\n\n",
+  "template.expand.name": "\u6269\u5199",
+  "template.expand.desc": "\u589E\u52A0\u7EC6\u8282\u548C\u6DF1\u5EA6",
+  "template.expand.prompt": "\u4F60\u662F\u4E00\u4E2A\u5199\u4F5C\u52A9\u624B\u3002\u8BF7\u6269\u5199\u4EE5\u4E0B\u5185\u5BB9\uFF0C\u589E\u52A0\u7EC6\u8282\u3001\u4F8B\u5B50\u548C\u6DF1\u5EA6\uFF0C\u4FDD\u7559\u539F\u6587\u7684\u6838\u5FC3\u89C2\u70B9\uFF1A\n\n",
+  "template.continue.name": "\u7EED\u5199",
+  "template.continue.desc": "\u81EA\u7136\u5730\u7EED\u5199\u5185\u5BB9",
+  "template.continue.prompt": "\u4F60\u662F\u4E00\u4E2A\u5199\u4F5C\u52A9\u624B\u3002\u8BF7\u6839\u636E\u4EE5\u4E0B\u5185\u5BB9\u81EA\u7136\u5730\u7EED\u5199\uFF0C\u4FDD\u6301\u98CE\u683C\u4E00\u81F4\uFF1A\n\n",
+  "template.translate.name": "\u7FFB\u8BD1\u4E3A\u4E2D\u6587",
+  "template.translate.desc": "\u5C06\u6587\u672C\u7FFB\u8BD1\u6210\u4E2D\u6587",
+  "template.translate.prompt": "\u4F60\u662F\u4E00\u4E2A\u7FFB\u8BD1\u52A9\u624B\u3002\u8BF7\u5C06\u4EE5\u4E0B\u6587\u672C\u7FFB\u8BD1\u6210\u4E2D\u6587\uFF0C\u4FDD\u6301\u4E13\u4E1A\u6027\u548C\u6D41\u7545\u5EA6\uFF1A\n\n",
+  "template.translate-en.name": "\u7FFB\u8BD1\u4E3A\u82F1\u6587",
+  "template.translate-en.desc": "\u5C06\u6587\u672C\u7FFB\u8BD1\u6210\u82F1\u6587",
+  "template.translate-en.prompt": "\u4F60\u662F\u4E00\u4E2A\u7FFB\u8BD1\u52A9\u624B\u3002\u8BF7\u5C06\u4EE5\u4E0B\u6587\u672C\u7FFB\u8BD1\u6210\u82F1\u6587\uFF0C\u4FDD\u6301\u4E13\u4E1A\u6027\u548C\u6D41\u7545\u5EA6\uFF1A\n\n"
 };
 
 // src/locales/en.json
@@ -1884,7 +1907,30 @@ var en_default = {
   "assistant.suffixA": " (XiaoA)",
   "error.aiNoValidJson": "AI did not return valid JSON",
   "error.aiFormatError": "AI returned malformed format",
-  "popup.stopSpeaking": "Stop speaking"
+  "popup.stopSpeaking": "Stop speaking",
+  "assistant.defaultPromptA": "You are assistant XiaoA, responsible for direct conversation with the user. You can analyze, write, translate, and polish text. Your partner XiaoC specializes in file operations and command execution. When encountering relevant tasks, you can delegate to @XiaoC. XiaoC's results will automatically appear in your context.",
+  "assistant.defaultPromptC": "You are assistant XiaoC, specializing in file operations and command execution. You work alongside XiaoA who handles direct conversation. When @XiaoC'd, respond directly to the user. When not @'d, stay on standby. XiaoA may delegate tasks to you, and your results will automatically appear in XiaoA's context.",
+  "template.polish.name": "Polish",
+  "template.polish.desc": "Improve expression, grammar, and fluency",
+  "template.polish.prompt": "You are a text polishing assistant. Polish the following text to improve expression, grammar, and fluency while preserving the original meaning. Output only the polished result without any explanation:\n\n",
+  "template.summarize.name": "Summarize",
+  "template.summarize.desc": "Extract key points",
+  "template.summarize.prompt": "You are a summarization assistant. Provide a concise summary of the following text, extracting key points. Output only the summary:\n\n",
+  "template.complete.name": "Complete",
+  "template.complete.desc": "Naturally complete content based on context",
+  "template.complete.prompt": "You are a writing assistant. Naturally complete the following content based on context, maintaining a consistent style:\n\n",
+  "template.expand.name": "Expand",
+  "template.expand.desc": "Add details and depth",
+  "template.expand.prompt": "You are a writing assistant. Expand the following content by adding details, examples, and depth while preserving core ideas:\n\n",
+  "template.continue.name": "Continue",
+  "template.continue.desc": "Naturally continue the content",
+  "template.continue.prompt": "You are a writing assistant. Naturally continue the following content while maintaining a consistent style:\n\n",
+  "template.translate.name": "Translate to Chinese",
+  "template.translate.desc": "Translate text to Chinese",
+  "template.translate.prompt": "You are a translation assistant. Translate the following text to Chinese, maintaining professionalism and fluency:\n\n",
+  "template.translate-en.name": "Translate to English",
+  "template.translate-en.desc": "Translate text to English",
+  "template.translate-en.prompt": "You are a translation assistant. Translate the following text to English, maintaining professionalism and fluency:\n\n"
 };
 
 // src/i18n.ts
@@ -5208,9 +5254,25 @@ var XiaoyuanAIPlugin = class extends import_obsidian10.Plugin {
         }
       }
     }
-    for (const def of DEFAULT_PROMPT_TEMPLATES) {
-      if (!this.settings.promptTemplates.some((t2) => t2.id === def.id)) {
-        this.settings.promptTemplates.push({ ...def });
+    const templateIds = ["polish", "summarize", "complete", "expand", "continue", "translate", "translate-en"];
+    for (const id of templateIds) {
+      const def = DEFAULT_PROMPT_TEMPLATES.find((d) => d.id === id);
+      const existing = this.settings.promptTemplates.find((t2) => t2.id === id);
+      if (existing) {
+        if (def && existing.prompt === def.prompt) {
+          existing.name = t(`template.${id}.name`);
+          existing.description = t(`template.${id}.desc`);
+          existing.prompt = t(`template.${id}.prompt`);
+        }
+        if (def && !existing.icon) existing.icon = def.icon;
+      } else if (def) {
+        this.settings.promptTemplates.push({
+          id,
+          name: t(`template.${id}.name`),
+          description: t(`template.${id}.desc`),
+          prompt: t(`template.${id}.prompt`),
+          icon: def.icon
+        });
       }
     }
     for (const tpl of this.settings.promptTemplates) {
@@ -5224,6 +5286,12 @@ var XiaoyuanAIPlugin = class extends import_obsidian10.Plugin {
       const bi = (_b = orderMap.get(b.id)) != null ? _b : 999;
       return ai - bi;
     });
+    if (!this.settings.assistantA.systemPrompt || this.settings.assistantA.systemPrompt === DEFAULT_ASSISTANT_A.systemPrompt) {
+      this.settings.assistantA.systemPrompt = t("assistant.defaultPromptA");
+    }
+    if (!this.settings.assistantC.systemPrompt || this.settings.assistantC.systemPrompt === DEFAULT_ASSISTANT_C.systemPrompt) {
+      this.settings.assistantC.systemPrompt = t("assistant.defaultPromptC");
+    }
   }
   async saveSettings() {
     const encoded = this.settings.apiProviders.map((p) => ({
@@ -5238,7 +5306,7 @@ var XiaoyuanAIPlugin = class extends import_obsidian10.Plugin {
     const logLine = `- ${d} | ${t("chat.systemMsg.autoExec")}: ${skill.name} \u2014 ${skill.description}
 `;
     try {
-      const logPath = path4.join(getVaultBasePath(), "_autoTaskLog.md");
+      const logPath = path4.join(getVaultBasePath(), "_xiaoyuanAI", "autoTaskLog.md");
       await fs4.appendFile(logPath, logLine);
     } catch (e) {
     }
